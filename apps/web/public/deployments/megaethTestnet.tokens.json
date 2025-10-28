@@ -1,0 +1,17 @@
+{
+  "network": "megaethTestnet",
+  "tokens": [
+    {
+      "name": "MegaETH Token A",
+      "symbol": "MEGA",
+      "address": "0x2Ea161D82Cf2D965819C45cdA2fDE0AF79161639",
+      "decimals": 18
+    },
+    {
+      "name": "MegaETH Token B",
+      "symbol": "MEGB",
+      "address": "0x96F01598fc45334bF2566614Fb046Cc7A8F132C8",
+      "decimals": 18
+    }
+  ]
+}

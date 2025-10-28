@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "derry",
   "private": true,
   "scripts": {
     "build": "turbo run build",

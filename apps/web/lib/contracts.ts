@@ -1,0 +1,62 @@
+import { BrowserProvider, Contract, JsonRpcSigner } from "ethers";
+import { pancakeRouterAbi } from "./abis/router";
+import { erc20Abi } from "./abis/erc20";
+import { wmegaAbi } from "./abis/wmega";
+import { factoryAbi } from "./abis/factory";
+import { pairAbi } from "./abis/pair";
+
+export type RouterContract = Contract & {
+  addLiquidity: (...args: any[]) => Promise<any>;
+  addLiquidityETH: (...args: any[]) => Promise<any>;
+  removeLiquidity: (...args: any[]) => Promise<any>;
+  swapExactTokensForTokens: (...args: any[]) => Promise<any>;
+  swapExactTokensForTokensSupportingFeeOnTransferTokens: (
+    ...args: any[]
+  ) => Promise<any>;
+  swapExactETHForTokens: (...args: any[]) => Promise<any>;
+};
+
+export type ERC20Contract = Contract & {
+  decimals: () => Promise<number>;
+  allowance: (owner: string, spender: string) => Promise<bigint>;
+  approve: (spender: string, amount: bigint) => Promise<any>;
+  balanceOf: (owner: string) => Promise<bigint>;
+  symbol: () => Promise<string>;
+  name: () => Promise<string>;
+};
+
+export type WMegaContract = Contract & {
+  deposit: (overrides?: { value: bigint; gasLimit?: bigint }) => Promise<any>;
+  withdraw: (
+    amount: bigint,
+    overrides?: { gasLimit?: bigint },
+  ) => Promise<any>;
+  allowance: (owner: string, spender: string) => Promise<bigint>;
+  approve: (spender: string, amount: bigint) => Promise<any>;
+};
+
+export const getRouter = (
+  address: string,
+  signerOrProvider: JsonRpcSigner | BrowserProvider,
+) => new Contract(address, pancakeRouterAbi, signerOrProvider) as RouterContract;
+
+export const getToken = (
+  address: string,
+  signerOrProvider: JsonRpcSigner | BrowserProvider,
+) => new Contract(address, erc20Abi, signerOrProvider) as ERC20Contract;
+
+export const getFactory = (
+  address: string,
+  signerOrProvider: JsonRpcSigner | BrowserProvider,
+) => new Contract(address, factoryAbi, signerOrProvider);
+
+export const getPair = (
+  address: string,
+  signerOrProvider: JsonRpcSigner | BrowserProvider,
+) => new Contract(address, pairAbi, signerOrProvider);
+
+export const getWrappedMega = (
+  address: string,
+  signerOrProvider: JsonRpcSigner | BrowserProvider,
+) =>
+  new Contract(address, wmegaAbi, signerOrProvider) as WMegaContract;
