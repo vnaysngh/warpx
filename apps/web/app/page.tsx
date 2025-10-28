@@ -11,12 +11,14 @@ import {
   parseUnits
 } from "ethers";
 import type { Eip1193Provider, JsonRpcSigner } from "ethers";
+import type { Address } from "viem";
 import styles from "./page.module.css";
 import { DeploymentManifest, loadDeployment } from "@/lib/config/deployment";
 import { shortAddress } from "@/lib/utils/format";
 import { toBigInt } from "@/lib/utils/math";
 import {
   useAccount,
+  useBalance,
   useDisconnect,
   useSwitchChain,
   useWalletClient
@@ -141,8 +143,6 @@ const SWAP_DEFAULT = {
 };
 
 const LIQUIDITY_DEFAULT = {
-  tokenA: "",
-  tokenB: "",
   amountA: "",
   amountB: ""
 };
@@ -166,13 +166,20 @@ type LpInfo = {
 type TokenDialogSlot = "swapIn" | "swapOut" | "liquidityA" | "liquidityB";
 
 export default function Page() {
-  const { address, isConnecting: isAccountConnecting, chain, status } = useAccount();
+  const {
+    address,
+    isConnecting: isAccountConnecting,
+    chain,
+    status
+  } = useAccount();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
   const { disconnectAsync, isPending: isDisconnecting } = useDisconnect();
   const { data: walletClient } = useWalletClient();
   const copyTimeoutRef = useRef<number | null>(null);
   const isWalletConnected = Boolean(address) && status !== "disconnected";
-  const walletAccount = isWalletConnected ? address?.toLowerCase() ?? null : null;
+  const walletAccount = isWalletConnected
+    ? (address?.toLowerCase() ?? null)
+    : null;
   const accountDisplayAddress = address ?? walletAccount ?? "";
   const shortAccountAddress = accountDisplayAddress
     ? shortAddress(accountDisplayAddress)
@@ -260,6 +267,7 @@ export default function Page() {
     useState<TokenDescriptor | null>(
       TOKEN_CATALOG[1] ?? TOKEN_CATALOG[0] ?? null
     );
+
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [tokenDialogSide, setTokenDialogSide] =
     useState<TokenDialogSlot>("swapIn");
@@ -279,6 +287,75 @@ export default function Page() {
   const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
   const walletMenuRef = useRef<HTMLDivElement>(null);
   const showWalletActions = hasMounted && isWalletConnected;
+
+  // Derive token addresses from token objects (single source of truth)
+  const liquidityTokenAAddress = liquidityTokenA?.address ?? "";
+  const liquidityTokenBAddress = liquidityTokenB?.address ?? "";
+
+  const balanceQueryEnabled =
+    hasMounted && isWalletConnected && chain?.id === Number(MEGAETH_CHAIN_ID);
+
+  const tokenAIsAddress = isAddress(liquidityTokenAAddress);
+  const tokenBIsAddress = isAddress(liquidityTokenBAddress);
+
+  const { data: balanceAData } = useBalance({
+    address: balanceQueryEnabled ? (address as Address) : undefined,
+    token:
+      balanceQueryEnabled && tokenAIsAddress
+        ? (liquidityTokenAAddress as Address)
+        : undefined,
+    chainId: Number(MEGAETH_CHAIN_ID),
+    query: {
+      enabled:
+        balanceQueryEnabled && tokenAIsAddress && Boolean(liquidityTokenAAddress)
+    }
+  });
+
+  const { data: balanceBData } = useBalance({
+    address: balanceQueryEnabled ? (address as Address) : undefined,
+    token:
+      balanceQueryEnabled && tokenBIsAddress
+        ? (liquidityTokenBAddress as Address)
+        : undefined,
+    chainId: Number(MEGAETH_CHAIN_ID),
+    query: {
+      enabled:
+        balanceQueryEnabled && tokenBIsAddress && Boolean(liquidityTokenBAddress)
+    }
+  });
+
+  const tokenABalanceFormatted = balanceAData?.formatted ?? null;
+  const tokenBBalanceFormatted = balanceBData?.formatted ?? null;
+  const tokenASymbol = balanceAData?.symbol ?? liquidityTokenA?.symbol ?? null;
+  const tokenBSymbol = balanceBData?.symbol ?? liquidityTokenB?.symbol ?? null;
+
+  // Debug: Log balance query state in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[balance] Query state:", {
+        enabled: balanceQueryEnabled,
+        tokenA: liquidityTokenAAddress,
+        tokenB: liquidityTokenBAddress,
+        balanceA: tokenABalanceFormatted,
+        balanceB: tokenBBalanceFormatted
+      });
+    }
+  }, [
+    balanceQueryEnabled,
+    liquidityTokenAAddress,
+    liquidityTokenBAddress,
+    tokenABalanceFormatted,
+    tokenBBalanceFormatted
+  ]);
+
+  const formatBalance = useCallback((value: string | null) => {
+    if (value === null) return "—";
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return value;
+    if (numeric === 0) return "0";
+    if (numeric >= 1) return numeric.toFixed(4);
+    return numeric.toPrecision(4);
+  }, []);
 
   const readProvider = useMemo(() => {
     const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
@@ -443,9 +520,12 @@ export default function Page() {
   const factoryAddress = deployment?.factory ?? "";
   const wmegaAddress = deployment?.wmegaeth ?? "";
 
+  // Reset UI state when deployment changes (router address or token list updates)
+  // NOTE: liquidityForm only stores amounts (amountA/amountB). Token addresses
+  // are derived directly from liquidityTokenA/B state (see lines 292-293).
+  // This eliminates the need for sync logic and prevents state inconsistencies.
   useEffect(() => {
     setSwapForm(SWAP_DEFAULT);
-    setLiquidityForm(LIQUIDITY_DEFAULT);
     setRemoveForm(REMOVE_DEFAULT);
     setLpInfo({ pair: null, balance: null, symbol: null });
     setSwapQuote(null);
@@ -545,22 +625,7 @@ export default function Page() {
     setSwapForm((prev) => ({ ...prev, tokenOut: selectedOut.address }));
   }, [selectedOut, swapForm.tokenOut]);
 
-  useEffect(() => {
-    setLiquidityForm((prev) => {
-      const nextAddress = liquidityTokenA?.address ?? "";
-      if (prev.tokenA === nextAddress) return prev;
-      return { ...prev, tokenA: nextAddress };
-    });
-  }, [liquidityTokenA]);
-
-  useEffect(() => {
-    setLiquidityForm((prev) => {
-      const nextAddress = liquidityTokenB?.address ?? "";
-      if (prev.tokenB === nextAddress) return prev;
-      return { ...prev, tokenB: nextAddress };
-    });
-  }, [liquidityTokenB]);
-
+  // Allowance check for liquidity operations
   useEffect(() => {
     let cancelled = false;
     if (
@@ -568,8 +633,8 @@ export default function Page() {
       !walletProvider ||
       !walletAccount ||
       !routerAddress ||
-      !isAddress(liquidityForm.tokenA) ||
-      !isAddress(liquidityForm.tokenB) ||
+      !isAddress(liquidityTokenAAddress) ||
+      !isAddress(liquidityTokenBAddress) ||
       !liquidityForm.amountA ||
       !liquidityForm.amountB
     ) {
@@ -585,19 +650,20 @@ export default function Page() {
       try {
         if (!cancelled) setCheckingLiquidityAllowances(true);
         const owner = walletAccount!;
-        const tokenAContract = getToken(liquidityForm.tokenA, readProvider);
-        const tokenBContract = getToken(liquidityForm.tokenB, readProvider);
+        const tokenAContract = getToken(liquidityTokenAAddress, readProvider);
+        const tokenBContract = getToken(liquidityTokenBAddress, readProvider);
 
-        let decimalsA =
-          liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
-        let decimalsB =
-          liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        let decimalsA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        let decimalsB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
         if (!liquidityTokenA?.decimals) {
           try {
             decimalsA = Number(await tokenAContract.decimals());
           } catch (decimalsError) {
-            console.warn("[liquidity] falling back to default decimals for tokenA", decimalsError);
+            console.warn(
+              "[liquidity] falling back to default decimals for tokenA",
+              decimalsError
+            );
           }
         }
 
@@ -605,7 +671,10 @@ export default function Page() {
           try {
             decimalsB = Number(await tokenBContract.decimals());
           } catch (decimalsError) {
-            console.warn("[liquidity] falling back to default decimals for tokenB", decimalsError);
+            console.warn(
+              "[liquidity] falling back to default decimals for tokenB",
+              decimalsError
+            );
           }
         }
 
@@ -641,8 +710,8 @@ export default function Page() {
     walletProvider,
     walletAccount,
     routerAddress,
-    liquidityForm.tokenA,
-    liquidityForm.tokenB,
+    liquidityTokenAAddress,
+    liquidityTokenBAddress,
     liquidityForm.amountA,
     liquidityForm.amountB,
     liquidityTokenA?.decimals,
@@ -664,7 +733,9 @@ export default function Page() {
       return null;
     }
     if (!ready) {
-      showError("Switch to the MegaETH Testnet to interact with the contracts.");
+      showError(
+        "Switch to the MegaETH Testnet to interact with the contracts."
+      );
       return null;
     }
     if (options?.requireSigner && (!walletProvider || !walletSigner)) {
@@ -712,20 +783,29 @@ export default function Page() {
           .decimals()
           .then((value) => Number(value))
           .catch((decimalsError) => {
-            console.warn("[swap] falling back to default decimals for tokenIn", decimalsError);
+            console.warn(
+              "[swap] falling back to default decimals for tokenIn",
+              decimalsError
+            );
             return DEFAULT_TOKEN_DECIMALS;
           });
         const decimalsOut = await tokenOutContract
           .decimals()
           .then((value) => Number(value))
           .catch((decimalsError) => {
-            console.warn("[swap] falling back to default decimals for tokenOut", decimalsError);
+            console.warn(
+              "[swap] falling back to default decimals for tokenOut",
+              decimalsError
+            );
             return DEFAULT_TOKEN_DECIMALS;
           });
         const symbolOut = await tokenOutContract
           .symbol()
           .catch((symbolError) => {
-            console.warn("[swap] falling back to generic symbol for tokenOut", symbolError);
+            console.warn(
+              "[swap] falling back to generic symbol for tokenOut",
+              symbolError
+            );
             return "TOKEN";
           });
 
@@ -739,13 +819,23 @@ export default function Page() {
 
         if (!cancelled) {
           setSwapQuote({ amount: formattedOut, symbol: symbolOut });
-          if (!swapForm.minOut) {
-            setSwapForm((prev) => ({ ...prev, minOut: formattedOut }));
-          }
+          setSwapForm((prev) => ({ ...prev, minOut: formattedOut }));
         }
       } catch (err: any) {
         if (!cancelled) {
           console.error("[quote] calculation error", err);
+          setSwapQuote(null);
+          setSwapForm((prev) => ({ ...prev, minOut: "" }));
+
+          // Show error for insufficient liquidity or other issues
+          if (
+            err?.message?.toLowerCase().includes("insufficient") ||
+            err?.reason?.toLowerCase().includes("insufficient")
+          ) {
+            showError("Insufficient liquidity for this trade.");
+          } else if (err?.message || err?.reason) {
+            showError(`Unable to calculate swap: ${err.reason || err.message}`);
+          }
         }
       }
     };
@@ -782,26 +872,36 @@ export default function Page() {
           .decimals()
           .then((value) => Number(value))
           .catch((decimalsError) => {
-            console.warn("[swap] reverse quote fallback decimals for tokenIn", decimalsError);
+            console.warn(
+              "[swap] reverse quote fallback decimals for tokenIn",
+              decimalsError
+            );
             return DEFAULT_TOKEN_DECIMALS;
           });
         const decimalsOut = await tokenOutContract
           .decimals()
           .then((value) => Number(value))
           .catch((decimalsError) => {
-            console.warn("[swap] reverse quote fallback decimals for tokenOut", decimalsError);
+            console.warn(
+              "[swap] reverse quote fallback decimals for tokenOut",
+              decimalsError
+            );
             return DEFAULT_TOKEN_DECIMALS;
           });
-        const symbolIn = await tokenInContract
-          .symbol()
-          .catch((symbolError) => {
-            console.warn("[swap] reverse quote fallback symbol for tokenIn", symbolError);
-            return "TOKEN";
-          });
+        const symbolIn = await tokenInContract.symbol().catch((symbolError) => {
+          console.warn(
+            "[swap] reverse quote fallback symbol for tokenIn",
+            symbolError
+          );
+          return "TOKEN";
+        });
         const symbolOut = await tokenOutContract
           .symbol()
           .catch((symbolError) => {
-            console.warn("[swap] reverse quote fallback symbol for tokenOut", symbolError);
+            console.warn(
+              "[swap] reverse quote fallback symbol for tokenOut",
+              symbolError
+            );
             return "TOKEN";
           });
 
@@ -819,9 +919,10 @@ export default function Page() {
             setSwapForm((prev) => ({ ...prev, amountIn: formattedIn }));
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         if (!cancelled) {
-          console.error("reverse quote error", err);
+          console.error("[reverse quote] calculation error", err);
+          setReverseQuote(null);
         }
       }
     };
@@ -889,6 +990,8 @@ export default function Page() {
     readProvider
   ]);
 
+  // Removed manual balance polling; wagmi's useBalance handles watching balances.
+
   useEffect(() => {
     let cancelled = false;
     const evaluateAllowance = async () => {
@@ -912,7 +1015,10 @@ export default function Page() {
           .decimals()
           .then((value) => Number(value))
           .catch((decimalsError) => {
-            console.warn("[swap] allowance fallback decimals for tokenIn", decimalsError);
+            console.warn(
+              "[swap] allowance fallback decimals for tokenIn",
+              decimalsError
+            );
             return DEFAULT_TOKEN_DECIMALS;
           });
         const desired = parseUnits(swapForm.amountIn, decimals);
@@ -966,7 +1072,10 @@ export default function Page() {
       })
         .then((value) => Number(value))
         .catch((decimalsError) => {
-          console.warn("[approval] fallback to default decimals", decimalsError);
+          console.warn(
+            "[approval] fallback to default decimals",
+            decimalsError
+          );
           return DEFAULT_TOKEN_DECIMALS;
         });
       const parsedAmount = parseUnits(
@@ -1106,7 +1215,9 @@ export default function Page() {
   const handleAddLiquidity = async () => {
     const ctx = ensureWallet();
     if (!ctx) return;
-    const { tokenA, tokenB, amountA, amountB } = liquidityForm;
+    const tokenA = liquidityTokenAAddress;
+    const tokenB = liquidityTokenBAddress;
+    const { amountA, amountB } = liquidityForm;
     if (!isAddress(tokenA) || !isAddress(tokenB)) {
       showError("Enter valid token addresses for liquidity provision.");
       return;
@@ -1127,7 +1238,10 @@ export default function Page() {
       })
         .then((value) => Number(value))
         .catch((decimalsError) => {
-          console.warn("[liquidity] fallback decimals for tokenA", decimalsError);
+          console.warn(
+            "[liquidity] fallback decimals for tokenA",
+            decimalsError
+          );
           return DEFAULT_TOKEN_DECIMALS;
         });
       const decimalsB = await readContract(wagmiConfig, {
@@ -1138,7 +1252,10 @@ export default function Page() {
       })
         .then((value) => Number(value))
         .catch((decimalsError) => {
-          console.warn("[liquidity] fallback decimals for tokenB", decimalsError);
+          console.warn(
+            "[liquidity] fallback decimals for tokenB",
+            decimalsError
+          );
           return DEFAULT_TOKEN_DECIMALS;
         });
 
@@ -1237,14 +1354,20 @@ export default function Page() {
         .decimals()
         .then((value) => Number(value))
         .catch((decimalsError) => {
-          console.warn("[liquidity] fallback decimals for token0", decimalsError);
+          console.warn(
+            "[liquidity] fallback decimals for token0",
+            decimalsError
+          );
           return DEFAULT_TOKEN_DECIMALS;
         });
       const decimals1 = await getToken(token1, provider)
         .decimals()
         .then((value) => Number(value))
         .catch((decimalsError) => {
-          console.warn("[liquidity] fallback decimals for token1", decimalsError);
+          console.warn(
+            "[liquidity] fallback decimals for token1",
+            decimalsError
+          );
           return DEFAULT_TOKEN_DECIMALS;
         });
 
@@ -1404,9 +1527,9 @@ export default function Page() {
     : null;
 
   const liquidityTokensReady =
-    isAddress(liquidityForm.tokenA) &&
-    isAddress(liquidityForm.tokenB) &&
-    liquidityForm.tokenA.toLowerCase() !== liquidityForm.tokenB.toLowerCase();
+    isAddress(liquidityTokenAAddress) &&
+    isAddress(liquidityTokenBAddress) &&
+    liquidityTokenAAddress.toLowerCase() !== liquidityTokenBAddress.toLowerCase();
 
   const liquidityAmountsReady =
     !!liquidityForm.amountA && !!liquidityForm.amountB;
@@ -1443,7 +1566,7 @@ export default function Page() {
     liquidityButtonLabel = `Approve ${liquidityTokenA?.symbol ?? "Token A"}`;
     liquidityButtonAction = () =>
       handleApprove(
-        liquidityForm.tokenA,
+        liquidityTokenAAddress,
         routerAddress,
         liquidityForm.amountA || "0"
       );
@@ -1452,7 +1575,7 @@ export default function Page() {
     liquidityButtonLabel = `Approve ${liquidityTokenB?.symbol ?? "Token B"}`;
     liquidityButtonAction = () =>
       handleApprove(
-        liquidityForm.tokenB,
+        liquidityTokenBAddress,
         routerAddress,
         liquidityForm.amountB || "0"
       );
@@ -1574,9 +1697,7 @@ export default function Page() {
                   onClick={() => setWalletMenuOpen((prev) => !prev)}
                   type="button"
                 >
-                  {shortAccountAddress
-                    ? `Acct · ${shortAccountAddress}`
-                    : "Wallet"}
+                  {shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}
                 </button>
 
                 {isWalletMenuOpen && (
@@ -1601,14 +1722,14 @@ export default function Page() {
                       )}
                     </button>
 
-                    {chain?.blockExplorers?.default.url && address && (
+                    {address && (
                       <a
-                        href={`${chain.blockExplorers.default.url}/address/${address}`}
+                        href={`https://www.mtrkr.xyz/wallet/${address}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.walletDropdownItem}
                       >
-                        View on {chain.blockExplorers.default.name}
+                        View on Explorer
                       </a>
                     )}
 
@@ -1831,6 +1952,12 @@ export default function Page() {
                         }
                       />
                     </div>
+                    <span className={styles.helper}>
+                      Balance:{" "}
+                      {liquidityTokenA
+                        ? `${formatBalance(tokenABalanceFormatted)} ${tokenASymbol ?? liquidityTokenA.symbol}`
+                        : "—"}
+                    </span>
                   </div>
 
                   <div className={styles.assetCard}>
@@ -1860,6 +1987,12 @@ export default function Page() {
                         }
                       />
                     </div>
+                    <span className={styles.helper}>
+                      Balance:{" "}
+                      {liquidityTokenB
+                        ? `${formatBalance(tokenBBalanceFormatted)} ${tokenBSymbol ?? liquidityTokenB.symbol}`
+                        : "—"}
+                    </span>
                   </div>
                 </div>
 
@@ -1920,14 +2053,16 @@ export default function Page() {
                       }))
                     }
                   />
+                  {lpInfo.balance && (
+                    <span
+                      className={styles.helper}
+                      style={{ marginTop: "0.5rem", display: "block" }}
+                    >
+                      Balance: {parseFloat(lpInfo.balance).toFixed(4)}{" "}
+                      {lpInfo.symbol ?? "LP"}
+                    </span>
+                  )}
                 </div>
-
-                <span className={styles.helper}>
-                  LP Balance:{" "}
-                  {lpInfo.balance
-                    ? `${lpInfo.balance} ${lpInfo.symbol ?? "LP"}`
-                    : "—"}
-                </span>
 
                 <div className={styles.buttonRow}>
                   <button
