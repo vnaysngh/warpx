@@ -546,6 +546,36 @@
   letter-spacing: 0.05em;
 }
 
+.assetBalance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding: 0 0.15rem;
+}
+
+.maxButton {
+  background: rgba(10, 255, 157, 0.1);
+  border: 1px solid rgba(10, 255, 157, 0.3);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.maxButton:hover {
+  background: rgba(10, 255, 157, 0.15);
+  border-color: var(--accent);
+}
+
+.maxButton:active {
+  transform: scale(0.95);
+}
+
 .callout {
   border-radius: 14px;
   border: 1px solid rgba(10, 255, 157, 0.2);

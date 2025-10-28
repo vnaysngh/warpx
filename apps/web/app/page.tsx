@@ -267,6 +267,15 @@ export default function Page() {
     useState<TokenDescriptor | null>(
       TOKEN_CATALOG[1] ?? TOKEN_CATALOG[0] ?? null
     );
+  const [liquidityPairReserves, setLiquidityPairReserves] = useState<{
+    reserveA: string;
+    reserveB: string;
+    pairAddress: string;
+  } | null>(null);
+  const liquidityEditingFieldRef = useRef<"A" | "B" | null>(null);
+  const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
+  const quoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reverseQuoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [tokenDialogSide, setTokenDialogSide] =
@@ -328,6 +337,24 @@ export default function Page() {
   const tokenBBalanceFormatted = balanceBData?.formatted ?? null;
   const tokenASymbol = balanceAData?.symbol ?? liquidityTokenA?.symbol ?? null;
   const tokenBSymbol = balanceBData?.symbol ?? liquidityTokenB?.symbol ?? null;
+
+  // Fetch balance for swap "selectedIn" token
+  const swapInTokenAddress = selectedIn?.address ?? "";
+  const swapInIsAddress = isAddress(swapInTokenAddress);
+  const { data: swapInBalanceData } = useBalance({
+    address: balanceQueryEnabled ? (address as Address) : undefined,
+    token:
+      balanceQueryEnabled && swapInIsAddress
+        ? (swapInTokenAddress as Address)
+        : undefined,
+    chainId: Number(MEGAETH_CHAIN_ID),
+    query: {
+      enabled:
+        balanceQueryEnabled && swapInIsAddress && Boolean(swapInTokenAddress)
+    }
+  });
+  const swapInBalanceFormatted = swapInBalanceData?.formatted ?? null;
+  const swapInSymbol = swapInBalanceData?.symbol ?? selectedIn?.symbol ?? null;
 
   // Debug: Log balance query state in development
   useEffect(() => {
@@ -766,13 +793,28 @@ export default function Page() {
   };
 
   useEffect(() => {
-    let cancelled = false;
-    const computeQuote = async () => {
-      setSwapQuote(null);
+    // Clear any existing timer
+    if (quoteDebounceTimerRef.current) {
+      clearTimeout(quoteDebounceTimerRef.current);
+    }
 
+    // Only run this effect when user is editing amountIn
+    if (swapEditingFieldRef.current !== "amountIn") {
+      return;
+    }
+
+    // If amountIn is empty, clear minOut immediately (no debounce)
+    if (!swapForm.amountIn || swapForm.amountIn.trim() === "") {
+      setSwapQuote(null);
+      setSwapForm((prev) => ({ ...prev, minOut: "" }));
+      return;
+    }
+
+    // Debounce the quote calculation
+    quoteDebounceTimerRef.current = setTimeout(async () => {
       if (!routerAddress) return;
       if (!isAddress(swapForm.tokenIn) || !isAddress(swapForm.tokenOut)) return;
-      if (!swapForm.amountIn || Number(swapForm.amountIn) <= 0) return;
+      if (Number(swapForm.amountIn) <= 0) return;
 
       try {
         const routerRead = getRouter(routerAddress, readProvider);
@@ -782,32 +824,16 @@ export default function Page() {
         const decimalsIn = await tokenInContract
           .decimals()
           .then((value) => Number(value))
-          .catch((decimalsError) => {
-            console.warn(
-              "[swap] falling back to default decimals for tokenIn",
-              decimalsError
-            );
-            return DEFAULT_TOKEN_DECIMALS;
-          });
+          .catch(() => DEFAULT_TOKEN_DECIMALS);
+
         const decimalsOut = await tokenOutContract
           .decimals()
           .then((value) => Number(value))
-          .catch((decimalsError) => {
-            console.warn(
-              "[swap] falling back to default decimals for tokenOut",
-              decimalsError
-            );
-            return DEFAULT_TOKEN_DECIMALS;
-          });
+          .catch(() => DEFAULT_TOKEN_DECIMALS);
+
         const symbolOut = await tokenOutContract
           .symbol()
-          .catch((symbolError) => {
-            console.warn(
-              "[swap] falling back to generic symbol for tokenOut",
-              symbolError
-            );
-            return "TOKEN";
-          });
+          .catch(() => "TOKEN");
 
         const amountInWei = parseUnits(swapForm.amountIn, decimalsIn);
         if (amountInWei <= 0n) return;
@@ -815,53 +841,69 @@ export default function Page() {
         const path = [swapForm.tokenIn, swapForm.tokenOut];
         const amounts = await routerRead.getAmountsOut!(amountInWei, path);
         const amountOutWei = amounts[amounts.length - 1];
-        const formattedOut = formatUnits(amountOutWei, decimalsOut);
 
-        if (!cancelled) {
-          setSwapQuote({ amount: formattedOut, symbol: symbolOut });
-          setSwapForm((prev) => ({ ...prev, minOut: formattedOut }));
+        // Format to max 6 decimals
+        const formattedOut = formatUnits(amountOutWei, decimalsOut);
+        const numOut = parseFloat(formattedOut);
+        const limitedOut = numOut.toFixed(Math.min(6, decimalsOut)).replace(/\.?0+$/, "");
+
+        // Only update minOut if user is still editing amountIn
+        if (swapEditingFieldRef.current === "amountIn") {
+          setSwapQuote({ amount: limitedOut, symbol: symbolOut });
+          setSwapForm((prev) => ({ ...prev, minOut: limitedOut }));
         }
       } catch (err: any) {
-        if (!cancelled) {
-          console.error("[quote] calculation error", err);
-          setSwapQuote(null);
-          setSwapForm((prev) => ({ ...prev, minOut: "" }));
+        console.error("[quote] calculation error", err);
+        setSwapQuote(null);
+        setSwapForm((prev) => ({ ...prev, minOut: "" }));
 
-          // Show error for insufficient liquidity or other issues
-          if (
-            err?.message?.toLowerCase().includes("insufficient") ||
-            err?.reason?.toLowerCase().includes("insufficient")
-          ) {
-            showError("Insufficient liquidity for this trade.");
-          } else if (err?.message || err?.reason) {
-            showError(`Unable to calculate swap: ${err.reason || err.message}`);
-          }
+        if (
+          err?.message?.toLowerCase().includes("insufficient") ||
+          err?.reason?.toLowerCase().includes("insufficient")
+        ) {
+          showError("Insufficient liquidity for this trade.");
+        } else if (err?.message || err?.reason) {
+          showError(`Unable to calculate swap: ${err.reason || err.message}`);
         }
       }
-    };
+    }, 500);
 
-    computeQuote();
     return () => {
-      cancelled = true;
+      if (quoteDebounceTimerRef.current) {
+        clearTimeout(quoteDebounceTimerRef.current);
+      }
     };
   }, [
-    ready,
-    walletProvider,
     routerAddress,
     swapForm.tokenIn,
     swapForm.tokenOut,
     swapForm.amountIn,
-    swapForm.minOut,
     readProvider
   ]);
 
   useEffect(() => {
-    let cancelled = false;
-    const computeReverseQuote = async () => {
+    // Clear any existing timer
+    if (reverseQuoteDebounceTimerRef.current) {
+      clearTimeout(reverseQuoteDebounceTimerRef.current);
+    }
+
+    // Only run this effect when user is editing minOut
+    if (swapEditingFieldRef.current !== "minOut") {
+      return;
+    }
+
+    // If minOut is empty, clear amountIn immediately (no debounce)
+    if (!swapForm.minOut || swapForm.minOut.trim() === "") {
       setReverseQuote(null);
+      setSwapForm((prev) => ({ ...prev, amountIn: "" }));
+      return;
+    }
+
+    // Debounce the reverse quote calculation
+    reverseQuoteDebounceTimerRef.current = setTimeout(async () => {
       if (!routerAddress) return;
       if (!isAddress(swapForm.tokenIn) || !isAddress(swapForm.tokenOut)) return;
-      if (!swapForm.minOut || Number(swapForm.minOut) <= 0) return;
+      if (Number(swapForm.minOut) <= 0) return;
 
       try {
         const routerRead = getRouter(routerAddress, readProvider);
@@ -871,39 +913,20 @@ export default function Page() {
         const decimalsIn = await tokenInContract
           .decimals()
           .then((value) => Number(value))
-          .catch((decimalsError) => {
-            console.warn(
-              "[swap] reverse quote fallback decimals for tokenIn",
-              decimalsError
-            );
-            return DEFAULT_TOKEN_DECIMALS;
-          });
+          .catch(() => DEFAULT_TOKEN_DECIMALS);
+
         const decimalsOut = await tokenOutContract
           .decimals()
           .then((value) => Number(value))
-          .catch((decimalsError) => {
-            console.warn(
-              "[swap] reverse quote fallback decimals for tokenOut",
-              decimalsError
-            );
-            return DEFAULT_TOKEN_DECIMALS;
-          });
-        const symbolIn = await tokenInContract.symbol().catch((symbolError) => {
-          console.warn(
-            "[swap] reverse quote fallback symbol for tokenIn",
-            symbolError
-          );
-          return "TOKEN";
-        });
+          .catch(() => DEFAULT_TOKEN_DECIMALS);
+
+        const symbolIn = await tokenInContract
+          .symbol()
+          .catch(() => "TOKEN");
+
         const symbolOut = await tokenOutContract
           .symbol()
-          .catch((symbolError) => {
-            console.warn(
-              "[swap] reverse quote fallback symbol for tokenOut",
-              symbolError
-            );
-            return "TOKEN";
-          });
+          .catch(() => "TOKEN");
 
         const desiredOutWei = parseUnits(swapForm.minOut, decimalsOut);
         if (desiredOutWei <= 0n) return;
@@ -911,34 +934,33 @@ export default function Page() {
         const path = [swapForm.tokenIn, swapForm.tokenOut];
         const amounts = await routerRead.getAmountsIn!(desiredOutWei, path);
         const amountNeeded = amounts[0];
-        const formattedIn = formatUnits(amountNeeded, decimalsIn);
 
-        if (!cancelled) {
-          setReverseQuote({ amount: formattedIn, symbolIn, symbolOut });
-          if (!swapForm.amountIn) {
-            setSwapForm((prev) => ({ ...prev, amountIn: formattedIn }));
-          }
+        // Format to max 6 decimals
+        const formattedIn = formatUnits(amountNeeded, decimalsIn);
+        const numIn = parseFloat(formattedIn);
+        const limitedIn = numIn.toFixed(Math.min(6, decimalsIn)).replace(/\.?0+$/, "");
+
+        // Only update amountIn if user is still editing minOut
+        if (swapEditingFieldRef.current === "minOut") {
+          setReverseQuote({ amount: limitedIn, symbolIn, symbolOut });
+          setSwapForm((prev) => ({ ...prev, amountIn: limitedIn }));
         }
       } catch (err: any) {
-        if (!cancelled) {
-          console.error("[reverse quote] calculation error", err);
-          setReverseQuote(null);
-        }
+        console.error("[reverse quote] calculation error", err);
+        setReverseQuote(null);
+      }
+    }, 500);
+
+    return () => {
+      if (reverseQuoteDebounceTimerRef.current) {
+        clearTimeout(reverseQuoteDebounceTimerRef.current);
       }
     };
-
-    computeReverseQuote();
-    return () => {
-      cancelled = true;
-    };
   }, [
-    ready,
-    walletProvider,
     routerAddress,
     swapForm.tokenIn,
     swapForm.tokenOut,
     swapForm.minOut,
-    swapForm.amountIn,
     readProvider
   ]);
 
@@ -987,6 +1009,68 @@ export default function Page() {
     factoryAddress,
     removeForm.tokenA,
     removeForm.tokenB,
+    readProvider
+  ]);
+
+  // Fetch liquidity pair reserves for auto-calculation
+  useEffect(() => {
+    let active = true;
+    const fetchPairReserves = async () => {
+      if (
+        !factoryAddress ||
+        !liquidityTokenAAddress ||
+        !liquidityTokenBAddress
+      ) {
+        if (active) setLiquidityPairReserves(null);
+        return;
+      }
+
+      try {
+        const factory = getFactory(factoryAddress, readProvider);
+        const pairAddress = await factory.getPair(
+          liquidityTokenAAddress,
+          liquidityTokenBAddress
+        );
+        if (pairAddress === ZeroAddress) {
+          if (active) setLiquidityPairReserves(null);
+          return;
+        }
+
+        // Get reserves from pair contract
+        const pairContract = getPair(pairAddress, readProvider);
+        const reserves = await pairContract.getReserves();
+
+        // Determine which reserve corresponds to which token
+        const token0 = await pairContract.token0();
+        const isToken0A =
+          token0.toLowerCase() === liquidityTokenAAddress.toLowerCase();
+
+        const reserveA = isToken0A ? reserves[0] : reserves[1];
+        const reserveB = isToken0A ? reserves[1] : reserves[0];
+
+        if (active) {
+          setLiquidityPairReserves({
+            reserveA: formatUnits(reserveA, liquidityTokenA?.decimals ?? 18),
+            reserveB: formatUnits(reserveB, liquidityTokenB?.decimals ?? 18),
+            pairAddress
+          });
+        }
+      } catch (err) {
+        console.error("[liquidity] fetch pair reserves failed", err);
+        if (active) setLiquidityPairReserves(null);
+      }
+    };
+
+    fetchPairReserves();
+    return () => {
+      active = false;
+    };
+  }, [
+    factoryAddress,
+    liquidityTokenAAddress,
+    liquidityTokenBAddress,
+    liquidityTokenA?.decimals,
+    liquidityTokenB?.decimals,
     readProvider
   ]);
 
@@ -1124,6 +1208,14 @@ export default function Page() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSetMaxSwapAmount = () => {
+    if (!swapInBalanceFormatted) return;
+    setSwapForm((prev) => ({
+      ...prev,
+      amountIn: swapInBalanceFormatted
+    }));
   };
 
   const handleSwap = async () => {
@@ -1586,6 +1678,76 @@ export default function Page() {
     liquidityButtonDisabled = isSubmitting;
   }
 
+  const handleLiquidityAmountAChange = (value: string) => {
+    // Mark that user is editing field A
+    liquidityEditingFieldRef.current = "A";
+
+    setLiquidityForm((prev) => {
+      // If we're not editing A (another handler changed this), ignore
+      if (liquidityEditingFieldRef.current !== "A") {
+        return prev;
+      }
+
+      const updated = { ...prev, amountA: value };
+
+      // If value is empty, clear both fields
+      if (!value || value.trim() === "") {
+        updated.amountB = "";
+        liquidityEditingFieldRef.current = null;
+        return updated;
+      }
+
+      // Auto-calculate amountB based on reserves if pair exists
+      const amountANum = parseFloat(value);
+      if (liquidityPairReserves && !isNaN(amountANum) && amountANum > 0) {
+        const reserveANum = parseFloat(liquidityPairReserves.reserveA);
+        const reserveBNum = parseFloat(liquidityPairReserves.reserveB);
+
+        if (reserveANum > 0 && reserveBNum > 0) {
+          const amountBNum = (amountANum * reserveBNum) / reserveANum;
+          updated.amountB = amountBNum.toFixed(18).replace(/\.?0+$/, "");
+        }
+      }
+
+      return updated;
+    });
+  };
+
+  const handleLiquidityAmountBChange = (value: string) => {
+    // Mark that user is editing field B
+    liquidityEditingFieldRef.current = "B";
+
+    setLiquidityForm((prev) => {
+      // If we're not editing B (another handler changed this), ignore
+      if (liquidityEditingFieldRef.current !== "B") {
+        return prev;
+      }
+
+      const updated = { ...prev, amountB: value };
+
+      // If value is empty, clear both fields
+      if (!value || value.trim() === "") {
+        updated.amountA = "";
+        liquidityEditingFieldRef.current = null;
+        return updated;
+      }
+
+      // Auto-calculate amountA based on reserves if pair exists
+      const amountBNum = parseFloat(value);
+      if (liquidityPairReserves && !isNaN(amountBNum) && amountBNum > 0) {
+        const reserveANum = parseFloat(liquidityPairReserves.reserveA);
+        const reserveBNum = parseFloat(liquidityPairReserves.reserveB);
+
+        if (reserveANum > 0 && reserveBNum > 0) {
+          const amountANum = (amountBNum * reserveANum) / reserveBNum;
+          updated.amountA = amountANum.toFixed(18).replace(/\.?0+$/, "");
+        }
+      }
+
+      return updated;
+    });
+  };
+
   const handleLiquidityPrimary = () => {
     if (liquidityButtonDisabled) return;
     liquidityButtonAction();
@@ -1829,14 +1991,34 @@ export default function Page() {
                     className={styles.amountInput}
                     placeholder="0.0"
                     value={swapForm.amountIn}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      // Mark that user is editing Pay field
+                      swapEditingFieldRef.current = "amountIn";
+                      // Update ONLY amountIn - don't touch minOut
                       setSwapForm((prev) => ({
                         ...prev,
-                        amountIn: event.target.value
-                      }))
-                    }
+                        amountIn: value
+                      }));
+                    }}
                   />
                 </div>
+                {selectedIn && (
+                  <div className={styles.assetBalance}>
+                    <span className={styles.helper}>
+                      Balance: {formatBalance(swapInBalanceFormatted)} {swapInSymbol}
+                    </span>
+                    {swapInBalanceFormatted && (
+                      <button
+                        type="button"
+                        className={styles.maxButton}
+                        onClick={handleSetMaxSwapAmount}
+                      >
+                        MAX
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className={styles.swapDivider}>v</div>
@@ -1860,12 +2042,16 @@ export default function Page() {
                     className={styles.amountInput}
                     placeholder={swapQuote ? swapQuote.amount : "0.0"}
                     value={swapForm.minOut}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      // Mark that user is editing Receive field
+                      swapEditingFieldRef.current = "minOut";
+                      // Update ONLY minOut - don't touch amountIn
                       setSwapForm((prev) => ({
                         ...prev,
-                        minOut: event.target.value
-                      }))
-                    }
+                        minOut: value
+                      }));
+                    }}
                   />
                 </div>
                 {reverseQuote && (
@@ -1945,10 +2131,7 @@ export default function Page() {
                         placeholder="0.0"
                         value={liquidityForm.amountA}
                         onChange={(event) =>
-                          setLiquidityForm((prev) => ({
-                            ...prev,
-                            amountA: event.target.value
-                          }))
+                          handleLiquidityAmountAChange(event.target.value)
                         }
                       />
                     </div>
@@ -1980,10 +2163,7 @@ export default function Page() {
                         placeholder="0.0"
                         value={liquidityForm.amountB}
                         onChange={(event) =>
-                          setLiquidityForm((prev) => ({
-                            ...prev,
-                            amountB: event.target.value
-                          }))
+                          handleLiquidityAmountBChange(event.target.value)
                         }
                       />
                     </div>
