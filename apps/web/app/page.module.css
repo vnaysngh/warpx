@@ -86,6 +86,89 @@
   box-shadow: 0 12px 24px rgba(10, 255, 157, 0.2);
 }
 
+.walletMenuContainer {
+  position: relative;
+}
+
+.walletDropdown {
+  position: absolute;
+  right: 0;
+  margin-top: 0.5rem;
+  width: 240px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.walletDropdownHeader {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.walletDropdownLabel {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  margin-bottom: 0.35rem;
+}
+
+.walletDropdownAddress {
+  font-size: 0.8rem;
+  font-family: monospace;
+  color: var(--fg);
+  letter-spacing: 0.05em;
+}
+
+.walletDropdownItem {
+  width: 100%;
+  text-align: left;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--fg);
+  font-size: 0.8rem;
+  border: none;
+  background: transparent;
+  transition: background 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.walletDropdownItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.walletDropdownItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.walletDropdownCopied {
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.walletDropdownDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 0;
+}
+
+.walletDropdownDisconnect {
+  color: #ff7c7c;
+}
+
+.walletDropdownDisconnect:hover {
+  background: rgba(255, 92, 92, 0.1);
+}
+
 .tabs {
   display: inline-flex;
   align-self: center;
@@ -316,7 +399,7 @@
 
 .summary {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 1rem;
   font-size: 0.68rem;
@@ -325,11 +408,15 @@
   color: var(--fg-subtle);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 0.75rem;
+  width: 100%;
 }
 
 .summaryPrimary {
   color: var(--fg);
   font-weight: 500;
+  display: block;
+  margin-top: 0.5rem;
+  text-align: center;
 }
 
 .row {
@@ -373,6 +460,7 @@
   flex-wrap: wrap;
   gap: 0.6rem;
   margin-top: 0.15rem;
+  justify-content: center;
 }
 
 .primaryButton {
@@ -388,6 +476,10 @@
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.primaryFull {
+  width: 100%;
 }
 
 .primaryButton:disabled {

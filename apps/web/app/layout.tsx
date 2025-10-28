@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono as jetBrainsMono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
 const terminal = jetBrainsMono({
   subsets: ["latin"],
@@ -21,7 +22,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={terminal.variable}>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
