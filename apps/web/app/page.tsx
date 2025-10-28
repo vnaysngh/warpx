@@ -294,6 +294,7 @@ export default function Page() {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [hasMounted, setHasMounted] = useState(false);
   const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
+  const [isCalculatingQuote, setIsCalculatingQuote] = useState(false);
   const walletMenuRef = useRef<HTMLDivElement>(null);
   const showWalletActions = hasMounted && isWalletConnected;
 
@@ -316,7 +317,9 @@ export default function Page() {
     chainId: Number(MEGAETH_CHAIN_ID),
     query: {
       enabled:
-        balanceQueryEnabled && tokenAIsAddress && Boolean(liquidityTokenAAddress)
+        balanceQueryEnabled &&
+        tokenAIsAddress &&
+        Boolean(liquidityTokenAAddress)
     }
   });
 
@@ -329,7 +332,9 @@ export default function Page() {
     chainId: Number(MEGAETH_CHAIN_ID),
     query: {
       enabled:
-        balanceQueryEnabled && tokenBIsAddress && Boolean(liquidityTokenBAddress)
+        balanceQueryEnabled &&
+        tokenBIsAddress &&
+        Boolean(liquidityTokenBAddress)
     }
   });
 
@@ -807,14 +812,27 @@ export default function Page() {
     if (!swapForm.amountIn || swapForm.amountIn.trim() === "") {
       setSwapQuote(null);
       setSwapForm((prev) => ({ ...prev, minOut: "" }));
+      setIsCalculatingQuote(false);
       return;
     }
 
     // Debounce the quote calculation
     quoteDebounceTimerRef.current = setTimeout(async () => {
-      if (!routerAddress) return;
-      if (!isAddress(swapForm.tokenIn) || !isAddress(swapForm.tokenOut)) return;
-      if (Number(swapForm.amountIn) <= 0) return;
+      // Start calculating (moved inside timeout to avoid hydration issues)
+      setIsCalculatingQuote(true);
+
+      if (!routerAddress) {
+        setIsCalculatingQuote(false);
+        return;
+      }
+      if (!isAddress(swapForm.tokenIn) || !isAddress(swapForm.tokenOut)) {
+        setIsCalculatingQuote(false);
+        return;
+      }
+      if (Number(swapForm.amountIn) <= 0) {
+        setIsCalculatingQuote(false);
+        return;
+      }
 
       try {
         const routerRead = getRouter(routerAddress, readProvider);
@@ -831,12 +849,13 @@ export default function Page() {
           .then((value) => Number(value))
           .catch(() => DEFAULT_TOKEN_DECIMALS);
 
-        const symbolOut = await tokenOutContract
-          .symbol()
-          .catch(() => "TOKEN");
+        const symbolOut = await tokenOutContract.symbol().catch(() => "TOKEN");
 
         const amountInWei = parseUnits(swapForm.amountIn, decimalsIn);
-        if (amountInWei <= 0n) return;
+        if (amountInWei <= 0n) {
+          setIsCalculatingQuote(false);
+          return;
+        }
 
         const path = [swapForm.tokenIn, swapForm.tokenOut];
         const amounts = await routerRead.getAmountsOut!(amountInWei, path);
@@ -845,19 +864,29 @@ export default function Page() {
         // Format to max 6 decimals
         const formattedOut = formatUnits(amountOutWei, decimalsOut);
         const numOut = parseFloat(formattedOut);
-        const limitedOut = numOut.toFixed(Math.min(6, decimalsOut)).replace(/\.?0+$/, "");
+        const limitedOut = numOut
+          .toFixed(Math.min(6, decimalsOut))
+          .replace(/\.?0+$/, "");
 
         // Only update minOut if user is still editing amountIn
         if (swapEditingFieldRef.current === "amountIn") {
           setSwapQuote({ amount: limitedOut, symbol: symbolOut });
           setSwapForm((prev) => ({ ...prev, minOut: limitedOut }));
         }
+        setIsCalculatingQuote(false);
       } catch (err: any) {
         console.error("[quote] calculation error", err);
         setSwapQuote(null);
         setSwapForm((prev) => ({ ...prev, minOut: "" }));
+        setIsCalculatingQuote(false);
 
+        // Handle specific error for insufficient liquidity
         if (
+          err?.reason?.includes("ds-math-sub-underflow") ||
+          err?.message?.includes("ds-math-sub-underflow")
+        ) {
+          showError("Insufficient liquidity in pool for this amount.");
+        } else if (
           err?.message?.toLowerCase().includes("insufficient") ||
           err?.reason?.toLowerCase().includes("insufficient")
         ) {
@@ -896,14 +925,27 @@ export default function Page() {
     if (!swapForm.minOut || swapForm.minOut.trim() === "") {
       setReverseQuote(null);
       setSwapForm((prev) => ({ ...prev, amountIn: "" }));
+      setIsCalculatingQuote(false);
       return;
     }
 
     // Debounce the reverse quote calculation
     reverseQuoteDebounceTimerRef.current = setTimeout(async () => {
-      if (!routerAddress) return;
-      if (!isAddress(swapForm.tokenIn) || !isAddress(swapForm.tokenOut)) return;
-      if (Number(swapForm.minOut) <= 0) return;
+      // Start calculating (moved inside timeout to avoid hydration issues)
+      setIsCalculatingQuote(true);
+
+      if (!routerAddress) {
+        setIsCalculatingQuote(false);
+        return;
+      }
+      if (!isAddress(swapForm.tokenIn) || !isAddress(swapForm.tokenOut)) {
+        setIsCalculatingQuote(false);
+        return;
+      }
+      if (Number(swapForm.minOut) <= 0) {
+        setIsCalculatingQuote(false);
+        return;
+      }
 
       try {
         const routerRead = getRouter(routerAddress, readProvider);
@@ -920,16 +962,15 @@ export default function Page() {
           .then((value) => Number(value))
           .catch(() => DEFAULT_TOKEN_DECIMALS);
 
-        const symbolIn = await tokenInContract
-          .symbol()
-          .catch(() => "TOKEN");
+        const symbolIn = await tokenInContract.symbol().catch(() => "TOKEN");
 
-        const symbolOut = await tokenOutContract
-          .symbol()
-          .catch(() => "TOKEN");
+        const symbolOut = await tokenOutContract.symbol().catch(() => "TOKEN");
 
         const desiredOutWei = parseUnits(swapForm.minOut, decimalsOut);
-        if (desiredOutWei <= 0n) return;
+        if (desiredOutWei <= 0n) {
+          setIsCalculatingQuote(false);
+          return;
+        }
 
         const path = [swapForm.tokenIn, swapForm.tokenOut];
         const amounts = await routerRead.getAmountsIn!(desiredOutWei, path);
@@ -938,16 +979,37 @@ export default function Page() {
         // Format to max 6 decimals
         const formattedIn = formatUnits(amountNeeded, decimalsIn);
         const numIn = parseFloat(formattedIn);
-        const limitedIn = numIn.toFixed(Math.min(6, decimalsIn)).replace(/\.?0+$/, "");
+        const limitedIn = numIn
+          .toFixed(Math.min(6, decimalsIn))
+          .replace(/\.?0+$/, "");
 
         // Only update amountIn if user is still editing minOut
         if (swapEditingFieldRef.current === "minOut") {
           setReverseQuote({ amount: limitedIn, symbolIn, symbolOut });
           setSwapForm((prev) => ({ ...prev, amountIn: limitedIn }));
         }
+        setIsCalculatingQuote(false);
       } catch (err: any) {
         console.error("[reverse quote] calculation error", err);
         setReverseQuote(null);
+        setIsCalculatingQuote(false);
+
+        // Handle specific error for insufficient liquidity
+        if (
+          err?.reason?.includes("ds-math-sub-underflow") ||
+          err?.message?.includes("ds-math-sub-underflow")
+        ) {
+          showError("Insufficient liquidity in pool for this amount.");
+        } else if (
+          err?.message?.toLowerCase().includes("insufficient") ||
+          err?.reason?.toLowerCase().includes("insufficient")
+        ) {
+          showError("Insufficient liquidity for this trade.");
+        } else if (err?.message || err?.reason) {
+          showError(
+            `Unable to calculate reverse quote: ${err.reason || err.message}`
+          );
+        }
       }
     }, 500);
 
@@ -1600,6 +1662,9 @@ export default function Page() {
   } else if (!swapFormReady) {
     swapButtonLabel = "Enter Amount";
     swapButtonDisabled = true;
+  } else if (isCalculatingQuote) {
+    swapButtonLabel = "Calculating...";
+    swapButtonDisabled = true;
   } else if (checkingAllowance) {
     swapButtonLabel = "Checking...";
     swapButtonDisabled = true;
@@ -1621,7 +1686,8 @@ export default function Page() {
   const liquidityTokensReady =
     isAddress(liquidityTokenAAddress) &&
     isAddress(liquidityTokenBAddress) &&
-    liquidityTokenAAddress.toLowerCase() !== liquidityTokenBAddress.toLowerCase();
+    liquidityTokenAAddress.toLowerCase() !==
+      liquidityTokenBAddress.toLowerCase();
 
   const liquidityAmountsReady =
     !!liquidityForm.amountA && !!liquidityForm.amountB;
@@ -1845,10 +1911,8 @@ export default function Page() {
       <div className={styles.shell}>
         <header className={styles.navbar}>
           <div className={styles.brand}>
-            <span className={styles.brandMain}>MegaSwap</span>
-            <span className={styles.brandSub}>
-              MegaETH V2 · Automated Market Maker
-            </span>
+            <span className={styles.brandMain}>WarpX</span>
+            {/* <span className={styles.brandSub}>Built on MegaETH</span> */}
           </div>
           <div className={styles.navRight}>
             <span className={styles.networkBadge}>{manifestTag}</span>
@@ -1965,7 +2029,7 @@ export default function Page() {
               <div>
                 <h2 className={styles.cardTitle}>Swap</h2>
                 <p className={styles.cardSubtitle}>
-                  Trade tokens through the MegaSwap router with live routing
+                  Trade tokens through the WarpX router with live routing
                   quotes and automatic approvals.
                 </p>
               </div>
@@ -2006,7 +2070,8 @@ export default function Page() {
                 {selectedIn && (
                   <div className={styles.assetBalance}>
                     <span className={styles.helper}>
-                      Balance: {formatBalance(swapInBalanceFormatted)} {swapInSymbol}
+                      Balance: {formatBalance(swapInBalanceFormatted)}{" "}
+                      {swapInSymbol}
                     </span>
                     {swapInBalanceFormatted && (
                       <button
@@ -2086,7 +2151,7 @@ export default function Page() {
               {/*  <div>
                 <h2 className={styles.cardTitle}>Liquidity</h2>
                 <p className={styles.cardSubtitle}>
-                  Provide or withdraw liquidity from MegaSwap pairs. Approvals
+                  Provide or withdraw liquidity from WarpX pairs. Approvals
                   are handled inline before execution.
                 </p>
               </div> */}
@@ -2278,10 +2343,10 @@ export default function Page() {
           </section>
         )}
 
-        <footer className={styles.footnote}>
-          MegaSwap Router {shortAddress(routerAddress)} · WMegaETH{" "}
+        {/*  <footer className={styles.footnote}>
+          WarpX Router {shortAddress(routerAddress)} · WMegaETH{" "}
           {shortAddress(wmegaAddress)}
-        </footer>
+        </footer> */}
       </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />

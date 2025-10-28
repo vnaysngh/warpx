@@ -7,16 +7,16 @@ const terminal = jetBrainsMono({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-terminal",
-  display: "swap",
+  display: "swap"
 });
 
 export const metadata: Metadata = {
-  title: "MegaSwap Terminal",
-  description: "Modern MegaETH v2 AMM desk for swaps and liquidity.",
+  title: "WarpX Terminal",
+  description: "MegaETH v2 AMM desk for swaps and liquidity."
 };
 
 export default function RootLayout({
-  children,
+  children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
