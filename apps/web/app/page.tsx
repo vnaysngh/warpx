@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ToastContainer, type Toast } from "@/components/Toast";
 import {
   BrowserProvider,
-  Interface,
   JsonRpcProvider,
   ZeroAddress,
   formatUnits,
@@ -39,6 +38,50 @@ const nowPlusMinutes = (minutes: number) =>
   Math.floor(Date.now() / 1000) + minutes * 60;
 
 const isAddress = (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value);
+
+/**
+ * Format numbers with smart decimal handling (Uniswap/PancakeSwap style)
+ * - Strips trailing zeros
+ * - Shows appropriate precision based on magnitude
+ */
+const formatNumber = (value: string | number, maxDecimals: number = 6): string => {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(num)) return '0';
+
+  // For very small numbers, show more decimals
+  if (num > 0 && num < 0.0001) {
+    return num.toFixed(8).replace(/\.?0+$/, '');
+  }
+
+  // For percentage values close to 100
+  if (num >= 99.99 && num <= 100) {
+    return '100';
+  }
+
+  // For regular numbers, use maxDecimals and strip trailing zeros
+  return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
+};
+
+/**
+ * Format percentage values (0-100)
+ */
+const formatPercent = (value: string | number, maxDecimals: number = 4): string => {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(num)) return '0';
+
+  // If it's 100 or very close, just show 100
+  if (num >= 99.99) return '100';
+
+  // If it's very small, show more precision
+  if (num > 0 && num < 0.01) {
+    return num.toFixed(6).replace(/\.?0+$/, '');
+  }
+
+  // Otherwise use provided decimals and strip trailing zeros
+  return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
+};
 
 const parseErrorMessage = (error: any): string => {
   // User rejected transaction
@@ -147,21 +190,9 @@ const LIQUIDITY_DEFAULT = {
   amountB: ""
 };
 
-const REMOVE_DEFAULT = {
-  tokenA: "",
-  tokenB: "",
-  liquidity: "",
-  expectedTokenA: "",
-  expectedTokenB: ""
-};
 
 type Quote = { amount: string; symbol: string };
 type ReverseQuote = { amount: string; symbolIn: string; symbolOut: string };
-type LpInfo = {
-  pair: string | null;
-  balance: string | null;
-  symbol: string | null;
-};
 
 type TokenDialogSlot = "swapIn" | "swapOut" | "liquidityA" | "liquidityB";
 
@@ -189,12 +220,6 @@ export default function Page() {
   const [loadingDeployment, setLoadingDeployment] = useState(false);
   const [swapForm, setSwapForm] = useState(SWAP_DEFAULT);
   const [liquidityForm, setLiquidityForm] = useState(LIQUIDITY_DEFAULT);
-  const [removeForm, setRemoveForm] = useState(REMOVE_DEFAULT);
-  const [pairInspection, setPairInspection] = useState({
-    tokenA: "",
-    tokenB: "",
-    result: ""
-  });
 
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -248,12 +273,6 @@ export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [swapQuote, setSwapQuote] = useState<Quote | null>(null);
   const [reverseQuote, setReverseQuote] = useState<ReverseQuote | null>(null);
-  const [removeResult, setRemoveResult] = useState<string | null>(null);
-  const [lpInfo, setLpInfo] = useState<LpInfo>({
-    pair: null,
-    balance: null,
-    symbol: null
-  });
   const [tokenList, setTokenList] = useState<TokenDescriptor[]>(TOKEN_CATALOG);
   const [selectedIn, setSelectedIn] = useState<TokenDescriptor | null>(
     TOKEN_CATALOG[0] ?? null
@@ -295,6 +314,20 @@ export default function Page() {
   const [hasMounted, setHasMounted] = useState(false);
   const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
   const [isCalculatingQuote, setIsCalculatingQuote] = useState(false);
+  const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
+  const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
+  const [expectedRemoveAmounts, setExpectedRemoveAmounts] = useState<{
+    amountA: string;
+    amountB: string;
+  } | null>(null);
+  const [userPooledAmounts, setUserPooledAmounts] = useState<{
+    amountA: string;
+    amountB: string;
+  } | null>(null);
+  const [lpTokenInfo, setLpTokenInfo] = useState<{
+    balance: string;
+    poolShare: string;
+  } | null>(null);
   const walletMenuRef = useRef<HTMLDivElement>(null);
   const showWalletActions = hasMounted && isWalletConnected;
 
@@ -508,13 +541,11 @@ export default function Page() {
       // Reset all state after successful disconnect
       setSwapForm(SWAP_DEFAULT);
       setLiquidityForm(LIQUIDITY_DEFAULT);
-      setRemoveForm(REMOVE_DEFAULT);
       setSwapQuote(null);
       setReverseQuote(null);
       setNeedsApproval(false);
       setNeedsApprovalA(false);
       setNeedsApprovalB(false);
-      setLpInfo({ pair: null, balance: null, symbol: null });
       setWalletMenuOpen(false);
     } catch (disconnectError) {
       console.error("[wallet] Failed to disconnect", disconnectError);
@@ -558,8 +589,6 @@ export default function Page() {
   // This eliminates the need for sync logic and prevents state inconsistencies.
   useEffect(() => {
     setSwapForm(SWAP_DEFAULT);
-    setRemoveForm(REMOVE_DEFAULT);
-    setLpInfo({ pair: null, balance: null, symbol: null });
     setSwapQuote(null);
     setReverseQuote(null);
     setNeedsApproval(false);
@@ -1026,53 +1055,6 @@ export default function Page() {
     readProvider
   ]);
 
-  useEffect(() => {
-    let active = true;
-    const fetchLp = async () => {
-      if (!routerAddress || !walletAccount) {
-        if (active) setLpInfo({ pair: null, balance: null, symbol: null });
-        return;
-      }
-      const { tokenA, tokenB } = removeForm;
-      if (!isAddress(tokenA) || !isAddress(tokenB)) {
-        if (active) setLpInfo({ pair: null, balance: null, symbol: null });
-        return;
-      }
-
-      try {
-        const factory = getFactory(factoryAddress, readProvider);
-        const pairAddress = await factory.getPair!(tokenA, tokenB);
-        if (pairAddress === ZeroAddress) {
-          if (active) setLpInfo({ pair: null, balance: null, symbol: null });
-          return;
-        }
-        const lpToken = getToken(pairAddress, readProvider);
-        const [symbol, balanceWei] = await Promise.all([
-          lpToken.symbol().catch(() => "LP"),
-          lpToken.balanceOf(walletAccount)
-        ]);
-        const balance = formatUnits(balanceWei, 18);
-        if (active) setLpInfo({ pair: pairAddress, balance, symbol });
-      } catch (err) {
-        console.error("fetch lp info", err);
-        if (active) setLpInfo({ pair: null, balance: null, symbol: null });
-      }
-    };
-
-    fetchLp();
-    return () => {
-      active = false;
-    };
-  }, [
-    ready,
-    walletProvider,
-    walletAccount,
-    routerAddress,
-    factoryAddress,
-    removeForm.tokenA,
-    removeForm.tokenB,
-    readProvider
-  ]);
 
   // Fetch liquidity pair reserves for auto-calculation
   useEffect(() => {
@@ -1133,6 +1115,104 @@ export default function Page() {
     liquidityTokenBAddress,
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
+    readProvider
+  ]);
+
+  // Calculate expected removal amounts for remove liquidity
+  useEffect(() => {
+    let active = true;
+    const calculateRemovalAmounts = async () => {
+      if (
+        !liquidityPairReserves ||
+        !walletAccount ||
+        !liquidityPairReserves.pairAddress ||
+        liquidityMode !== "remove"
+      ) {
+        if (active) {
+          setExpectedRemoveAmounts(null);
+          setUserPooledAmounts(null);
+        }
+        return;
+      }
+
+      try {
+        const lpToken = getToken(liquidityPairReserves.pairAddress, readProvider);
+        const [userBalance, totalSupply] = await Promise.all([
+          lpToken.balanceOf(walletAccount),
+          lpToken.totalSupply()
+        ]);
+
+        const percent = Number(removeLiquidityPercent) / 100;
+        const liquidityToRemove = (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
+
+        // Format LP token balance
+        const lpBalanceFormatted = formatUnits(userBalance, 18);
+
+        // Calculate pool share percentage: (userBalance / totalSupply) * 100
+        const poolSharePercent = totalSupply > 0n
+          ? (Number(userBalance) / Number(totalSupply)) * 100
+          : 0;
+
+        if (liquidityToRemove === 0n || totalSupply === 0n) {
+          if (active) {
+            setExpectedRemoveAmounts(null);
+            setUserPooledAmounts(null);
+            setLpTokenInfo({
+              balance: lpBalanceFormatted,
+              poolShare: poolSharePercent.toString()
+            });
+          }
+          return;
+        }
+
+        // Calculate expected amounts: (liquidity * reserve) / totalSupply
+        const reserveANum = parseFloat(liquidityPairReserves.reserveA);
+        const reserveBNum = parseFloat(liquidityPairReserves.reserveB);
+        const userBalanceNum = Number(formatUnits(userBalance, 18));
+        const totalSupplyNum = Number(formatUnits(totalSupply, 18));
+
+        // Calculate user's total pooled amounts (100% of their position)
+        const pooledA = (userBalanceNum * reserveANum) / totalSupplyNum;
+        const pooledB = (userBalanceNum * reserveBNum) / totalSupplyNum;
+
+        // Calculate amounts to be removed based on percentage
+        const removeAmount = userBalanceNum * percent;
+        const expectedA = (removeAmount * reserveANum) / totalSupplyNum;
+        const expectedB = (removeAmount * reserveBNum) / totalSupplyNum;
+
+        if (active) {
+          setLpTokenInfo({
+            balance: lpBalanceFormatted,
+            poolShare: poolSharePercent.toString()
+          });
+          setUserPooledAmounts({
+            amountA: pooledA.toFixed(6).replace(/\.?0+$/, ""),
+            amountB: pooledB.toFixed(6).replace(/\.?0+$/, "")
+          });
+          setExpectedRemoveAmounts({
+            amountA: expectedA.toFixed(6).replace(/\.?0+$/, ""),
+            amountB: expectedB.toFixed(6).replace(/\.?0+$/, "")
+          });
+        }
+      } catch (err) {
+        console.error("[liquidity] calculate removal amounts failed", err);
+        if (active) {
+          setExpectedRemoveAmounts(null);
+          setUserPooledAmounts(null);
+          setLpTokenInfo(null);
+        }
+      }
+    };
+
+    calculateRemovalAmounts();
+    return () => {
+      active = false;
+    };
+  }, [
+    liquidityPairReserves,
+    walletAccount,
+    removeLiquidityPercent,
+    liquidityMode,
     readProvider
   ]);
 
@@ -1233,7 +1313,8 @@ export default function Page() {
         abi: erc20Abi,
         functionName: "approve",
         args: [spender as `0x${string}`, parsedAmount],
-        chainId: Number(MEGAETH_CHAIN_ID)
+        chainId: Number(MEGAETH_CHAIN_ID),
+        gas: 100000n
       });
       await waitForTransactionReceipt(wagmiConfig, {
         hash: txHash
@@ -1336,7 +1417,8 @@ export default function Page() {
           abi: erc20Abi,
           functionName: "approve",
           args: [routerAddress as `0x${string}`, amountInWei],
-          chainId: Number(MEGAETH_CHAIN_ID)
+          chainId: Number(MEGAETH_CHAIN_ID),
+          gas: 100000n
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
@@ -1352,7 +1434,8 @@ export default function Page() {
           ctx.account as `0x${string}`,
           BigInt(nowPlusMinutes(10))
         ],
-        chainId: Number(MEGAETH_CHAIN_ID)
+        chainId: Number(MEGAETH_CHAIN_ID),
+        gas: 300000n
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       setAllowanceNonce((n) => n + 1);
@@ -1416,6 +1499,47 @@ export default function Page() {
       const amountAWei = parseUnits(amountA, decimalsA);
       const amountBWei = parseUnits(amountB, decimalsB);
 
+      // Check and handle approvals for both tokens
+      const allowanceA = await readContract(wagmiConfig, {
+        address: tokenA as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+        chainId: Number(MEGAETH_CHAIN_ID)
+      });
+
+      if (toBigInt(allowanceA) < amountAWei) {
+        const approveAHash = await writeContract(wagmiConfig, {
+          address: tokenA as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [routerAddress as `0x${string}`, amountAWei],
+          chainId: Number(MEGAETH_CHAIN_ID),
+          gas: 100000n
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
+      }
+
+      const allowanceB = await readContract(wagmiConfig, {
+        address: tokenB as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+        chainId: Number(MEGAETH_CHAIN_ID)
+      });
+
+      if (toBigInt(allowanceB) < amountBWei) {
+        const approveBHash = await writeContract(wagmiConfig, {
+          address: tokenB as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [routerAddress as `0x${string}`, amountBWei],
+          chainId: Number(MEGAETH_CHAIN_ID),
+          gas: 100000n
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
+      }
+
       const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
         abi: pancakeRouterAbi,
@@ -1430,7 +1554,8 @@ export default function Page() {
           ctx.account as `0x${string}`,
           BigInt(nowPlusMinutes(10))
         ],
-        chainId: Number(MEGAETH_CHAIN_ID)
+        chainId: Number(MEGAETH_CHAIN_ID),
+        gas: 5000000n
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       setLiquidityAllowanceNonce((n) => n + 1);
@@ -1444,193 +1569,97 @@ export default function Page() {
   };
 
   const handleRemoveLiquidity = async () => {
-    const ctx = ensureWallet({ requireSigner: true });
-    if (!ctx || !ctx.signer) return;
-    const { signer, provider } = ctx;
-    const { tokenA, tokenB, liquidity } = removeForm;
+    const ctx = ensureWallet();
+    if (!ctx) return;
 
-    if (!isAddress(tokenA) || !isAddress(tokenB)) {
-      setRemoveResult("Provide valid token addresses.");
+    if (!liquidityPairReserves?.pairAddress) {
+      showError("Please select a valid liquidity pair.");
       return;
     }
-    if (!liquidity || Number(liquidity) <= 0) {
-      setRemoveResult("Enter the LP token amount to burn.");
+
+    const percent = Number(removeLiquidityPercent) / 100;
+    if (percent <= 0 || percent > 1) {
+      showError("Please enter a valid percentage (1-100).");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setRemoveResult(null);
-      setRemoveForm((prev) => ({
-        ...prev,
-        expectedTokenA: "",
-        expectedTokenB: ""
-      }));
       showLoading("Removing liquidity...");
 
-      const router = getRouter(routerAddress, signer);
-      const factory = getFactory(factoryAddress, provider);
-      const pairAddress =
-        lpInfo.pair ?? (await factory.getPair!(tokenA, tokenB));
-      if (!pairAddress || pairAddress === ZeroAddress) {
-        setRemoveResult("Pair does not exist.");
+      const pairAddress = liquidityPairReserves.pairAddress;
+      const tokenA = liquidityTokenAAddress;
+      const tokenB = liquidityTokenBAddress;
+
+      // Get user's LP balance
+      const userBalance = await readContract(wagmiConfig, {
+        address: pairAddress as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [ctx.account as `0x${string}`],
+        chainId: Number(MEGAETH_CHAIN_ID)
+      });
+
+      const liquidityToRemove = (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
+
+      if (liquidityToRemove === 0n) {
+        showError("Insufficient LP balance to remove.");
         return;
       }
 
-      const pairRead = getPair(pairAddress, provider);
-      const lpTokenRead = getToken(pairAddress, provider);
-      const lpTokenWrite = getToken(pairAddress, signer);
-      const lpSymbol =
-        lpInfo.symbol || (await lpTokenRead.symbol().catch(() => "LP"));
-      const owner = await signer.getAddress();
-      const liquidityWei = parseUnits(liquidity, 18);
+      // Check and handle LP token approval
+      const allowance = await readContract(wagmiConfig, {
+        address: pairAddress as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+        chainId: Number(MEGAETH_CHAIN_ID)
+      });
 
-      const lpBalance = toBigInt(await lpTokenRead.balanceOf(owner));
-      if (lpBalance < liquidityWei) {
-        setRemoveResult("Insufficient LP balance.");
-        return;
-      }
-
-      const allowance = toBigInt(
-        await lpTokenRead.allowance(owner, routerAddress)
-      );
-      if (allowance < liquidityWei) {
-        const approveTx = await lpTokenWrite.approve(
-          routerAddress,
-          liquidityWei
-        );
-        await approveTx.wait();
-      }
-
-      const token0 = await pairRead.token0!();
-      const token1 = await pairRead.token1!();
-      const decimals0 = await getToken(token0, provider)
-        .decimals()
-        .then((value) => Number(value))
-        .catch((decimalsError) => {
-          console.warn(
-            "[liquidity] fallback decimals for token0",
-            decimalsError
-          );
-          return DEFAULT_TOKEN_DECIMALS;
+      if (toBigInt(allowance) < liquidityToRemove) {
+        const approveHash = await writeContract(wagmiConfig, {
+          address: pairAddress as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [routerAddress as `0x${string}`, liquidityToRemove],
+          chainId: Number(MEGAETH_CHAIN_ID),
+          gas: 100000n
         });
-      const decimals1 = await getToken(token1, provider)
-        .decimals()
-        .then((value) => Number(value))
-        .catch((decimalsError) => {
-          console.warn(
-            "[liquidity] fallback decimals for token1",
-            decimalsError
-          );
-          return DEFAULT_TOKEN_DECIMALS;
-        });
-
-      const tx = await router.removeLiquidity(
-        tokenA,
-        tokenB,
-        liquidityWei,
-        0n,
-        0n,
-        owner,
-        BigInt(nowPlusMinutes(10))
-      );
-      const receipt = await tx.wait();
-
-      const iface = new Interface([
-        "event Burn(address indexed sender, uint amount0, uint amount1, address indexed to)"
-      ]);
-      const burnLog = receipt.logs
-        .map((log: any) => {
-          try {
-            return iface.parseLog(log);
-          } catch (err) {
-            return null;
-          }
-        })
-        .find(Boolean) as { args: { amount0: bigint; amount1: bigint } } | null;
-
-      if (burnLog) {
-        const amount0 = formatUnits(burnLog.args.amount0, decimals0);
-        const amount1 = formatUnits(burnLog.args.amount1, decimals1);
-        setRemoveForm((prev) => ({
-          ...prev,
-          expectedTokenA: amount0,
-          expectedTokenB: amount1
-        }));
-        setRemoveResult(
-          `Removed liquidity. Received ≈ ${amount0} token0 and ≈ ${amount1} token1. Tx: ${receipt.hash}`
-        );
-      } else {
-        setRemoveResult(`Removed liquidity. Tx: ${receipt.hash}`);
+        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
 
-      const newBalance = formatUnits(await lpTokenRead.balanceOf(owner), 18);
-      setLpInfo({ pair: pairAddress, balance: newBalance, symbol: lpSymbol });
-      showSuccess("Liquidity removed successfully.");
+      // Remove liquidity
+      const txHash = await writeContract(wagmiConfig, {
+        address: routerAddress as `0x${string}`,
+        abi: pancakeRouterAbi,
+        functionName: "removeLiquidity",
+        args: [
+          tokenA as `0x${string}`,
+          tokenB as `0x${string}`,
+          liquidityToRemove,
+          0n,
+          0n,
+          ctx.account as `0x${string}`,
+          BigInt(nowPlusMinutes(10))
+        ],
+        chainId: Number(MEGAETH_CHAIN_ID),
+        gas: 500000n
+      });
+
+      await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+
+      showSuccess(`Liquidity removed successfully. Removed ${removeLiquidityPercent}% of your position.`);
+
+      // Reset percentage to 25%
+      setRemoveLiquidityPercent("25");
     } catch (err: any) {
       console.error("[liquidity] remove failed", err);
-      setRemoveResult(parseErrorMessage(err));
       showError(parseErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const inspectPair = async () => {
-    const ctx = ensureWallet();
-    if (!ctx) return;
-    const { tokenA, tokenB } = pairInspection;
-    if (!isAddress(tokenA) || !isAddress(tokenB)) {
-      setPairInspection((prev) => ({
-        ...prev,
-        result: "Enter valid token addresses to inspect a pair."
-      }));
-      return;
-    }
-    try {
-      const { provider } = ctx;
-      const factory = getFactory(factoryAddress, provider);
-      const pairAddress = await factory.getPair!(tokenA, tokenB);
-      if (pairAddress === ZeroAddress) {
-        setPairInspection((prev) => ({
-          ...prev,
-          result: "Pair not yet created."
-        }));
-        return;
-      }
-      const pair = getPair(pairAddress, provider);
-      const reserves = await pair.getReserves!();
-      const token0 = await pair.token0!();
-      const token1 = await pair.token1!();
-
-      const decimals0 = await getToken(token0, provider)
-        .decimals()
-        .then((value) => Number(value))
-        .catch((decimalsError) => {
-          console.warn("[inspect] fallback decimals for token0", decimalsError);
-          return DEFAULT_TOKEN_DECIMALS;
-        });
-      const decimals1 = await getToken(token1, provider)
-        .decimals()
-        .then((value) => Number(value))
-        .catch((decimalsError) => {
-          console.warn("[inspect] fallback decimals for token1", decimalsError);
-          return DEFAULT_TOKEN_DECIMALS;
-        });
-
-      const formatted = `Pair ${pairAddress}\nReserves:\n  • ${formatUnits(
-        reserves[0],
-        decimals0
-      )} (${token0})\n  • ${formatUnits(reserves[1], decimals1)} (${token1})`;
-      setPairInspection((prev) => ({ ...prev, result: formatted }));
-    } catch (err: any) {
-      console.error("[pair] inspection failed", err);
-      setPairInspection((prev) => ({
-        ...prev,
-        result: parseErrorMessage(err)
-      }));
-    }
-  };
 
   const manifestTag = loadingDeployment
     ? "Loading manifest…"
@@ -1816,7 +1845,18 @@ export default function Page() {
 
   const handleLiquidityPrimary = () => {
     if (liquidityButtonDisabled) return;
-    liquidityButtonAction();
+
+    // For add liquidity, show confirmation dialog first
+    if (liquidityMode === "add" && liquidityTokensReady && liquidityAmountsReady) {
+      setShowLiquidityConfirm(true);
+    } else {
+      liquidityButtonAction();
+    }
+  };
+
+  const handleConfirmAddLiquidity = () => {
+    setShowLiquidityConfirm(false);
+    handleAddLiquidity();
   };
 
   const openTokenDialog = (slot: TokenDialogSlot) => {
@@ -2254,92 +2294,142 @@ export default function Page() {
                 </div>
               </>
             ) : (
-              <div className={styles.form}>
-                <div className={styles.row}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.label}>Token A Address</label>
-                    <input
-                      className={styles.input}
-                      placeholder="0x…"
-                      value={removeForm.tokenA}
-                      onChange={(event) =>
-                        setRemoveForm((prev) => ({
-                          ...prev,
-                          tokenA: event.target.value.trim()
-                        }))
-                      }
-                    />
+              <>
+                <div className={styles.swapPanel}>
+                  <div className={styles.assetCard}>
+                    <div className={styles.assetHeader}>
+                      <span>Select Pair</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
+                      <button
+                        type="button"
+                        className={styles.assetSelector}
+                        onClick={() => openTokenDialog("liquidityA")}
+                        style={{ flex: 1 }}
+                      >
+                        <span className={styles.assetSelectorSymbol}>
+                          {liquidityTokenA?.symbol ?? "Select"}
+                        </span>
+                        <span className={styles.assetSelectorChevron}>v</span>
+                      </button>
+                      <span style={{ opacity: 0.5 }}>+</span>
+                      <button
+                        type="button"
+                        className={styles.assetSelector}
+                        onClick={() => openTokenDialog("liquidityB")}
+                        style={{ flex: 1 }}
+                      >
+                        <span className={styles.assetSelectorSymbol}>
+                          {liquidityTokenB?.symbol ?? "Select"}
+                        </span>
+                        <span className={styles.assetSelectorChevron}>v</span>
+                      </button>
+                    </div>
+
+                    {liquidityPairReserves && lpTokenInfo && (
+                      <div style={{
+                        borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                        paddingTop: "0.75rem",
+                        marginTop: "0.5rem"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
+                          <span style={{ opacity: 0.7 }}>Your LP Tokens</span>
+                          <span style={{ fontWeight: 500 }}>{formatNumber(lpTokenInfo.balance)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
+                          <span style={{ opacity: 0.7 }}>Your Pool Share</span>
+                          <span style={{ fontWeight: 500 }}>{formatPercent(lpTokenInfo.poolShare)}%</span>
+                        </div>
+                        {userPooledAmounts && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <span className={styles.helper}>{liquidityTokenA?.symbol ?? "Token A"}</span>
+                              <span>{userPooledAmounts.amountA}</span>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <span className={styles.helper}>{liquidityTokenB?.symbol ?? "Token B"}</span>
+                              <span>{userPooledAmounts.amountB}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.label}>Token B Address</label>
+
+                  <div className={styles.assetCard}>
+                    <div className={styles.assetHeader}>
+                      <span>Amount</span>
+                      <span style={{ fontSize: "1.125rem", fontWeight: 600 }}>{removeLiquidityPercent}%</span>
+                    </div>
                     <input
-                      className={styles.input}
-                      placeholder="0x…"
-                      value={removeForm.tokenB}
-                      onChange={(event) =>
-                        setRemoveForm((prev) => ({
-                          ...prev,
-                          tokenB: event.target.value.trim()
-                        }))
-                      }
+                      type="range"
+                      min="1"
+                      max="100"
+                      value={removeLiquidityPercent}
+                      onChange={(e) => setRemoveLiquidityPercent(e.target.value)}
+                      style={{
+                        width: "100%",
+                        marginBottom: "0.75rem",
+                        accentColor: "#6b7280"
+                      }}
                     />
+                    <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                      {["25", "50", "75", "100"].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => setRemoveLiquidityPercent(pct)}
+                          style={{
+                            flex: 1,
+                            padding: "0.5rem",
+                            borderRadius: "0.5rem",
+                            border: removeLiquidityPercent === pct ? "1px solid #6b7280" : "1px solid rgba(255,255,255,0.1)",
+                            background: removeLiquidityPercent === pct ? "rgba(107, 114, 128, 0.15)" : "transparent",
+                            color: removeLiquidityPercent === pct ? "#d1d5db" : "inherit",
+                            cursor: "pointer",
+                            fontSize: "0.875rem",
+                            transition: "all 0.15s ease"
+                          }}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+
+                    {expectedRemoveAmounts && (
+                      <div style={{
+                        borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                        paddingTop: "0.75rem"
+                      }}>
+                        <div style={{ fontSize: "0.875rem", opacity: 0.7, marginBottom: "0.5rem" }}>
+                          You will receive:
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", fontSize: "0.875rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span>{liquidityTokenA?.symbol ?? "Token A"}</span>
+                            <span style={{ fontWeight: 600 }}>{expectedRemoveAmounts.amountA}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span>{liquidityTokenB?.symbol ?? "Token B"}</span>
+                            <span style={{ fontWeight: 600 }}>{expectedRemoveAmounts.amountB}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label className={styles.label}>LP Tokens to Burn</label>
-                  <input
-                    className={styles.input}
-                    placeholder="0.0"
-                    value={removeForm.liquidity}
-                    onChange={(event) =>
-                      setRemoveForm((prev) => ({
-                        ...prev,
-                        liquidity: event.target.value
-                      }))
-                    }
-                  />
-                  {lpInfo.balance && (
-                    <span
-                      className={styles.helper}
-                      style={{ marginTop: "0.5rem", display: "block" }}
-                    >
-                      Balance: {parseFloat(lpInfo.balance).toFixed(4)}{" "}
-                      {lpInfo.symbol ?? "LP"}
-                    </span>
-                  )}
-                </div>
-
-                <div className={styles.buttonRow}>
+                <div className={styles.summary}>
                   <button
-                    className={styles.primaryButton}
+                    className={`${styles.primaryButton} ${styles.primaryFull}`}
                     onClick={handleRemoveLiquidity}
-                    disabled={!ready || isSubmitting}
+                    disabled={!ready || isSubmitting || !liquidityPairReserves}
                     type="button"
                   >
-                    Remove Liquidity
+                    {isSubmitting ? "Removing..." : "Remove Liquidity"}
                   </button>
                 </div>
-
-                {removeResult && (
-                  <div
-                    className={`${styles.callout} ${
-                      removeResult.startsWith("Removed")
-                        ? ""
-                        : styles.calloutError
-                    }`}
-                  >
-                    {removeResult}
-                  </div>
-                )}
-
-                {(removeForm.expectedTokenA || removeForm.expectedTokenB) && (
-                  <span className={styles.helper}>
-                    Expected totals: {removeForm.expectedTokenA || "—"} token0 /{" "}
-                    {removeForm.expectedTokenB || "—"} token1
-                  </span>
-                )}
-              </div>
+              </>
             )}
           </section>
         )}
@@ -2351,6 +2441,100 @@ export default function Page() {
       </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
+
+      {showLiquidityConfirm && (
+        <div className={styles.dialogBackdrop} onClick={() => setShowLiquidityConfirm(false)}>
+          <div
+            className={styles.dialog}
+            onClick={(event) => event.stopPropagation()}
+            style={{ maxWidth: "420px" }}
+          >
+            <div className={styles.dialogHeader}>
+              <span className={styles.dialogTitle}>You are creating a trading pair</span>
+              <button
+                type="button"
+                className={styles.dialogClose}
+                onClick={() => setShowLiquidityConfirm(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ padding: "1.5rem" }}>
+              <div style={{
+                background: "rgba(0, 212, 255, 0.1)",
+                border: "1px solid rgba(0, 212, 255, 0.2)",
+                borderRadius: "0.75rem",
+                padding: "1rem",
+                marginBottom: "1.5rem"
+              }}>
+                <div style={{ fontSize: "0.75rem", opacity: 0.7, marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  YOU WILL RECEIVE
+                </div>
+                <div style={{ fontSize: "1.125rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  {liquidityTokenA?.symbol ?? ""}-{liquidityTokenB?.symbol ?? ""} LP
+                </div>
+              </div>
+
+              <div style={{
+                background: "rgba(255, 255, 255, 0.02)",
+                borderRadius: "0.75rem",
+                padding: "1rem",
+                marginBottom: "0.75rem"
+              }}>
+                <div style={{ fontSize: "0.75rem", opacity: 0.7, marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  INPUT
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>{liquidityTokenA?.symbol ?? "Token A"}</span>
+                    <span style={{ fontWeight: 600 }}>{liquidityForm.amountA}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>{liquidityTokenB?.symbol ?? "Token B"}</span>
+                    <span style={{ fontWeight: 600 }}>{liquidityForm.amountB}</span>
+                  </div>
+                </div>
+              </div>
+
+              {liquidityPairReserves && (
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.02)",
+                  borderRadius: "0.75rem",
+                  padding: "1rem",
+                  marginBottom: "1.5rem"
+                }}>
+                  <div style={{ fontSize: "0.75rem", opacity: 0.7, marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    RATES
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", fontSize: "0.875rem" }}>
+                    <div>
+                      1 {liquidityTokenA?.symbol} = {(parseFloat(liquidityPairReserves.reserveB) / parseFloat(liquidityPairReserves.reserveA)).toFixed(4)} {liquidityTokenB?.symbol}
+                    </div>
+                    <div>
+                      1 {liquidityTokenB?.symbol} = {(parseFloat(liquidityPairReserves.reserveA) / parseFloat(liquidityPairReserves.reserveB)).toFixed(6)} {liquidityTokenA?.symbol}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                className={`${styles.primaryButton} ${styles.primaryFull}`}
+                onClick={handleConfirmAddLiquidity}
+                disabled={isSubmitting}
+                type="button"
+                style={{
+                  background: "linear-gradient(90deg, #00d4ff 0%, #00b8e6 100%)",
+                  fontSize: "1rem",
+                  fontWeight: 600
+                }}
+              >
+                Create Pair & Supply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tokenDialogOpen && (
         <div className={styles.dialogBackdrop} onClick={closeTokenDialog}>
