@@ -2,15 +2,51 @@
   "network": "megaethTestnet",
   "tokens": [
     {
-      "name": "MegaETH Token A",
+      "name": "MegaETH",
       "symbol": "MEGA",
       "address": "0x2Ea161D82Cf2D965819C45cdA2fDE0AF79161639",
       "decimals": 18
     },
     {
-      "name": "MegaETH Token B",
+      "name": "MegaETH Beta",
       "symbol": "MEGB",
       "address": "0x96F01598fc45334bF2566614Fb046Cc7A8F132C8",
+      "decimals": 18
+    },
+    {
+      "name": "Wrapped MegaETH",
+      "symbol": "WMEGA",
+      "address": "0x88C1770353BD23f435F6F049cc26936009B27B69",
+      "decimals": 18
+    },
+    {
+      "name": "MegaETH Token C",
+      "symbol": "MEGC",
+      "address": "0x59948fa72d6e560f0d29F21881570a376CD2fe7E",
+      "decimals": 18
+    },
+    {
+      "name": "MegaETH Token D",
+      "symbol": "MEGD",
+      "address": "0xb8331e50BACA5d81ce6643CA0Ea37FCeC722c0eB",
+      "decimals": 18
+    },
+    {
+      "name": "MegaETH Token E",
+      "symbol": "MEGE",
+      "address": "0x7F612466944952bEA1B7B202B08FB04d6bCdE0a8",
+      "decimals": 18
+    },
+    {
+      "name": "MegaETH Token F",
+      "symbol": "MEGF",
+      "address": "0x0fbA9174eCE3dB8F2ca60Da6C3e9720cf15cf952",
+      "decimals": 18
+    },
+    {
+      "name": "MegaETH Token G",
+      "symbol": "MEGG",
+      "address": "0x36D8d5Dd1feD9863AB4F6eFFCEd2fCA4723b6460",
       "decimals": 18
     }
   ]

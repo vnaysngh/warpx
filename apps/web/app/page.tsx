@@ -34,6 +34,7 @@ import { megaethTestnet } from "@/lib/chains";
 import { appKit, wagmiConfig } from "@/lib/wagmi";
 
 const MEGAETH_CHAIN_ID = 6342n;
+const DEFAULT_SLIPPAGE_BPS = 50n; // 0.50% default slippage tolerance
 const nowPlusMinutes = (minutes: number) =>
   Math.floor(Date.now() / 1000) + minutes * 60;
 
@@ -44,52 +45,198 @@ const isAddress = (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value);
  * - Strips trailing zeros
  * - Shows appropriate precision based on magnitude
  */
-const formatNumber = (value: string | number, maxDecimals: number = 6): string => {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
+const formatNumber = (
+  value: string | number,
+  maxDecimals: number = 6
+): string => {
+  const num = typeof value === "string" ? parseFloat(value) : value;
 
-  if (isNaN(num)) return '0';
+  if (isNaN(num)) return "0";
 
   // For very small numbers, show more decimals
   if (num > 0 && num < 0.0001) {
-    return num.toFixed(8).replace(/\.?0+$/, '');
+    return num.toFixed(8).replace(/\.?0+$/, "");
   }
 
   // For percentage values close to 100
   if (num >= 99.99 && num <= 100) {
-    return '100';
+    return "100";
   }
 
   // For regular numbers, use maxDecimals and strip trailing zeros
-  return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
+  return num.toFixed(maxDecimals).replace(/\.?0+$/, "");
 };
 
 /**
  * Format percentage values (0-100)
  */
-const formatPercent = (value: string | number, maxDecimals: number = 4): string => {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
+const formatPercent = (
+  value: string | number,
+  maxDecimals: number = 4
+): string => {
+  const num = typeof value === "string" ? parseFloat(value) : value;
 
-  if (isNaN(num)) return '0';
+  if (isNaN(num)) return "0";
 
   // If it's 100 or very close, just show 100
-  if (num >= 99.99) return '100';
+  if (num >= 99.99) return "100";
 
   // If it's very small, show more precision
   if (num > 0 && num < 0.01) {
-    return num.toFixed(6).replace(/\.?0+$/, '');
+    return num.toFixed(6).replace(/\.?0+$/, "");
   }
 
   // Otherwise use provided decimals and strip trailing zeros
-  return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
+  return num.toFixed(maxDecimals).replace(/\.?0+$/, "");
+};
+
+/**
+ * Uniswap V2 Style Swap Calculations
+ * Uses BigInt for exact precision (no floating point errors)
+ */
+
+// Constants
+const ONE_BIPS = 10000n; // 10000 basis points = 100%
+const MINIMUM_LIQUIDITY = 1000n; // Minimum liquidity burned
+const FEES_DENOMINATOR = 1000n; // Standard Uniswap fee = 0.3% = 3/1000
+const FEES_NUMERATOR = 997n; // 1000 - 3 fee
+
+/**
+ * Calculate output amount for a swap using Uniswap V2 constant product formula
+ * Formula: outputAmount = (inputAmount * 997 * reserveOut) / (1000 * reserveIn + inputAmount * 997)
+ * This accounts for the 0.3% Uniswap fee applied to input
+ */
+const getSwapOutputAmount = (
+  inputAmountWei: bigint,
+  reserveInWei: bigint,
+  reserveOutWei: bigint
+): bigint => {
+  if (inputAmountWei <= 0n || reserveInWei <= 0n || reserveOutWei <= 0n) {
+    return 0n;
+  }
+
+  const inputWithFee = inputAmountWei * FEES_NUMERATOR;
+  const numerator = inputWithFee * reserveOutWei;
+  const denominator = reserveInWei * FEES_DENOMINATOR + inputWithFee;
+
+  return numerator / denominator;
+};
+
+/**
+ * Calculate input amount needed to get desired output (reverse calculation)
+ * Formula: inputAmount = (1000 * reserveIn * outputAmount) / (997 * (reserveOut - outputAmount)) + 1
+ * The +1 ensures slippage protection by rounding up
+ */
+const getSwapInputAmount = (
+  outputAmountWei: bigint,
+  reserveInWei: bigint,
+  reserveOutWei: bigint
+): bigint => {
+  if (outputAmountWei <= 0n || reserveInWei <= 0n || reserveOutWei <= 0n) {
+    return 0n;
+  }
+
+  if (outputAmountWei >= reserveOutWei) {
+    return 0n; // Insufficient liquidity
+  }
+
+  const numerator = reserveInWei * outputAmountWei * FEES_DENOMINATOR;
+  const denominator = (reserveOutWei - outputAmountWei) * FEES_NUMERATOR;
+
+  return numerator / denominator + 1n;
+};
+
+/**
+ * Calculate minimum output amount given slippage tolerance (in basis points)
+ * For exact input trades: minOutput = outputAmount * (1 - slippageTolerance%)
+ * Formula: minOutput = (outputAmount * (ONE_BIPS - slippageBips)) / ONE_BIPS
+ */
+const getMinimumOutputAmount = (
+  outputAmountWei: bigint,
+  slippageBips: bigint
+): bigint => {
+  if (outputAmountWei <= 0n) return 0n;
+  return (outputAmountWei * (ONE_BIPS - slippageBips)) / ONE_BIPS;
+};
+
+/**
+ * Calculate maximum input amount given slippage tolerance (in basis points)
+ * For exact output trades: maxInput = inputAmount * (1 + slippageTolerance%)
+ * Formula: maxInput = (inputAmount * (ONE_BIPS + slippageBips)) / ONE_BIPS
+ */
+const getMaximumInputAmount = (
+  inputAmountWei: bigint,
+  slippageBips: bigint
+): bigint => {
+  if (inputAmountWei <= 0n) return 0n;
+  return (inputAmountWei * (ONE_BIPS + slippageBips)) / ONE_BIPS;
+};
+
+/**
+ * Calculate liquidity tokens minted when adding liquidity (Uniswap V2 formula)
+ * Initial liquidity: sqrt(amountA * amountB) - MINIMUM_LIQUIDITY
+ * Existing liquidity: min((amountA * totalSupply) / reserveA, (amountB * totalSupply) / reserveB)
+ */
+const getLiquidityMinted = (
+  amountAWei: bigint,
+  amountBWei: bigint,
+  reserveAWei: bigint,
+  reserveBWei: bigint,
+  totalSupplyWei: bigint
+): bigint => {
+  if (amountAWei <= 0n || amountBWei <= 0n) return 0n;
+
+  if (totalSupplyWei === 0n) {
+    // Initial liquidity: sqrt(amountA * amountB) - 1000
+    const product = amountAWei * amountBWei;
+    const sqrtProduct = BigInt(Math.floor(Math.sqrt(Number(product))));
+    return sqrtProduct > MINIMUM_LIQUIDITY
+      ? sqrtProduct - MINIMUM_LIQUIDITY
+      : 0n;
+  } else {
+    // Existing liquidity: min of the two ratios
+    if (reserveAWei === 0n || reserveBWei === 0n) return 0n;
+
+    const liquidity1 = (amountAWei * totalSupplyWei) / reserveAWei;
+    const liquidity2 = (amountBWei * totalSupplyWei) / reserveBWei;
+
+    return liquidity1 < liquidity2 ? liquidity1 : liquidity2;
+  }
+};
+
+/**
+ * Calculate amounts received when removing liquidity
+ * amountOut = (liquidityAmount * reserve) / totalSupply
+ */
+const getLiquidityRemoveAmounts = (
+  liquidityWei: bigint,
+  reserveAWei: bigint,
+  reserveBWei: bigint,
+  totalSupplyWei: bigint
+): { amountAWei: bigint; amountBWei: bigint } => {
+  if (liquidityWei <= 0n || totalSupplyWei === 0n) {
+    return { amountAWei: 0n, amountBWei: 0n };
+  }
+
+  const amountAWei = (liquidityWei * reserveAWei) / totalSupplyWei;
+  const amountBWei = (liquidityWei * reserveBWei) / totalSupplyWei;
+
+  return { amountAWei, amountBWei };
 };
 
 const parseErrorMessage = (error: any): string => {
+  const toLower = (value: unknown) =>
+    typeof value === "string" ? value.toLowerCase() : "";
+  const message = toLower(error?.message);
+  const shortMessage = toLower(error?.shortMessage);
+  const reason = toLower(error?.reason);
+
   // User rejected transaction
   if (
-    error?.message?.toLowerCase().includes("user rejected") ||
-    error?.message?.toLowerCase().includes("user denied") ||
-    error?.shortMessage?.toLowerCase().includes("user rejected") ||
-    error?.shortMessage?.toLowerCase().includes("user denied") ||
+    message.includes("user rejected") ||
+    message.includes("user denied") ||
+    shortMessage.includes("user rejected") ||
+    shortMessage.includes("user denied") ||
     error?.code === 4001 ||
     error?.code === "ACTION_REJECTED"
   ) {
@@ -98,27 +245,32 @@ const parseErrorMessage = (error: any): string => {
 
   // Insufficient funds
   if (
-    error?.message?.toLowerCase().includes("insufficient funds") ||
-    error?.shortMessage?.toLowerCase().includes("insufficient funds")
+    message.includes("insufficient funds") ||
+    shortMessage.includes("insufficient funds")
   ) {
     return "Insufficient funds to complete transaction.";
   }
 
-  // Network issues
   if (
-    error?.message?.toLowerCase().includes("network") ||
-    error?.message?.toLowerCase().includes("timeout")
+    message.includes("insufficient output amount") ||
+    shortMessage.includes("insufficient output amount") ||
+    reason.includes("insufficient_output_amount")
   ) {
+    return "Swap failed: received less than the minimum amount. Increase slippage or reduce the trade size.";
+  }
+
+  // Network issues
+  if (message.includes("network") || message.includes("timeout")) {
     return "Network error. Please check your connection and try again.";
   }
 
   // Contract revert with reason
-  if (error?.reason) {
+  if (typeof error?.reason === "string") {
     return `Transaction failed: ${error.reason}`;
   }
 
   // Use shortMessage if available (wagmi/viem provides these)
-  if (error?.shortMessage && typeof error.shortMessage === "string") {
+  if (typeof error?.shortMessage === "string") {
     // Clean up the short message
     const msg = error.shortMessage.replace(/\n.*$/, ""); // Remove everything after first newline
     if (msg.length < 100) {
@@ -135,6 +287,15 @@ type TokenDescriptor = {
   name: string;
   address: string;
   decimals: number;
+};
+
+type TokenManifest = {
+  tokens?: Array<{
+    symbol: string;
+    name: string;
+    address: string;
+    decimals?: number;
+  }>;
 };
 
 const TOKEN_CATALOG: TokenDescriptor[] = [
@@ -155,24 +316,6 @@ const TOKEN_CATALOG: TokenDescriptor[] = [
     name: "Wrapped MegaETH",
     address: "0x88C1770353BD23f435F6F049cc26936009B27B69",
     decimals: 18
-  },
-  {
-    symbol: "USDC",
-    name: "USD Coin",
-    address: "0x1F6D0EF24eE896E3Fe81F6dB5b563F40b36199b1",
-    decimals: 6
-  },
-  {
-    symbol: "BNB",
-    name: "Binance Coin",
-    address: "0x91A2D3F68cCf3DB6A74FdAc851Fc2bB50a5F7523",
-    decimals: 18
-  },
-  {
-    symbol: "ETH",
-    name: "Ethereum",
-    address: "0x1234567890abcdef1234567890abcdef12345678",
-    decimals: 18
   }
 ];
 
@@ -182,14 +325,14 @@ const SWAP_DEFAULT = {
   tokenIn: "",
   tokenOut: "",
   amountIn: "",
-  minOut: ""
+  minOut: "",
+  maxInput: "" // For exact output swaps with slippage
 };
 
 const LIQUIDITY_DEFAULT = {
   amountA: "",
   amountB: ""
 };
-
 
 type Quote = { amount: string; symbol: string };
 type ReverseQuote = { amount: string; symbolIn: string; symbolOut: string };
@@ -241,11 +384,14 @@ export default function Page() {
 
   const showLoading = useCallback(
     (message: string) => {
+      if (loadingToastRef.current) {
+        removeToast(loadingToastRef.current);
+      }
       const id = addToast(message, "loading");
       loadingToastRef.current = id;
       return id;
     },
-    [addToast]
+    [addToast, removeToast]
   );
 
   const hideLoading = useCallback(() => {
@@ -273,6 +419,11 @@ export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [swapQuote, setSwapQuote] = useState<Quote | null>(null);
   const [reverseQuote, setReverseQuote] = useState<ReverseQuote | null>(null);
+  const [swapPairReserves, setSwapPairReserves] = useState<{
+    reserveIn: bigint;
+    reserveOut: bigint;
+    pairAddress: string;
+  } | null>(null);
   const [tokenList, setTokenList] = useState<TokenDescriptor[]>(TOKEN_CATALOG);
   const [selectedIn, setSelectedIn] = useState<TokenDescriptor | null>(
     TOKEN_CATALOG[0] ?? null
@@ -286,10 +437,89 @@ export default function Page() {
     useState<TokenDescriptor | null>(
       TOKEN_CATALOG[1] ?? TOKEN_CATALOG[0] ?? null
     );
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTokenManifest = async () => {
+      const network = deployment?.network;
+      if (!network) return;
+      try {
+        const manifestPaths = [
+          `/deployments/${network}.tokens.json`,
+          `/deployments/${network.toLowerCase()}.tokens.json`
+        ];
+        let manifest: TokenManifest | null = null;
+
+        for (const manifestPath of manifestPaths) {
+          try {
+            const response = await fetch(manifestPath, {
+              cache: "no-store"
+            });
+            if (response.ok) {
+              manifest = (await response.json()) as TokenManifest;
+              break;
+            }
+          } catch (innerError) {
+            console.warn(
+              "[tokens] manifest fetch failed",
+              manifestPath,
+              innerError
+            );
+          }
+        }
+
+        if (!manifest) {
+          throw new Error(`Token manifest for ${network} not found`);
+        }
+        if (cancelled) return;
+
+        const manifestTokens = Array.isArray(manifest.tokens)
+          ? manifest.tokens
+          : [];
+
+        setTokenList((prev) => {
+          const merged = new Map<string, TokenDescriptor>();
+          const addToken = (token: TokenDescriptor) => {
+            if (!token.address || !isAddress(token.address)) return;
+            const key = token.address.toLowerCase();
+            merged.set(key, {
+              ...token,
+              address: token.address,
+              decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
+            });
+          };
+
+          [...TOKEN_CATALOG, ...prev].forEach(addToken);
+          manifestTokens.forEach((token) =>
+            addToken({
+              symbol: token.symbol,
+              name: token.name,
+              address: token.address,
+              decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
+            })
+          );
+
+          return Array.from(merged.values());
+        });
+      } catch (err) {
+        console.warn("[tokens] failed to load manifest tokens", err);
+      }
+    };
+
+    loadTokenManifest();
+    return () => {
+      cancelled = true;
+    };
+  }, [deployment?.network]);
   const [liquidityPairReserves, setLiquidityPairReserves] = useState<{
     reserveA: string;
     reserveB: string;
     pairAddress: string;
+    totalSupply: string;
+    // Raw BigInt values for exact calculations
+    reserveAWei: bigint;
+    reserveBWei: bigint;
+    totalSupplyWei: bigint;
   } | null>(null);
   const liquidityEditingFieldRef = useRef<"A" | "B" | null>(null);
   const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
@@ -330,6 +560,55 @@ export default function Page() {
   } | null>(null);
   const walletMenuRef = useRef<HTMLDivElement>(null);
   const showWalletActions = hasMounted && isWalletConnected;
+
+  useEffect(() => {
+    if (!tokenList.length) return;
+
+    const normalizeAddress = (value?: string | null) =>
+      value ? value.toLowerCase() : null;
+
+    const findByAddress = (address?: string | null) => {
+      const normalized = normalizeAddress(address);
+      if (!normalized) return null;
+      return (
+        tokenList.find((token) => token.address.toLowerCase() === normalized) ??
+        null
+      );
+    };
+
+    const nextSelectedIn =
+      findByAddress(selectedIn?.address) ?? tokenList[0] ?? null;
+    const nextSelectedOut =
+      findByAddress(selectedOut?.address) ??
+      tokenList.find(
+        (token) =>
+          token.address.toLowerCase() !==
+          normalizeAddress(nextSelectedIn?.address)
+      ) ??
+      nextSelectedIn;
+    const nextTokenA =
+      findByAddress(liquidityTokenA?.address) ?? nextSelectedIn;
+    const nextTokenB =
+      findByAddress(liquidityTokenB?.address) ??
+      tokenList.find(
+        (token) =>
+          token.address.toLowerCase() !== normalizeAddress(nextTokenA?.address)
+      ) ??
+      nextTokenA;
+
+    if (nextSelectedIn !== selectedIn) {
+      setSelectedIn(nextSelectedIn);
+    }
+    if (nextSelectedOut !== selectedOut) {
+      setSelectedOut(nextSelectedOut);
+    }
+    if (nextTokenA !== liquidityTokenA) {
+      setLiquidityTokenA(nextTokenA);
+    }
+    if (nextTokenB !== liquidityTokenB) {
+      setLiquidityTokenB(nextTokenB);
+    }
+  }, [tokenList, selectedIn, selectedOut, liquidityTokenA, liquidityTokenB]);
 
   // Derive token addresses from token objects (single source of truth)
   const liquidityTokenAAddress = liquidityTokenA?.address ?? "";
@@ -864,7 +1143,6 @@ export default function Page() {
       }
 
       try {
-        const routerRead = getRouter(routerAddress, readProvider);
         const tokenInContract = getToken(swapForm.tokenIn, readProvider);
         const tokenOutContract = getToken(swapForm.tokenOut, readProvider);
 
@@ -886,21 +1164,64 @@ export default function Page() {
           return;
         }
 
-        const path = [swapForm.tokenIn, swapForm.tokenOut];
-        const amounts = await routerRead.getAmountsOut!(amountInWei, path);
-        const amountOutWei = amounts[amounts.length - 1];
+        // Use exact Uniswap V2 formula for swap calculation
+        if (!swapPairReserves) {
+          setSwapQuote(null);
+          setSwapForm((prev) => ({ ...prev, minOut: "" }));
+          setIsCalculatingQuote(false);
+          return;
+        }
 
-        // Format to max 6 decimals
+        // Debug: log swap calculation inputs
+        console.log("[swap] quote calculation inputs:", {
+          amountIn: swapForm.amountIn,
+          amountInWei: amountInWei.toString(),
+          reserveIn: swapPairReserves.reserveIn.toString(),
+          reserveOut: swapPairReserves.reserveOut.toString(),
+          decimalsIn,
+          decimalsOut,
+          symbolOut
+        });
+
+        // Calculate output using exact Uniswap V2 constant product formula
+        const amountOutWei = getSwapOutputAmount(
+          amountInWei,
+          swapPairReserves.reserveIn,
+          swapPairReserves.reserveOut
+        );
+
+        console.log("[swap] quote calculation output:", {
+          amountOutWei: amountOutWei.toString(),
+          isZero: amountOutWei === 0n
+        });
+
+        if (amountOutWei === 0n) {
+          setSwapQuote(null);
+          setSwapForm((prev) => ({ ...prev, minOut: "" }));
+          setIsCalculatingQuote(false);
+          return;
+        }
+
+        // Format output amount
         const formattedOut = formatUnits(amountOutWei, decimalsOut);
-        const numOut = parseFloat(formattedOut);
-        const limitedOut = numOut
-          .toFixed(Math.min(6, decimalsOut))
-          .replace(/\.?0+$/, "");
+        const limitedOut = formatNumber(formattedOut, Math.min(6, decimalsOut));
+
+        // Calculate minimum output with exact slippage formula
+        const minOutWei = getMinimumOutputAmount(
+          amountOutWei,
+          DEFAULT_SLIPPAGE_BPS
+        );
+        const minOutWeiAdjusted = minOutWei > 0n ? minOutWei : 1n;
+        const formattedMinOut = formatUnits(minOutWeiAdjusted, decimalsOut);
+        const limitedMinOut = formatNumber(
+          formattedMinOut,
+          Math.min(6, decimalsOut)
+        );
 
         // Only update minOut if user is still editing amountIn
         if (swapEditingFieldRef.current === "amountIn") {
           setSwapQuote({ amount: limitedOut, symbol: symbolOut });
-          setSwapForm((prev) => ({ ...prev, minOut: limitedOut }));
+          setSwapForm((prev) => ({ ...prev, minOut: limitedMinOut }));
         }
         setIsCalculatingQuote(false);
       } catch (err: any) {
@@ -932,11 +1253,10 @@ export default function Page() {
       }
     };
   }, [
-    routerAddress,
     swapForm.tokenIn,
     swapForm.tokenOut,
     swapForm.amountIn,
-    readProvider
+    swapPairReserves
   ]);
 
   useEffect(() => {
@@ -977,7 +1297,6 @@ export default function Page() {
       }
 
       try {
-        const routerRead = getRouter(routerAddress, readProvider);
         const tokenInContract = getToken(swapForm.tokenIn, readProvider);
         const tokenOutContract = getToken(swapForm.tokenOut, readProvider);
 
@@ -992,7 +1311,6 @@ export default function Page() {
           .catch(() => DEFAULT_TOKEN_DECIMALS);
 
         const symbolIn = await tokenInContract.symbol().catch(() => "TOKEN");
-
         const symbolOut = await tokenOutContract.symbol().catch(() => "TOKEN");
 
         const desiredOutWei = parseUnits(swapForm.minOut, decimalsOut);
@@ -1001,21 +1319,51 @@ export default function Page() {
           return;
         }
 
-        const path = [swapForm.tokenIn, swapForm.tokenOut];
-        const amounts = await routerRead.getAmountsIn!(desiredOutWei, path);
-        const amountNeeded = amounts[0];
+        // Use exact Uniswap V2 formula for reverse calculation
+        if (!swapPairReserves) {
+          setReverseQuote(null);
+          setSwapForm((prev) => ({ ...prev, amountIn: "" }));
+          setIsCalculatingQuote(false);
+          return;
+        }
 
-        // Format to max 6 decimals
+        // Calculate input needed to get desired output using exact Uniswap V2 formula
+        const amountNeeded = getSwapInputAmount(
+          desiredOutWei,
+          swapPairReserves.reserveIn,
+          swapPairReserves.reserveOut
+        );
+
+        if (amountNeeded === 0n) {
+          setReverseQuote(null);
+          setSwapForm((prev) => ({ ...prev, amountIn: "" }));
+          setIsCalculatingQuote(false);
+          return;
+        }
+
+        // Format input amount
         const formattedIn = formatUnits(amountNeeded, decimalsIn);
-        const numIn = parseFloat(formattedIn);
-        const limitedIn = numIn
-          .toFixed(Math.min(6, decimalsIn))
-          .replace(/\.?0+$/, "");
+        const limitedIn = formatNumber(formattedIn, Math.min(6, decimalsIn));
+
+        // Calculate maximum input with exact slippage formula (for exact output trades)
+        const maxInputWei = getMaximumInputAmount(
+          amountNeeded,
+          DEFAULT_SLIPPAGE_BPS
+        );
+        const maxInputFormatted = formatUnits(maxInputWei, decimalsIn);
+        const limitedMaxInput = formatNumber(
+          maxInputFormatted,
+          Math.min(6, decimalsIn)
+        );
 
         // Only update amountIn if user is still editing minOut
         if (swapEditingFieldRef.current === "minOut") {
           setReverseQuote({ amount: limitedIn, symbolIn, symbolOut });
-          setSwapForm((prev) => ({ ...prev, amountIn: limitedIn }));
+          setSwapForm((prev) => ({
+            ...prev,
+            amountIn: limitedIn,
+            maxInput: limitedMaxInput // Store max input for transaction
+          }));
         }
         setIsCalculatingQuote(false);
       } catch (err: any) {
@@ -1047,14 +1395,7 @@ export default function Page() {
         clearTimeout(reverseQuoteDebounceTimerRef.current);
       }
     };
-  }, [
-    routerAddress,
-    swapForm.tokenIn,
-    swapForm.tokenOut,
-    swapForm.minOut,
-    readProvider
-  ]);
-
+  }, [swapForm.tokenIn, swapForm.tokenOut, swapForm.minOut, swapPairReserves]);
 
   // Fetch liquidity pair reserves for auto-calculation
   useEffect(() => {
@@ -1080,9 +1421,13 @@ export default function Page() {
           return;
         }
 
-        // Get reserves from pair contract
+        // Get reserves from pair contract and total supply from ERC20 interface
         const pairContract = getPair(pairAddress, readProvider);
-        const reserves = await pairContract.getReserves();
+        const lpTokenContract = getToken(pairAddress, readProvider);
+        const [reserves, totalSupply] = await Promise.all([
+          pairContract.getReserves(),
+          lpTokenContract.totalSupply()
+        ]);
 
         // Determine which reserve corresponds to which token
         const token0 = await pairContract.token0();
@@ -1091,12 +1436,19 @@ export default function Page() {
 
         const reserveA = isToken0A ? reserves[0] : reserves[1];
         const reserveB = isToken0A ? reserves[1] : reserves[0];
+        const reserveAWei = toBigInt(reserveA);
+        const reserveBWei = toBigInt(reserveB);
+        const totalSupplyWei = toBigInt(totalSupply);
 
         if (active) {
           setLiquidityPairReserves({
             reserveA: formatUnits(reserveA, liquidityTokenA?.decimals ?? 18),
             reserveB: formatUnits(reserveB, liquidityTokenB?.decimals ?? 18),
-            pairAddress
+            pairAddress,
+            totalSupply: formatUnits(totalSupply, 18),
+            reserveAWei,
+            reserveBWei,
+            totalSupplyWei
           });
         }
       } catch (err) {
@@ -1118,6 +1470,77 @@ export default function Page() {
     readProvider
   ]);
 
+  // Fetch swap pair reserves for exact calculation
+  useEffect(() => {
+    let active = true;
+
+    const fetchSwapReserves = async () => {
+      // Clear reserves if tokens not properly selected or factory not available
+      if (!selectedIn?.address || !selectedOut?.address || !factoryAddress) {
+        if (active) setSwapPairReserves(null);
+        return;
+      }
+
+      if (selectedIn.address === selectedOut.address) {
+        if (active) setSwapPairReserves(null);
+        return;
+      }
+
+      try {
+        const factory = getFactory(factoryAddress, readProvider);
+        const pairAddress = await factory.getPair(
+          selectedIn.address,
+          selectedOut.address
+        );
+
+        if (pairAddress === ZeroAddress) {
+          if (active) setSwapPairReserves(null);
+          return;
+        }
+
+        // Get reserves from pair
+        const pairContract = getPair(pairAddress, readProvider);
+        const reserves = await pairContract.getReserves();
+
+        // Determine which reserve is which
+        const token0 = await pairContract.token0();
+        const isToken0In =
+          token0.toLowerCase() === selectedIn.address.toLowerCase();
+
+        const reserveIn = isToken0In ? reserves[0] : reserves[1];
+        const reserveOut = isToken0In ? reserves[1] : reserves[0];
+
+        console.log("[swap] pair reserves fetched:", {
+          pairAddress,
+          token0,
+          selectedIn: selectedIn.address,
+          selectedOut: selectedOut.address,
+          isToken0In,
+          reserve0: reserves[0].toString(),
+          reserve1: reserves[1].toString(),
+          reserveIn: reserveIn.toString(),
+          reserveOut: reserveOut.toString()
+        });
+
+        if (active) {
+          setSwapPairReserves({
+            reserveIn,
+            reserveOut,
+            pairAddress
+          });
+        }
+      } catch (err) {
+        console.error("[swap] fetch pair reserves failed", err);
+        if (active) setSwapPairReserves(null);
+      }
+    };
+
+    fetchSwapReserves();
+    return () => {
+      active = false;
+    };
+  }, [selectedIn?.address, selectedOut?.address, factoryAddress, readProvider]);
+
   // Calculate expected removal amounts for remove liquidity
   useEffect(() => {
     let active = true;
@@ -1136,22 +1559,27 @@ export default function Page() {
       }
 
       try {
-        const lpToken = getToken(liquidityPairReserves.pairAddress, readProvider);
+        const lpToken = getToken(
+          liquidityPairReserves.pairAddress,
+          readProvider
+        );
         const [userBalance, totalSupply] = await Promise.all([
           lpToken.balanceOf(walletAccount),
           lpToken.totalSupply()
         ]);
 
         const percent = Number(removeLiquidityPercent) / 100;
-        const liquidityToRemove = (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
+        const liquidityToRemove =
+          (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
 
         // Format LP token balance
         const lpBalanceFormatted = formatUnits(userBalance, 18);
 
         // Calculate pool share percentage: (userBalance / totalSupply) * 100
-        const poolSharePercent = totalSupply > 0n
-          ? (Number(userBalance) / Number(totalSupply)) * 100
-          : 0;
+        const poolSharePercent =
+          totalSupply > 0n
+            ? (Number(userBalance) / Number(totalSupply)) * 100
+            : 0;
 
         if (liquidityToRemove === 0n || totalSupply === 0n) {
           if (active) {
@@ -1165,33 +1593,72 @@ export default function Page() {
           return;
         }
 
-        // Calculate expected amounts: (liquidity * reserve) / totalSupply
-        const reserveANum = parseFloat(liquidityPairReserves.reserveA);
-        const reserveBNum = parseFloat(liquidityPairReserves.reserveB);
-        const userBalanceNum = Number(formatUnits(userBalance, 18));
-        const totalSupplyNum = Number(formatUnits(totalSupply, 18));
+        // Calculate expected amounts using exact BigInt precision: (liquidity * reserve) / totalSupply
 
         // Calculate user's total pooled amounts (100% of their position)
-        const pooledA = (userBalanceNum * reserveANum) / totalSupplyNum;
-        const pooledB = (userBalanceNum * reserveBNum) / totalSupplyNum;
+        const { amountAWei: pooledAWei, amountBWei: pooledBWei } =
+          getLiquidityRemoveAmounts(
+            userBalance,
+            liquidityPairReserves.reserveAWei,
+            liquidityPairReserves.reserveBWei,
+            totalSupply
+          );
 
-        // Calculate amounts to be removed based on percentage
-        const removeAmount = userBalanceNum * percent;
-        const expectedA = (removeAmount * reserveANum) / totalSupplyNum;
-        const expectedB = (removeAmount * reserveBNum) / totalSupplyNum;
+        // Calculate amounts to be removed based on percentage using BigInt
+        const liquidityToRemoveForCalc =
+          (userBalance * BigInt(Math.floor(percent * 100))) / 100n;
+        const { amountAWei: expectedAWei, amountBWei: expectedBWei } =
+          getLiquidityRemoveAmounts(
+            liquidityToRemoveForCalc,
+            liquidityPairReserves.reserveAWei,
+            liquidityPairReserves.reserveBWei,
+            totalSupply
+          );
 
         if (active) {
           setLpTokenInfo({
             balance: lpBalanceFormatted,
             poolShare: poolSharePercent.toString()
           });
+
+          // Format pooled amounts using exact token decimals
+          const pooledAFormatted = formatUnits(
+            pooledAWei,
+            liquidityTokenA?.decimals ?? 18
+          );
+          const pooledBFormatted = formatUnits(
+            pooledBWei,
+            liquidityTokenB?.decimals ?? 18
+          );
           setUserPooledAmounts({
-            amountA: pooledA.toFixed(6).replace(/\.?0+$/, ""),
-            amountB: pooledB.toFixed(6).replace(/\.?0+$/, "")
+            amountA: formatNumber(
+              pooledAFormatted,
+              Math.min(6, liquidityTokenA?.decimals ?? 18)
+            ),
+            amountB: formatNumber(
+              pooledBFormatted,
+              Math.min(6, liquidityTokenB?.decimals ?? 18)
+            )
           });
+
+          // Format expected removal amounts using exact token decimals
+          const expectedAFormatted = formatUnits(
+            expectedAWei,
+            liquidityTokenA?.decimals ?? 18
+          );
+          const expectedBFormatted = formatUnits(
+            expectedBWei,
+            liquidityTokenB?.decimals ?? 18
+          );
           setExpectedRemoveAmounts({
-            amountA: expectedA.toFixed(6).replace(/\.?0+$/, ""),
-            amountB: expectedB.toFixed(6).replace(/\.?0+$/, "")
+            amountA: formatNumber(
+              expectedAFormatted,
+              Math.min(6, liquidityTokenA?.decimals ?? 18)
+            ),
+            amountB: formatNumber(
+              expectedBFormatted,
+              Math.min(6, liquidityTokenB?.decimals ?? 18)
+            )
           });
         }
       } catch (err) {
@@ -1213,7 +1680,9 @@ export default function Page() {
     walletAccount,
     removeLiquidityPercent,
     liquidityMode,
-    readProvider
+    readProvider,
+    liquidityTokenA?.decimals,
+    liquidityTokenB?.decimals
   ]);
 
   // Removed manual balance polling; wagmi's useBalance handles watching balances.
@@ -1289,7 +1758,6 @@ export default function Page() {
     }
     try {
       setIsSubmitting(true);
-      showLoading("Approving token...");
       const decimals = await readContract(wagmiConfig, {
         address: tokenAddress as `0x${string}`,
         abi: erc20Abi,
@@ -1308,14 +1776,18 @@ export default function Page() {
         amount && amount.length ? amount : "1000000",
         decimals
       );
+
+      showLoading("Confirm transaction in your wallet...");
       const txHash = await writeContract(wagmiConfig, {
         address: tokenAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
         args: [spender as `0x${string}`, parsedAmount],
+        account: ctx.account as `0x${string}`,
         chainId: Number(MEGAETH_CHAIN_ID),
         gas: 100000n
       });
+      showLoading("Approval pending...");
       await waitForTransactionReceipt(wagmiConfig, {
         hash: txHash
       });
@@ -1364,18 +1836,17 @@ export default function Page() {
   const handleSwap = async () => {
     const ctx = ensureWallet();
     if (!ctx) return;
-    const { tokenIn, tokenOut, amountIn, minOut } = swapForm;
+    const { tokenIn, tokenOut, amountIn, minOut, maxInput } = swapForm;
     if (!isAddress(tokenIn) || !isAddress(tokenOut)) {
       showError("Enter valid ERC-20 token addresses for the swap.");
       return;
     }
-    if (!amountIn) {
-      showError("Provide an amount to swap.");
+    if (!amountIn || !minOut) {
+      showError("Provide both swap amount and expected output.");
       return;
     }
     try {
       setIsSubmitting(true);
-      showLoading("Executing swap...");
 
       const decimalsIn = await readContract(wagmiConfig, {
         address: tokenIn as `0x${string}`,
@@ -1401,7 +1872,23 @@ export default function Page() {
         });
 
       const amountInWei = parseUnits(amountIn, decimalsIn);
-      const minOutWei = minOut ? parseUnits(minOut, decimalsOut) : 0n;
+      if (amountInWei <= 0n) {
+        showError("Swap amount is too small.");
+        return;
+      }
+      const minOutWei = parseUnits(minOut, decimalsOut);
+      if (minOutWei <= 0n) {
+        showError("Minimum received amount must be greater than zero.");
+        return;
+      }
+
+      // Determine swap type based on which field user edited
+      // Exact input: user specified amountIn
+      // Exact output: user specified minOut as desired output, maxInput was calculated
+      const isExactInput = swapEditingFieldRef.current === "amountIn";
+      const amountToApprove = isExactInput
+        ? amountInWei
+        : parseUnits(maxInput || amountIn, decimalsIn);
 
       const allowance = await readContract(wagmiConfig, {
         address: tokenIn as `0x${string}`,
@@ -1411,18 +1898,26 @@ export default function Page() {
         chainId: Number(MEGAETH_CHAIN_ID)
       });
 
-      if (toBigInt(allowance) < amountInWei) {
+      if (toBigInt(allowance) < amountToApprove) {
+        showLoading("Confirm transaction in your wallet...");
         const approveHash = await writeContract(wagmiConfig, {
           address: tokenIn as `0x${string}`,
           abi: erc20Abi,
           functionName: "approve",
-          args: [routerAddress as `0x${string}`, amountInWei],
+          args: [routerAddress as `0x${string}`, amountToApprove],
+          account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n
         });
+        showLoading("Approval pending...");
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
 
+      showLoading("Confirm transaction in your wallet...");
+
+      // Execute exact input swap: swapExactTokensForTokens(amountIn, minOut, path, to, deadline)
+      // Router only supports exact input swaps
+      // For exact output mode: maxInput was calculated for UI feedback, but we execute with exact input + calculated minOut
       const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
         abi: pancakeRouterAbi,
@@ -1434,9 +1929,12 @@ export default function Page() {
           ctx.account as `0x${string}`,
           BigInt(nowPlusMinutes(10))
         ],
+        account: ctx.account as `0x${string}`,
         chainId: Number(MEGAETH_CHAIN_ID),
         gas: 300000n
       });
+
+      showLoading("Swap pending...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       setAllowanceNonce((n) => n + 1);
       setNeedsApproval(false);
@@ -1465,7 +1963,6 @@ export default function Page() {
     }
     try {
       setIsSubmitting(true);
-      showLoading("Adding liquidity...");
 
       const decimalsA = await readContract(wagmiConfig, {
         address: tokenA as `0x${string}`,
@@ -1509,15 +2006,21 @@ export default function Page() {
       });
 
       if (toBigInt(allowanceA) < amountAWei) {
+        showLoading("Confirm transaction in your wallet...");
         const approveAHash = await writeContract(wagmiConfig, {
           address: tokenA as `0x${string}`,
           abi: erc20Abi,
           functionName: "approve",
           args: [routerAddress as `0x${string}`, amountAWei],
+          account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n
         });
+        showLoading(
+          `${liquidityTokenA?.symbol || "Token A"} approval pending...`
+        );
         await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
+        setNeedsApprovalA(false);
       }
 
       const allowanceB = await readContract(wagmiConfig, {
@@ -1529,17 +2032,24 @@ export default function Page() {
       });
 
       if (toBigInt(allowanceB) < amountBWei) {
+        showLoading("Confirm transaction in your wallet...");
         const approveBHash = await writeContract(wagmiConfig, {
           address: tokenB as `0x${string}`,
           abi: erc20Abi,
           functionName: "approve",
           args: [routerAddress as `0x${string}`, amountBWei],
+          account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n
         });
+        showLoading(
+          `${liquidityTokenB?.symbol || "Token B"} approval pending...`
+        );
         await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
+        setNeedsApprovalB(false);
       }
 
+      showLoading("Confirm transaction in your wallet...");
       const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
         abi: pancakeRouterAbi,
@@ -1554,9 +2064,11 @@ export default function Page() {
           ctx.account as `0x${string}`,
           BigInt(nowPlusMinutes(10))
         ],
+        account: ctx.account as `0x${string}`,
         chainId: Number(MEGAETH_CHAIN_ID),
         gas: 5000000n
       });
+      showLoading("Adding liquidity...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       setLiquidityAllowanceNonce((n) => n + 1);
       showSuccess("Liquidity added successfully.");
@@ -1585,7 +2097,6 @@ export default function Page() {
 
     try {
       setIsSubmitting(true);
-      showLoading("Removing liquidity...");
 
       const pairAddress = liquidityPairReserves.pairAddress;
       const tokenA = liquidityTokenAAddress;
@@ -1600,7 +2111,8 @@ export default function Page() {
         chainId: Number(MEGAETH_CHAIN_ID)
       });
 
-      const liquidityToRemove = (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
+      const liquidityToRemove =
+        (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
 
       if (liquidityToRemove === 0n) {
         showError("Insufficient LP balance to remove.");
@@ -1617,18 +2129,21 @@ export default function Page() {
       });
 
       if (toBigInt(allowance) < liquidityToRemove) {
+        showLoading("Confirm transaction in your wallet...");
         const approveHash = await writeContract(wagmiConfig, {
           address: pairAddress as `0x${string}`,
           abi: erc20Abi,
           functionName: "approve",
           args: [routerAddress as `0x${string}`, liquidityToRemove],
+          account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n
         });
+        showLoading("LP approval pending...");
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
 
-      // Remove liquidity
+      showLoading("Confirm transaction in your wallet...");
       const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
         abi: pancakeRouterAbi,
@@ -1642,13 +2157,17 @@ export default function Page() {
           ctx.account as `0x${string}`,
           BigInt(nowPlusMinutes(10))
         ],
+        account: ctx.account as `0x${string}`,
         chainId: Number(MEGAETH_CHAIN_ID),
         gas: 500000n
       });
 
+      showLoading("Removing liquidity...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
 
-      showSuccess(`Liquidity removed successfully. Removed ${removeLiquidityPercent}% of your position.`);
+      showSuccess(
+        `Liquidity removed successfully. Removed ${removeLiquidityPercent}% of your position.`
+      );
 
       // Reset percentage to 25%
       setRemoveLiquidityPercent("25");
@@ -1659,7 +2178,6 @@ export default function Page() {
       setIsSubmitting(false);
     }
   };
-
 
   const manifestTag = loadingDeployment
     ? "Loading manifest…"
@@ -1708,8 +2226,11 @@ export default function Page() {
     swapButtonDisabled = isSubmitting;
   }
 
+  const slippagePercentDisplay = (Number(DEFAULT_SLIPPAGE_BPS) / 100)
+    .toFixed(2)
+    .replace(/\.?0+$/, "");
   const swapSummaryMessage = swapQuote
-    ? `Quote ≈ ${swapQuote.amount} ${swapQuote.symbol}`
+    ? `Quote ≈ ${swapQuote.amount} ${swapQuote.symbol} (min received with ${slippagePercentDisplay}% slippage: ${swapForm.minOut || "0"})`
     : null;
 
   const liquidityTokensReady =
@@ -1792,15 +2313,36 @@ export default function Page() {
         return updated;
       }
 
-      // Auto-calculate amountB based on reserves if pair exists
-      const amountANum = parseFloat(value);
-      if (liquidityPairReserves && !isNaN(amountANum) && amountANum > 0) {
-        const reserveANum = parseFloat(liquidityPairReserves.reserveA);
-        const reserveBNum = parseFloat(liquidityPairReserves.reserveB);
+      // Auto-calculate amountB based on reserves using exact Uniswap precision
+      if (
+        liquidityPairReserves &&
+        liquidityTokenA?.decimals &&
+        liquidityTokenB?.decimals
+      ) {
+        try {
+          const amountAWei = parseUnits(value, liquidityTokenA.decimals);
+          if (amountAWei <= 0n) {
+            updated.amountB = "";
+            return updated;
+          }
 
-        if (reserveANum > 0 && reserveBNum > 0) {
-          const amountBNum = (amountANum * reserveBNum) / reserveANum;
-          updated.amountB = amountBNum.toFixed(18).replace(/\.?0+$/, "");
+          // Calculate B using exact formula: amountB = (amountA * reserveB) / reserveA
+          if (liquidityPairReserves.reserveAWei > 0n) {
+            const amountBWei =
+              (amountAWei * liquidityPairReserves.reserveBWei) /
+              liquidityPairReserves.reserveAWei;
+            const amountBFormatted = formatUnits(
+              amountBWei,
+              liquidityTokenB.decimals
+            );
+            updated.amountB = formatNumber(
+              amountBFormatted,
+              Math.min(6, liquidityTokenB.decimals)
+            );
+          }
+        } catch (err) {
+          console.warn("[liquidity] amountA calculation failed", err);
+          updated.amountB = "";
         }
       }
 
@@ -1827,15 +2369,36 @@ export default function Page() {
         return updated;
       }
 
-      // Auto-calculate amountA based on reserves if pair exists
-      const amountBNum = parseFloat(value);
-      if (liquidityPairReserves && !isNaN(amountBNum) && amountBNum > 0) {
-        const reserveANum = parseFloat(liquidityPairReserves.reserveA);
-        const reserveBNum = parseFloat(liquidityPairReserves.reserveB);
+      // Auto-calculate amountA based on reserves using exact Uniswap precision
+      if (
+        liquidityPairReserves &&
+        liquidityTokenA?.decimals &&
+        liquidityTokenB?.decimals
+      ) {
+        try {
+          const amountBWei = parseUnits(value, liquidityTokenB.decimals);
+          if (amountBWei <= 0n) {
+            updated.amountA = "";
+            return updated;
+          }
 
-        if (reserveANum > 0 && reserveBNum > 0) {
-          const amountANum = (amountBNum * reserveANum) / reserveBNum;
-          updated.amountA = amountANum.toFixed(18).replace(/\.?0+$/, "");
+          // Calculate A using exact formula: amountA = (amountB * reserveA) / reserveB
+          if (liquidityPairReserves.reserveBWei > 0n) {
+            const amountAWei =
+              (amountBWei * liquidityPairReserves.reserveAWei) /
+              liquidityPairReserves.reserveBWei;
+            const amountAFormatted = formatUnits(
+              amountAWei,
+              liquidityTokenA.decimals
+            );
+            updated.amountA = formatNumber(
+              amountAFormatted,
+              Math.min(6, liquidityTokenA.decimals)
+            );
+          }
+        } catch (err) {
+          console.warn("[liquidity] amountB calculation failed", err);
+          updated.amountA = "";
         }
       }
 
@@ -1847,7 +2410,11 @@ export default function Page() {
     if (liquidityButtonDisabled) return;
 
     // For add liquidity, show confirmation dialog first
-    if (liquidityMode === "add" && liquidityTokensReady && liquidityAmountsReady) {
+    if (
+      liquidityMode === "add" &&
+      liquidityTokensReady &&
+      liquidityAmountsReady
+    ) {
       setShowLiquidityConfirm(true);
     } else {
       liquidityButtonAction();
@@ -2300,7 +2867,14 @@ export default function Page() {
                     <div className={styles.assetHeader}>
                       <span>Select Pair</span>
                     </div>
-                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        alignItems: "center",
+                        marginBottom: "0.75rem"
+                      }}
+                    >
                       <button
                         type="button"
                         className={styles.assetSelector}
@@ -2327,27 +2901,69 @@ export default function Page() {
                     </div>
 
                     {liquidityPairReserves && lpTokenInfo && (
-                      <div style={{
-                        borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-                        paddingTop: "0.75rem",
-                        marginTop: "0.5rem"
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
+                      <div
+                        style={{
+                          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                          paddingTop: "0.75rem",
+                          marginTop: "0.5rem"
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginBottom: "0.5rem",
+                            fontSize: "0.875rem"
+                          }}
+                        >
                           <span style={{ opacity: 0.7 }}>Your LP Tokens</span>
-                          <span style={{ fontWeight: 500 }}>{formatNumber(lpTokenInfo.balance)}</span>
+                          <span style={{ fontWeight: 500 }}>
+                            {formatNumber(lpTokenInfo.balance)}
+                          </span>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginBottom: "0.5rem",
+                            fontSize: "0.875rem"
+                          }}
+                        >
                           <span style={{ opacity: 0.7 }}>Your Pool Share</span>
-                          <span style={{ fontWeight: 500 }}>{formatPercent(lpTokenInfo.poolShare)}%</span>
+                          <span style={{ fontWeight: 500 }}>
+                            {formatPercent(lpTokenInfo.poolShare)}%
+                          </span>
                         </div>
                         {userPooledAmounts && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", fontSize: "0.875rem", marginTop: "0.5rem" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                              <span className={styles.helper}>{liquidityTokenA?.symbol ?? "Token A"}</span>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "0.375rem",
+                              fontSize: "0.875rem",
+                              marginTop: "0.5rem"
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between"
+                              }}
+                            >
+                              <span className={styles.helper}>
+                                {liquidityTokenA?.symbol ?? "Token A"}
+                              </span>
                               <span>{userPooledAmounts.amountA}</span>
                             </div>
-                            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                              <span className={styles.helper}>{liquidityTokenB?.symbol ?? "Token B"}</span>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between"
+                              }}
+                            >
+                              <span className={styles.helper}>
+                                {liquidityTokenB?.symbol ?? "Token B"}
+                              </span>
                               <span>{userPooledAmounts.amountB}</span>
                             </div>
                           </div>
@@ -2359,21 +2975,31 @@ export default function Page() {
                   <div className={styles.assetCard}>
                     <div className={styles.assetHeader}>
                       <span>Amount</span>
-                      <span style={{ fontSize: "1.125rem", fontWeight: 600 }}>{removeLiquidityPercent}%</span>
+                      <span style={{ fontSize: "1.125rem", fontWeight: 600 }}>
+                        {removeLiquidityPercent}%
+                      </span>
                     </div>
                     <input
                       type="range"
                       min="1"
                       max="100"
                       value={removeLiquidityPercent}
-                      onChange={(e) => setRemoveLiquidityPercent(e.target.value)}
+                      onChange={(e) =>
+                        setRemoveLiquidityPercent(e.target.value)
+                      }
                       style={{
                         width: "100%",
                         marginBottom: "0.75rem",
                         accentColor: "#6b7280"
                       }}
                     />
-                    <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        marginBottom: "0.75rem"
+                      }}
+                    >
                       {["25", "50", "75", "100"].map((pct) => (
                         <button
                           key={pct}
@@ -2383,9 +3009,18 @@ export default function Page() {
                             flex: 1,
                             padding: "0.5rem",
                             borderRadius: "0.5rem",
-                            border: removeLiquidityPercent === pct ? "1px solid #6b7280" : "1px solid rgba(255,255,255,0.1)",
-                            background: removeLiquidityPercent === pct ? "rgba(107, 114, 128, 0.15)" : "transparent",
-                            color: removeLiquidityPercent === pct ? "#d1d5db" : "inherit",
+                            border:
+                              removeLiquidityPercent === pct
+                                ? "1px solid #6b7280"
+                                : "1px solid rgba(255,255,255,0.1)",
+                            background:
+                              removeLiquidityPercent === pct
+                                ? "rgba(107, 114, 128, 0.15)"
+                                : "transparent",
+                            color:
+                              removeLiquidityPercent === pct
+                                ? "#d1d5db"
+                                : "inherit",
                             cursor: "pointer",
                             fontSize: "0.875rem",
                             transition: "all 0.15s ease"
@@ -2397,21 +3032,50 @@ export default function Page() {
                     </div>
 
                     {expectedRemoveAmounts && (
-                      <div style={{
-                        borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-                        paddingTop: "0.75rem"
-                      }}>
-                        <div style={{ fontSize: "0.875rem", opacity: 0.7, marginBottom: "0.5rem" }}>
+                      <div
+                        style={{
+                          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                          paddingTop: "0.75rem"
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "0.875rem",
+                            opacity: 0.7,
+                            marginBottom: "0.5rem"
+                          }}
+                        >
                           You will receive:
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", fontSize: "0.875rem" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.375rem",
+                            fontSize: "0.875rem"
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between"
+                            }}
+                          >
                             <span>{liquidityTokenA?.symbol ?? "Token A"}</span>
-                            <span style={{ fontWeight: 600 }}>{expectedRemoveAmounts.amountA}</span>
+                            <span style={{ fontWeight: 600 }}>
+                              {expectedRemoveAmounts.amountA}
+                            </span>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between"
+                            }}
+                          >
                             <span>{liquidityTokenB?.symbol ?? "Token B"}</span>
-                            <span style={{ fontWeight: 600 }}>{expectedRemoveAmounts.amountB}</span>
+                            <span style={{ fontWeight: 600 }}>
+                              {expectedRemoveAmounts.amountB}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -2443,14 +3107,17 @@ export default function Page() {
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {showLiquidityConfirm && (
-        <div className={styles.dialogBackdrop} onClick={() => setShowLiquidityConfirm(false)}>
+        <div
+          className={styles.dialogBackdrop}
+          onClick={() => setShowLiquidityConfirm(false)}
+        >
           <div
             className={styles.dialog}
             onClick={(event) => event.stopPropagation()}
             style={{ maxWidth: "420px" }}
           >
             <div className={styles.dialogHeader}>
-              <span className={styles.dialogTitle}>You are creating a trading pair</span>
+              <span className={styles.dialogTitle}>YOU WILL RECEIVE</span>
               <button
                 type="button"
                 className={styles.dialogClose}
@@ -2460,77 +3127,284 @@ export default function Page() {
               </button>
             </div>
 
-            <div style={{ padding: "1.5rem" }}>
-              <div style={{
-                background: "rgba(0, 212, 255, 0.1)",
-                border: "1px solid rgba(0, 212, 255, 0.2)",
-                borderRadius: "0.75rem",
-                padding: "1rem",
-                marginBottom: "1.5rem"
-              }}>
-                <div style={{ fontSize: "0.75rem", opacity: 0.7, marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  YOU WILL RECEIVE
-                </div>
-                <div style={{ fontSize: "1.125rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  {liquidityTokenA?.symbol ?? ""}-{liquidityTokenB?.symbol ?? ""} LP
-                </div>
-              </div>
-
-              <div style={{
-                background: "rgba(255, 255, 255, 0.02)",
-                borderRadius: "0.75rem",
-                padding: "1rem",
-                marginBottom: "0.75rem"
-              }}>
-                <div style={{ fontSize: "0.75rem", opacity: 0.7, marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  INPUT
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>{liquidityTokenA?.symbol ?? "Token A"}</span>
-                    <span style={{ fontWeight: 600 }}>{liquidityForm.amountA}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>{liquidityTokenB?.symbol ?? "Token B"}</span>
-                    <span style={{ fontWeight: 600 }}>{liquidityForm.amountB}</span>
-                  </div>
-                </div>
-              </div>
-
-              {liquidityPairReserves && (
-                <div style={{
-                  background: "rgba(255, 255, 255, 0.02)",
-                  borderRadius: "0.75rem",
-                  padding: "1rem",
-                  marginBottom: "1.5rem"
-                }}>
-                  <div style={{ fontSize: "0.75rem", opacity: 0.7, marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    RATES
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", fontSize: "0.875rem" }}>
-                    <div>
-                      1 {liquidityTokenA?.symbol} = {(parseFloat(liquidityPairReserves.reserveB) / parseFloat(liquidityPairReserves.reserveA)).toFixed(4)} {liquidityTokenB?.symbol}
-                    </div>
-                    <div>
-                      1 {liquidityTokenB?.symbol} = {(parseFloat(liquidityPairReserves.reserveA) / parseFloat(liquidityPairReserves.reserveB)).toFixed(6)} {liquidityTokenA?.symbol}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                className={`${styles.primaryButton} ${styles.primaryFull}`}
-                onClick={handleConfirmAddLiquidity}
-                disabled={isSubmitting}
-                type="button"
+            <div style={{ padding: "0" }}>
+              {/* Hero Section - LP Token Output */}
+              <div
                 style={{
-                  background: "linear-gradient(90deg, #00d4ff 0%, #00b8e6 100%)",
-                  fontSize: "1rem",
-                  fontWeight: 600
+                  background:
+                    "linear-gradient(135deg, rgba(10, 255, 157, 0.08) 0%, rgba(10, 255, 157, 0.04) 100%)",
+                  borderBottom: "1px solid rgba(10, 255, 157, 0.15)",
+                  padding: "2rem 1.5rem",
+                  textAlign: "center"
                 }}
               >
-                Create Pair & Supply
-              </button>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    opacity: 0.6,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    marginBottom: "0.75rem"
+                  }}
+                >
+                  LP Tokens
+                </div>
+                <div
+                  style={{
+                    fontSize: "2.5rem",
+                    fontWeight: 700,
+                    marginBottom: "0.5rem",
+                    color: "var(--accent)"
+                  }}
+                >
+                  {liquidityPairReserves &&
+                  liquidityTokenA?.decimals &&
+                  liquidityTokenB?.decimals
+                    ? (() => {
+                        try {
+                          // Parse amounts using exact token decimals
+                          const amountAWei = parseUnits(
+                            liquidityForm.amountA || "0",
+                            liquidityTokenA.decimals
+                          );
+                          const amountBWei = parseUnits(
+                            liquidityForm.amountB || "0",
+                            liquidityTokenB.decimals
+                          );
+
+                          // Debug: log the reserves and calculation details
+                          console.log("[liquidity] LP calculation inputs:", {
+                            amountA: liquidityForm.amountA,
+                            amountB: liquidityForm.amountB,
+                            reserveA: formatUnits(
+                              liquidityPairReserves.reserveAWei,
+                              liquidityTokenA.decimals
+                            ),
+                            reserveB: formatUnits(
+                              liquidityPairReserves.reserveBWei,
+                              liquidityTokenB.decimals
+                            ),
+                            totalSupply: formatUnits(
+                              liquidityPairReserves.totalSupplyWei,
+                              18
+                            ),
+                            isNewPair:
+                              liquidityPairReserves.totalSupplyWei === 0n
+                          });
+
+                          // Calculate LP tokens using exact Uniswap V2 formula with BigInt
+                          const lpTokensWei = getLiquidityMinted(
+                            amountAWei,
+                            amountBWei,
+                            liquidityPairReserves.reserveAWei,
+                            liquidityPairReserves.reserveBWei,
+                            liquidityPairReserves.totalSupplyWei
+                          );
+
+                          console.log("[liquidity] LP tokens calculated:", {
+                            lpTokensWei: lpTokensWei.toString(),
+                            lpTokensFormatted: formatUnits(lpTokensWei, 18)
+                          });
+
+                          // LP tokens have 18 decimals per Uniswap V2 spec
+                          const lpTokensFormatted = formatUnits(
+                            lpTokensWei,
+                            18
+                          );
+                          return lpTokensWei > 0n
+                            ? formatNumber(lpTokensFormatted, 6)
+                            : "0";
+                        } catch (err) {
+                          console.warn(
+                            "[liquidity] LP calculation failed",
+                            err
+                          );
+                          return "0";
+                        }
+                      })()
+                    : "0"}
+                </div>
+                <div style={{ fontSize: "0.875rem", opacity: 0.7 }}>
+                  {liquidityTokenA?.symbol ?? "A"}-
+                  {liquidityTokenB?.symbol ?? "B"}
+                </div>
+              </div>
+
+              {/* Content Section */}
+              <div style={{ padding: "1.5rem" }}>
+                {/* Input Details */}
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      opacity: 0.5,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      marginBottom: "0.75rem"
+                    }}
+                  >
+                    YOU'RE PROVIDING
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.5rem"
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0.75rem 1rem",
+                        background: "rgba(255, 255, 255, 0.04)",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(255, 255, 255, 0.06)"
+                      }}
+                    >
+                      <span style={{ fontSize: "0.9rem" }}>
+                        {liquidityTokenA?.symbol ?? "Token A"}
+                      </span>
+                      <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                        {formatNumber(liquidityForm.amountA, 6)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0.75rem 1rem",
+                        background: "rgba(255, 255, 255, 0.04)",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(255, 255, 255, 0.06)"
+                      }}
+                    >
+                      <span style={{ fontSize: "0.9rem" }}>
+                        {liquidityTokenB?.symbol ?? "Token B"}
+                      </span>
+                      <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                        {formatNumber(liquidityForm.amountB, 6)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rates Section */}
+                {liquidityPairReserves && (
+                  <div
+                    style={{
+                      marginBottom: "1.5rem",
+                      paddingTop: "1rem",
+                      borderTop: "1px solid rgba(255, 255, 255, 0.06)"
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "0.7rem",
+                        opacity: 0.5,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginBottom: "0.75rem"
+                      }}
+                    >
+                      Exchange Rate
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.5rem",
+                        fontSize: "0.85rem",
+                        opacity: 0.8
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between"
+                        }}
+                      >
+                        <span>1 {liquidityTokenA?.symbol} =</span>
+                        <span>
+                          {liquidityTokenA?.decimals &&
+                          liquidityTokenB?.decimals
+                            ? (() => {
+                                // Calculate 1 token A in terms of token B using BigInt precision
+                                const oneTokenAWei = parseUnits(
+                                  "1",
+                                  liquidityTokenA.decimals
+                                );
+                                const rateWei =
+                                  (oneTokenAWei *
+                                    liquidityPairReserves.reserveBWei) /
+                                  liquidityPairReserves.reserveAWei;
+                                const rateFormatted = formatUnits(
+                                  rateWei,
+                                  liquidityTokenB.decimals
+                                );
+                                return formatNumber(
+                                  rateFormatted,
+                                  Math.min(6, liquidityTokenB.decimals)
+                                );
+                              })()
+                            : "—"}{" "}
+                          {liquidityTokenB?.symbol}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between"
+                        }}
+                      >
+                        <span>1 {liquidityTokenB?.symbol} =</span>
+                        <span>
+                          {liquidityTokenA?.decimals &&
+                          liquidityTokenB?.decimals
+                            ? (() => {
+                                // Calculate 1 token B in terms of token A using BigInt precision
+                                const oneTokenBWei = parseUnits(
+                                  "1",
+                                  liquidityTokenB.decimals
+                                );
+                                const rateWei =
+                                  (oneTokenBWei *
+                                    liquidityPairReserves.reserveAWei) /
+                                  liquidityPairReserves.reserveBWei;
+                                const rateFormatted = formatUnits(
+                                  rateWei,
+                                  liquidityTokenA.decimals
+                                );
+                                return formatNumber(
+                                  rateFormatted,
+                                  Math.min(6, liquidityTokenA.decimals)
+                                );
+                              })()
+                            : "—"}{" "}
+                          {liquidityTokenA?.symbol}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <button
+                  className={`${styles.primaryButton} ${styles.primaryFull}`}
+                  onClick={handleConfirmAddLiquidity}
+                  disabled={isSubmitting}
+                  type="button"
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  {liquidityPairReserves &&
+                  parseFloat(liquidityPairReserves.reserveA) > 0 &&
+                  parseFloat(liquidityPairReserves.reserveB) > 0
+                    ? "Confirm Supply"
+                    : "Create Pair & Supply"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
