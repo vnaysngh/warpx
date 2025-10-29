@@ -1,8 +1,8 @@
 pragma solidity >=0.6.2;
 
-import './IPancakeRouter01.sol';
+import './IWarpRouter01.sol';
 
-interface IPancakeRouter02 is IPancakeRouter01 {
+interface IWarpRouter02 is IWarpRouter01 {
     function getAmountsOut(uint amountIn, address[] calldata path) external view override returns (uint[] memory amounts);
     function getAmountsIn(uint amountOut, address[] calldata path) external view override returns (uint[] memory amounts);
     function removeLiquidityETHSupportingFeeOnTransferTokens(

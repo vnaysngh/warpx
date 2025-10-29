@@ -1,13 +1,13 @@
 pragma solidity =0.5.16;
 
-import './interfaces/IPancakeERC20.sol';
+import './interfaces/IWarpERC20.sol';
 import './libraries/SafeMath.sol';
 
-contract PancakeERC20 is IPancakeERC20 {
+contract WarpERC20 is IWarpERC20 {
     using SafeMath for uint;
 
-    string public constant name = 'MegaSwap LPs';
-    string public constant symbol = 'MEGA-LP';
+    string public constant name = 'Warp LPs';
+    string public constant symbol = 'WARP-LP';
     uint8 public constant decimals = 18;
     uint  public totalSupply;
     mapping(address => uint) public balanceOf;
@@ -79,7 +79,7 @@ contract PancakeERC20 is IPancakeERC20 {
     }
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
-        require(deadline >= block.timestamp, 'MegaSwap: EXPIRED');
+        require(deadline >= block.timestamp, 'Warp: EXPIRED');
         bytes32 digest = keccak256(
             abi.encodePacked(
                 '\x19\x01',
@@ -88,7 +88,7 @@ contract PancakeERC20 is IPancakeERC20 {
             )
         );
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == owner, 'MegaSwap: INVALID_SIGNATURE');
+        require(recoveredAddress != address(0) && recoveredAddress == owner, 'Warp: INVALID_SIGNATURE');
         _approve(owner, spender, value);
     }
 }

@@ -1,15 +1,15 @@
 pragma solidity =0.6.6;
 
-import '../../../core/contracts/interfaces/IPancakeCallee.sol';
+import '../../../core/contracts/interfaces/IWarpCallee.sol';
 
-import '../libraries/PancakeLibrary.sol';
+import '../libraries/WarpLibrary.sol';
 import '../interfaces/V1/IUniswapV1Factory.sol';
 import '../interfaces/V1/IUniswapV1Exchange.sol';
 import '../interfaces/IPancakeRouter01.sol';
 import '../interfaces/IERC20.sol';
 import '../interfaces/IWETH.sol';
 
-contract ExampleFlashSwap is IPancakeCallee {
+contract ExampleFlashSwap is IWarpCallee {
     IUniswapV1Factory immutable factoryV1;
     address immutable factory;
     IWETH immutable WETH;
@@ -25,14 +25,14 @@ contract ExampleFlashSwap is IPancakeCallee {
     receive() external payable {}
 
     // gets tokens/WETH via a V2 flash swap, swaps for the ETH/tokens on V1, repays V2, and keeps the rest!
-    function pancakeCall(address sender, uint amount0, uint amount1, bytes calldata data) external override {
+    function warpCall(address sender, uint amount0, uint amount1, bytes calldata data) external override {
         address[] memory path = new address[](2);
         uint amountToken;
         uint amountETH;
         { // scope for token{0,1}, avoids stack too deep errors
-        address token0 = IPancakePair(msg.sender).token0();
-        address token1 = IPancakePair(msg.sender).token1();
-        assert(msg.sender == PancakeLibrary.pairFor(factory, token0, token1)); // ensure that msg.sender is actually a V2 pair
+        address token0 = IWarpPair(msg.sender).token0();
+        address token1 = IWarpPair(msg.sender).token1();
+        assert(msg.sender == WarpLibrary.pairFor(factory, token0, token1)); // ensure that msg.sender is actually a V2 pair
         assert(amount0 == 0 || amount1 == 0); // this strategy is unidirectional
         path[0] = amount0 == 0 ? token0 : token1;
         path[1] = amount0 == 0 ? token1 : token0;
@@ -48,7 +48,7 @@ contract ExampleFlashSwap is IPancakeCallee {
             (uint minETH) = abi.decode(data, (uint)); // slippage parameter for V1, passed in by caller
             token.approve(address(exchangeV1), amountToken);
             uint amountReceived = exchangeV1.tokenToEthSwapInput(amountToken, minETH, uint(-1));
-            uint amountRequired = PancakeLibrary.getAmountsIn(factory, amountToken, path)[0];
+            uint amountRequired = WarpLibrary.getAmountsIn(factory, amountToken, path)[0];
             assert(amountReceived > amountRequired); // fail if we didn't get enough ETH back to repay our flash loan
             WETH.deposit{value: amountRequired}();
             assert(WETH.transfer(msg.sender, amountRequired)); // return WETH to V2 pair
@@ -58,7 +58,7 @@ contract ExampleFlashSwap is IPancakeCallee {
             (uint minTokens) = abi.decode(data, (uint)); // slippage parameter for V1, passed in by caller
             WETH.withdraw(amountETH);
             uint amountReceived = exchangeV1.ethToTokenSwapInput{value: amountETH}(minTokens, uint(-1));
-            uint amountRequired = PancakeLibrary.getAmountsIn(factory, amountETH, path)[0];
+            uint amountRequired = WarpLibrary.getAmountsIn(factory, amountETH, path)[0];
             assert(amountReceived > amountRequired); // fail if we didn't get enough tokens back to repay our flash loan
             assert(token.transfer(msg.sender, amountRequired)); // return tokens to V2 pair
             assert(token.transfer(sender, amountReceived - amountRequired)); // keep the rest! (tokens)
