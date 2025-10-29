@@ -1,0 +1,19 @@
+{
+  "name": "@megaeth/amm-periphery",
+  "version": "0.1.0",
+  "description": "MegaETH-aligned fork of PancakeSwap v2 periphery contracts (routers, migrator, examples).",
+  "homepage": "https://docs.megaeth.com/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/megaeth-labs/amm-periphery"
+  },
+  "files": [
+    "build",
+    "contracts"
+  ],
+  "dependencies": {
+    "@megaeth/amm-core": "link:../core",
+    "@uniswap/lib": "1.1.1"
+  },
+  "license": "GPL-3.0-or-later"
+}

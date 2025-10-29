@@ -1,0 +1,15 @@
+{
+  "name": "@megaeth/amm-core",
+  "description": "MegaETH-focused fork of PancakeSwap v2 core contracts (factory, pair, libraries).",
+  "version": "0.1.0",
+  "homepage": "https://docs.megaeth.com/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/megaeth-labs/amm-core"
+  },
+  "files": [
+    "contracts",
+    "build"
+  ],
+  "license": "GPL-3.0-or-later"
+}

@@ -1911,6 +1911,7 @@ export default function Page() {
       <div className={styles.shell}>
         <header className={styles.navbar}>
           <div className={styles.brand}>
+            <img src="/logo.png" alt="WarpX" className={styles.logo} />
             <span className={styles.brandMain}>WarpX</span>
             {/* <span className={styles.brandSub}>Built on MegaETH</span> */}
           </div>

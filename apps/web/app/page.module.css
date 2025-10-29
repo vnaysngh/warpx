@@ -22,10 +22,16 @@
 
 .brand {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .brandMain {

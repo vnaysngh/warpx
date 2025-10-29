@@ -11,7 +11,7 @@ const terminal = jetBrainsMono({
 });
 
 export const metadata: Metadata = {
-  title: "WarpX Terminal",
+  title: "WarpX",
   description: "MegaETH v2 AMM desk for swaps and liquidity."
 };
 
