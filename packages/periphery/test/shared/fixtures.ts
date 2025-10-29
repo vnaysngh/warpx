@@ -12,7 +12,7 @@ import WETH9 from '../../build/WETH9.json'
 import UniswapV1Exchange from '../../build/UniswapV1Exchange.json'
 import UniswapV1Factory from '../../build/UniswapV1Factory.json'
 import WarpRouter01 from '../../build/WarpRouter01.json'
-import PancakeMigrator from '../../build/PancakeMigrator.json'
+import WarpMigrator from '../../build/WarpMigrator.json'
 import WarpRouter02 from '../../build/WarpRouter02.json'
 import RouterEventEmitter from '../../build/RouterEventEmitter.json'
 
@@ -59,7 +59,7 @@ export async function v2Fixture(provider: Web3Provider, [wallet]: Wallet[]): Pro
   const routerEventEmitter = await deployContract(wallet, RouterEventEmitter, [])
 
   // deploy migrator
-  const migrator = await deployContract(wallet, PancakeMigrator, [factoryV1.address, router01.address], overrides)
+  const migrator = await deployContract(wallet, WarpMigrator, [factoryV1.address, router01.address], overrides)
 
   // initialize V1
   await factoryV1.createExchange(WETHPartner.address, overrides)
