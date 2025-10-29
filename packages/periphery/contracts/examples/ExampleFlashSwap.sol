@@ -5,7 +5,7 @@ import '../../../core/contracts/interfaces/IWarpCallee.sol';
 import '../libraries/WarpLibrary.sol';
 import '../interfaces/V1/IUniswapV1Factory.sol';
 import '../interfaces/V1/IUniswapV1Exchange.sol';
-import '../interfaces/IPancakeRouter01.sol';
+import '../interfaces/IWarpRouter01.sol';
 import '../interfaces/IERC20.sol';
 import '../interfaces/IWETH.sol';
 
@@ -17,7 +17,7 @@ contract ExampleFlashSwap is IWarpCallee {
     constructor(address _factory, address _factoryV1, address router) public {
         factoryV1 = IUniswapV1Factory(_factoryV1);
         factory = _factory;
-        WETH = IWETH(IPancakeRouter01(router).WETH());
+        WETH = IWETH(IWarpRouter01(router).WETH());
     }
 
     // needs to accept ETH from any V1 exchange and WETH. ideally this could be enforced, as in the router,

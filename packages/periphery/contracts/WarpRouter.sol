@@ -39,8 +39,8 @@ contract WarpRouter is IWarpRouter02 {
         uint amountBMin
     ) internal virtual returns (uint amountA, uint amountB) {
         // create the pair if it doesn't exist yet
-        if (IPancakeFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IPancakeFactory(factory).createPair(tokenA, tokenB);
+        if (IWarpFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IWarpFactory(factory).createPair(tokenA, tokenB);
         }
         (uint reserveA, uint reserveB) = WarpLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
