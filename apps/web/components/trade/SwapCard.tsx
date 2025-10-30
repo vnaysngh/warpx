@@ -14,6 +14,7 @@ type SwapCardProps = {
   selectedIn: TokenDescriptor | null;
   selectedOut: TokenDescriptor | null;
   onOpenTokenDialog: (slot: TokenDialogSlot) => void;
+  onSwapTokens: () => void;
   onAmountInChange: (value: string) => void;
   onMinOutChange: (value: string) => void;
   formatBalance: (value: string | null) => string;
@@ -33,6 +34,7 @@ export function SwapCard({
   selectedIn,
   selectedOut,
   onOpenTokenDialog,
+  onSwapTokens,
   onAmountInChange,
   onMinOutChange,
   formatBalance,
@@ -86,7 +88,49 @@ export function SwapCard({
           )}
         </div>
 
-        <div className={styles.swapDivider}>v</div>
+        <button
+          type="button"
+          className={styles.swapDivider}
+          onClick={onSwapTokens}
+          aria-label="Swap tokens"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M4.5 5.5L2 3L4.5 0.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M2 3H11C12.6569 3 14 4.34315 14 6V7"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M11.5 10.5L14 13L11.5 15.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M14 13H5C3.34315 13 2 11.6569 2 10V9"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
 
         <div className={styles.assetCard}>
           <div className={styles.assetHeader}>

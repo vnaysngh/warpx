@@ -57,6 +57,13 @@ const nowPlusMinutes = (minutes: number) =>
 
 const isAddress = (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value);
 
+const clampPercentToBigInt = (value: string): bigint => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0n;
+  const clamped = Math.min(100, Math.max(0, Math.trunc(numeric)));
+  return BigInt(clamped);
+};
+
 export function LiquidityContainer({
   liquidityTokenA,
   liquidityTokenB,
@@ -290,7 +297,12 @@ export function LiquidityContainer({
           totalSupplyWei
         });
       } catch (err) {
-        console.error("[liquidity] fetch pair reserves failed", err);
+        const code = typeof err === "object" && err && "code" in err ? (err as { code?: string }).code : undefined;
+        if (code === "CALL_EXCEPTION") {
+          console.warn("[liquidity] pair reserves unavailable after removal");
+        } else {
+          console.error("[liquidity] fetch pair reserves failed", err);
+        }
         if (active) setLiquidityPairReserves(null);
       }
     };
@@ -408,9 +420,12 @@ export function LiquidityContainer({
           lpTokenContract.totalSupply()
         ]);
 
-        const percent = Number(removeLiquidityPercent) / 100;
+        const userBalanceBigInt = toBigInt(userBalance);
+        const percentBigInt = clampPercentToBigInt(removeLiquidityPercent);
         const liquidityToRemove =
-          (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
+          percentBigInt === 100n
+            ? userBalanceBigInt
+            : (userBalanceBigInt * percentBigInt) / 100n;
 
         const lpBalanceFormatted = formatUnits(userBalance, 18);
 
@@ -433,17 +448,15 @@ export function LiquidityContainer({
 
         const { amountAWei: pooledAWei, amountBWei: pooledBWei } =
           getLiquidityRemoveAmounts(
-            toBigInt(userBalance),
+            userBalanceBigInt,
             liquidityPairReserves.reserveAWei,
             liquidityPairReserves.reserveBWei,
             totalSupply
           );
 
-        const liquidityToRemoveForCalc =
-          (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
         const { amountAWei: expectedAWei, amountBWei: expectedBWei } =
           getLiquidityRemoveAmounts(
-            liquidityToRemoveForCalc,
+            liquidityToRemove,
             liquidityPairReserves.reserveAWei,
             liquidityPairReserves.reserveBWei,
             totalSupply
@@ -635,11 +648,6 @@ export function LiquidityContainer({
     [liquidityPairReserves, liquidityTokenA, liquidityTokenB]
   );
 
-  const handleConfirmAddLiquidity = useCallback(() => {
-    setShowLiquidityConfirm(false);
-    handleAddLiquidity();
-  }, []);
-
   const handleAddLiquidity = useCallback(async () => {
     const ctx = ensureWallet();
     if (!ctx) return;
@@ -785,6 +793,11 @@ export function LiquidityContainer({
     onSwapRefresh
   ]);
 
+  const handleConfirmAddLiquidity = useCallback(() => {
+    setShowLiquidityConfirm(false);
+    handleAddLiquidity();
+  }, [handleAddLiquidity]);
+
   const handleRemoveLiquidity = useCallback(async () => {
     const ctx = ensureWallet();
     if (!ctx) return;
@@ -794,8 +807,8 @@ export function LiquidityContainer({
       return;
     }
 
-    const percent = Number(removeLiquidityPercent) / 100;
-    if (percent <= 0 || percent > 1) {
+    const percentBigInt = clampPercentToBigInt(removeLiquidityPercent);
+    if (percentBigInt <= 0n || percentBigInt > 100n) {
       showError("Please enter a valid percentage (1-100).");
       return;
     }
@@ -821,8 +834,11 @@ export function LiquidityContainer({
         return;
       }
 
+      const userBalanceBigInt = toBigInt(userBalance);
       const liquidityToRemove =
-        (toBigInt(userBalance) * BigInt(Math.floor(percent * 100))) / 100n;
+        percentBigInt === 100n
+          ? userBalanceBigInt
+          : (userBalanceBigInt * percentBigInt) / 100n;
 
       if (liquidityToRemove === 0n) {
         showError("Amount to remove is too small.");
@@ -973,6 +989,23 @@ export function LiquidityContainer({
     if (liquidityMode === "add" && (needsApprovalA || needsApprovalB)) {
       return isSubmitting;
     }
+    if (liquidityMode === "remove") {
+      const userLpBalance =
+        liquidityPairReserves && liquidityPairReserves.pairAddress && walletAccount
+          ? lpTokenInfo?.balance
+          : null;
+      const parsedBalance =
+        typeof userLpBalance === "string" ? parseFloat(userLpBalance) : NaN;
+      if (
+        !walletAccount ||
+        !liquidityPairReserves?.pairAddress ||
+        !lpTokenInfo ||
+        Number.isNaN(parsedBalance) ||
+        parsedBalance <= 0
+      ) {
+        return true;
+      }
+    }
     return isSubmitting;
   }, [
     hasMounted,
@@ -985,7 +1018,10 @@ export function LiquidityContainer({
     checkingLiquidityAllowances,
     needsApprovalA,
     needsApprovalB,
-    isSubmitting
+    isSubmitting,
+    lpTokenInfo,
+    liquidityPairReserves,
+    walletAccount
   ]);
 
   const handleApproveToken = useCallback(

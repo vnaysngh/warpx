@@ -160,9 +160,17 @@ export function useTokenManager(deploymentNetwork?: string) {
     switch (tokenDialogSide) {
       case "swapIn":
         setSelectedIn(token);
+        // If the selected token is the same as the output token, reset output
+        if (token.address.toLowerCase() === selectedOut?.address.toLowerCase()) {
+          setSelectedOut(null);
+        }
         break;
       case "swapOut":
         setSelectedOut(token);
+        // If the selected token is the same as the input token, reset output
+        if (token.address.toLowerCase() === selectedIn?.address.toLowerCase()) {
+          setSelectedOut(null);
+        }
         break;
       case "liquidityA":
         setLiquidityTokenA(token);
@@ -230,6 +238,12 @@ export function useTokenManager(deploymentNetwork?: string) {
     }
   }, [tokenDialogSide, selectedIn, selectedOut, liquidityTokenA, liquidityTokenB]);
 
+  const swapTokens = () => {
+    const temp = selectedIn;
+    setSelectedIn(selectedOut);
+    setSelectedOut(temp);
+  };
+
   return {
     tokenList,
     setTokenList,
@@ -251,6 +265,7 @@ export function useTokenManager(deploymentNetwork?: string) {
     handleSelectCustomToken,
     filteredTokens,
     showCustomOption,
-    activeAddress
+    activeAddress,
+    swapTokens
   };
 }

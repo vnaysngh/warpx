@@ -434,6 +434,7 @@ export default function PoolLiquidityPage() {
           onConnect={handleConnectClick}
           isAccountConnecting={isAccountConnecting}
           hasMounted={hasMounted}
+          activeNav="pools"
         />
 
         <NetworkBanner

@@ -10,7 +10,7 @@
   width: min(960px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 3rem;
 }
 
 .navbar {
@@ -70,10 +70,10 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   transition:
-    color 0.2s ease,
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .navLink:hover {

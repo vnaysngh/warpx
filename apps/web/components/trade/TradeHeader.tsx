@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type RefObject } from "react";
+import { type RefObject, useMemo } from "react";
 import styles from "@/app/page.module.css";
+
+type NavKey = "swap" | "pools";
 
 type TradeHeaderProps = {
   manifestTag: string;
@@ -20,7 +22,13 @@ type TradeHeaderProps = {
   onConnect: () => void;
   isAccountConnecting: boolean;
   hasMounted: boolean;
+  activeNav?: NavKey;
 };
+
+const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string }> = [
+  { key: "swap", label: "Swap", href: "/" },
+  { key: "pools", label: "Pools", href: "/pools" }
+];
 
 export function TradeHeader({
   manifestTag,
@@ -36,21 +44,16 @@ export function TradeHeader({
   isDisconnecting,
   onConnect,
   isAccountConnecting,
-  hasMounted
+  hasMounted,
+  activeNav
 }: TradeHeaderProps) {
   const pathname = usePathname();
-  const navItems = [
-    { label: "Swap", href: "/" },
-    { label: "Pools", href: "/pools" }
-  ];
 
-  const linkIsActive = (href: string) => {
-    if (!pathname) return false;
-    if (href === "/") {
-      return pathname === "/";
-    }
-    return pathname.startsWith(href);
-  };
+  const resolvedActiveNav = useMemo<NavKey>(() => {
+    if (activeNav) return activeNav;
+    if (!pathname) return "swap";
+    return pathname.startsWith("/pools") ? "pools" : "swap";
+  }, [activeNav, pathname]);
 
   return (
     <header className={styles.navbar}>
@@ -61,12 +64,12 @@ export function TradeHeader({
       </div>
 
       <nav className={styles.navCenter} aria-label="Main navigation">
-        {navItems.map((item) => (
+        {NAV_ITEMS.map((item) => (
           <Link
-            key={item.href}
+            key={item.key}
             href={item.href}
             className={`${styles.navLink} ${
-              linkIsActive(item.href) ? styles.navLinkActive : ""
+              resolvedActiveNav === item.key ? styles.navLinkActive : ""
             }`}
           >
             {item.label}

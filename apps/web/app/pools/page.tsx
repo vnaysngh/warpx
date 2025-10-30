@@ -22,6 +22,7 @@ import { megaethTestnet } from "@/lib/chains";
 import { appKit } from "@/lib/wagmi";
 import {
   DEFAULT_TOKEN_DECIMALS,
+  MINIMUM_LIQUIDITY,
   MEGAETH_CHAIN_ID,
   TOKEN_CATALOG
 } from "@/lib/trade/constants";
@@ -263,6 +264,15 @@ export default function PoolsPage() {
 
             if (cancelled) return null;
 
+            const totalSupplyWei = sdkPair.liquidityTokenTotalSupply ?? null;
+            if (
+              totalSupplyWei !== null &&
+              typeof totalSupplyWei === "bigint" &&
+              totalSupplyWei <= MINIMUM_LIQUIDITY
+            ) {
+              return null;
+            }
+
             const token0Descriptor =
               descriptorMap.get(sdkPair.token0.address.toLowerCase()) ??
               fallbackDescriptor(sdkPair.token0);
@@ -443,6 +453,7 @@ export default function PoolsPage() {
           onConnect={handleConnectClick}
           isAccountConnecting={isAccountConnecting}
           hasMounted={hasMounted}
+          activeNav="pools"
         />
 
         <NetworkBanner

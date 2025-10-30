@@ -69,7 +69,8 @@ export default function Page() {
     handleSelectCustomToken,
     filteredTokens,
     showCustomOption,
-    activeAddress
+    activeAddress,
+    swapTokens
   } = useTokenManager(deployment?.network);
 
   const [hasMounted, setHasMounted] = useState(false);
@@ -235,6 +236,7 @@ export default function Page() {
           onConnect={handleConnectClick}
           isAccountConnecting={isAccountConnecting}
           hasMounted={hasMounted}
+          activeNav="swap"
         />
 
         <NetworkBanner
@@ -248,6 +250,7 @@ export default function Page() {
           selectedIn={selectedIn}
           selectedOut={selectedOut}
           onOpenTokenDialog={openTokenDialog}
+          onSwapTokens={swapTokens}
           routerAddress={deployment?.router ?? ""}
           factoryAddress={deployment?.factory ?? ""}
           readProvider={readProvider}

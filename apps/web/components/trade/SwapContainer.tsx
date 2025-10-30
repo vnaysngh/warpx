@@ -54,6 +54,7 @@ type SwapContainerProps = {
   selectedIn: TokenDescriptor | null;
   selectedOut: TokenDescriptor | null;
   onOpenTokenDialog: (slot: TokenDialogSlot) => void;
+  onSwapTokens: () => void;
   routerAddress: string;
   factoryAddress: string;
   readProvider: JsonRpcProvider;
@@ -109,6 +110,7 @@ export function SwapContainer({
   selectedIn,
   selectedOut,
   onOpenTokenDialog,
+  onSwapTokens,
   routerAddress,
   factoryAddress,
   readProvider,
@@ -935,6 +937,7 @@ export function SwapContainer({
       selectedIn={selectedIn}
       selectedOut={selectedOut}
       onOpenTokenDialog={onOpenTokenDialog}
+      onSwapTokens={onSwapTokens}
       onAmountInChange={handleSwapAmountInChange}
       onMinOutChange={handleSwapMinOutChange}
       formatBalance={formatBalanceDisplay}
