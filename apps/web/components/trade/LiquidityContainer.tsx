@@ -49,6 +49,7 @@ type LiquidityContainerProps = {
   showSuccess: (message: string) => void;
   showLoading: (message: string) => void;
   onSwapRefresh: () => void;
+  allowTokenSelection?: boolean;
 };
 
 const nowPlusMinutes = (minutes: number) =>
@@ -74,7 +75,8 @@ export function LiquidityContainer({
   showError,
   showSuccess,
   showLoading,
-  onSwapRefresh
+  onSwapRefresh,
+  allowTokenSelection = true
 }: LiquidityContainerProps) {
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [liquidityForm, setLiquidityForm] =
@@ -118,6 +120,14 @@ export function LiquidityContainer({
 
   const liquidityTokenAAddress = liquidityTokenA?.address ?? "";
   const liquidityTokenBAddress = liquidityTokenB?.address ?? "";
+
+  const handleOpenTokenDialog = useCallback(
+    (slot: TokenDialogSlot) => {
+      if (!allowTokenSelection) return;
+      onOpenTokenDialog(slot);
+    },
+    [allowTokenSelection, onOpenTokenDialog]
+  );
 
   const balanceQueryEnabled =
     hasMounted && isWalletConnected && chainId === Number(MEGAETH_CHAIN_ID);
@@ -1084,7 +1094,7 @@ export function LiquidityContainer({
           liquidityForm,
           onAmountAChange: handleLiquidityAmountAChange,
           onAmountBChange: handleLiquidityAmountBChange,
-          onOpenTokenDialog,
+          onOpenTokenDialog: handleOpenTokenDialog,
           formatBalance: formatBalanceDisplay,
           tokenABalanceFormatted,
           tokenBBalanceFormatted,
@@ -1103,11 +1113,12 @@ export function LiquidityContainer({
           expectedRemoveAmounts,
           removeLiquidityPercent,
           onRemoveLiquidityPercentChange: setRemoveLiquidityPercent,
-          onOpenTokenDialog,
+          onOpenTokenDialog: handleOpenTokenDialog,
           onRemoveLiquidity: handleRemoveLiquidity,
           isSubmitting,
           ready
         }}
+        tokenSelectionEnabled={allowTokenSelection}
       />
 
       <LiquidityConfirmDialog

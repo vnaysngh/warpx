@@ -410,6 +410,13 @@
   border-color: rgba(10, 255, 157, 0.35);
 }
 
+.assetSelector:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .assetSelectorSymbol {
   font-weight: 600;
 }

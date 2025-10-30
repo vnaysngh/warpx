@@ -17,13 +17,15 @@ type PoolsTableProps = {
   loading: boolean;
   error: string | null;
   onRetry: () => void;
+  onSelectPool?: (pool: PoolsTableRow) => void;
 };
 
 export function PoolsTable({
   pools,
   loading,
   error,
-  onRetry
+  onRetry,
+  onSelectPool
 }: PoolsTableProps) {
   const showSkeleton = loading && pools.length === 0 && !error;
   const showEmpty = !loading && pools.length === 0 && !error;
@@ -56,7 +58,24 @@ export function PoolsTable({
           {!showSkeleton &&
             !showError &&
             pools.map((pool) => (
-              <tr key={pool.pairAddress} className={styles.dataRow}>
+              <tr
+                key={pool.pairAddress}
+                className={styles.dataRow}
+                onClick={() => onSelectPool?.(pool)}
+                role={onSelectPool ? "button" : undefined}
+                tabIndex={onSelectPool ? 0 : undefined}
+                onKeyDown={(event) => {
+                  if (!onSelectPool) return;
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " " ||
+                    event.key === "Spacebar"
+                  ) {
+                    event.preventDefault();
+                    onSelectPool(pool);
+                  }
+                }}
+              >
                 <td className={styles.indexCell}>{pool.id}</td>
                 <td className={styles.poolCell}>
                   <div className={styles.poolStack}>

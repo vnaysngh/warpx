@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { ToastContainer } from "@/components/Toast";
 import { JsonRpcProvider } from "ethers";
 import styles from "./page.module.css";
@@ -18,7 +17,6 @@ import { TradeHeader } from "@/components/trade/TradeHeader";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { TokenDialog } from "@/components/trade/TokenDialog";
 import { SwapContainer } from "@/components/trade/SwapContainer";
-import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useWalletProvider } from "@/hooks/useWalletProvider";
@@ -61,8 +59,6 @@ export default function Page() {
   const {
     selectedIn,
     selectedOut,
-    liquidityTokenA,
-    liquidityTokenB,
     tokenDialogOpen,
     tokenDialogSide,
     tokenSearch,
@@ -79,9 +75,6 @@ export default function Page() {
   const [hasMounted, setHasMounted] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
-  const searchParams = useSearchParams();
-  const activeView =
-    searchParams?.get("view") === "liquidity" ? "liquidity" : "swap";
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [swapRefreshNonce, setSwapRefreshNonce] = useState(0);
 
@@ -250,54 +243,28 @@ export default function Page() {
           isSwitching={isSwitchingChain}
         />
 
-        {activeView === "swap" && (
-          <SwapContainer
-            key={`swap-${deployment?.router ?? "default"}`}
-            selectedIn={selectedIn}
-            selectedOut={selectedOut}
-            onOpenTokenDialog={openTokenDialog}
-            routerAddress={deployment?.router ?? ""}
-            factoryAddress={deployment?.factory ?? ""}
-            readProvider={readProvider}
-            walletAccount={walletAccount}
-            walletProvider={walletProvider}
-            walletSigner={walletSigner}
-            chainId={chainId}
-            hasMounted={hasMounted}
-            isWalletConnected={isWalletConnected}
-            isAccountConnecting={isAccountConnecting}
-            ready={ready}
-            showError={showError}
-            showSuccess={showSuccess}
-            showLoading={showLoading}
-            refreshNonce={swapRefreshNonce}
-            onRequestRefresh={bumpSwapRefresh}
-          />
-        )}
-
-        {activeView === "liquidity" && (
-          <LiquidityContainer
-            key={`liquidity-${deployment?.router ?? "default"}`}
-            liquidityTokenA={liquidityTokenA}
-            liquidityTokenB={liquidityTokenB}
-            onOpenTokenDialog={openTokenDialog}
-            routerAddress={deployment?.router ?? ""}
-            factoryAddress={deployment?.factory ?? ""}
-            readProvider={readProvider}
-            walletAccount={walletAccount}
-            walletProvider={walletProvider}
-            walletSigner={walletSigner}
-            chainId={chainId}
-            hasMounted={hasMounted}
-            isWalletConnected={isWalletConnected}
-            isAccountConnecting={isAccountConnecting}
-            ready={ready}
-            showError={showError}
-            showSuccess={showSuccess}
-            showLoading={showLoading}
-            onSwapRefresh={bumpSwapRefresh}
-          />
-        )}
+        <SwapContainer
+          key={`swap-${deployment?.router ?? "default"}`}
+          selectedIn={selectedIn}
+          selectedOut={selectedOut}
+          onOpenTokenDialog={openTokenDialog}
+          routerAddress={deployment?.router ?? ""}
+          factoryAddress={deployment?.factory ?? ""}
+          readProvider={readProvider}
+          walletAccount={walletAccount}
+          walletProvider={walletProvider}
+          walletSigner={walletSigner}
+          chainId={chainId}
+          hasMounted={hasMounted}
+          isWalletConnected={isWalletConnected}
+          isAccountConnecting={isAccountConnecting}
+          ready={ready}
+          showError={showError}
+          showSuccess={showSuccess}
+          showLoading={showLoading}
+          refreshNonce={swapRefreshNonce}
+          onRequestRefresh={bumpSwapRefresh}
+        />
       </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
 import {
   useAccount,
@@ -37,6 +38,7 @@ export default function PoolsPage() {
     chain,
     status
   } = useAccount();
+  const router = useRouter();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
   const { disconnectAsync, isPending: isDisconnecting } = useDisconnect();
   const { data: walletClient } = useWalletClient();
@@ -407,6 +409,13 @@ export default function PoolsPage() {
     setPoolsRefreshNonce((nonce) => nonce + 1);
   }, []);
 
+  const handlePoolSelect = useCallback(
+    (pool: PoolsTableRow) => {
+      router.push(`/pools/${pool.pairAddress.toLowerCase()}`);
+    },
+    [router]
+  );
+
   const showWalletActions = hasMounted && isWalletConnected;
 
   const lastUpdatedLabel = lastUpdated
@@ -446,21 +455,6 @@ export default function PoolsPage() {
           <div className={styles.pageHeader}>
             <div className={styles.headerTop}>
               <h1 className={styles.title}>Pools</h1>
-              <div className={styles.headerActions}>
-                {lastUpdatedLabel && (
-                  <span className={styles.timestamp}>
-                    Updated {lastUpdatedLabel}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  className={styles.refreshButton}
-                  onClick={handleRefreshPools}
-                  disabled={poolsLoading}
-                >
-                  {poolsLoading ? "Refreshing…" : "Refresh"}
-                </button>
-              </div>
             </div>
             <p className={styles.description}>
               Explore every pool derived from the current MegaETH deployment.
@@ -473,6 +467,7 @@ export default function PoolsPage() {
               loading={poolsLoading}
               error={poolsError}
               onRetry={handleRefreshPools}
+              onSelectPool={handlePoolSelect}
             />
           </div>
         </section>

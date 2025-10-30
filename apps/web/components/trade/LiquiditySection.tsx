@@ -55,13 +55,15 @@ type LiquiditySectionProps = {
   onModeChange: (mode: LiquidityMode) => void;
   addProps: LiquidityAddProps;
   removeProps: LiquidityRemoveProps;
+  tokenSelectionEnabled: boolean;
 };
 
 export function LiquiditySection({
   mode,
   onModeChange,
   addProps,
-  removeProps
+  removeProps,
+  tokenSelectionEnabled
 }: LiquiditySectionProps) {
   return (
     <section className={styles.card}>
@@ -85,9 +87,9 @@ export function LiquiditySection({
       </div>
 
       {mode === "add" ? (
-        <LiquidityAddForm {...addProps} />
+        <LiquidityAddForm {...addProps} tokenSelectionEnabled={tokenSelectionEnabled} />
       ) : (
-        <LiquidityRemoveForm {...removeProps} />
+        <LiquidityRemoveForm {...removeProps} tokenSelectionEnabled={tokenSelectionEnabled} />
       )}
     </section>
   );
@@ -107,8 +109,9 @@ function LiquidityAddForm({
   tokenBSymbol,
   onPrimary,
   buttonLabel,
-  buttonDisabled
-}: LiquidityAddProps) {
+  buttonDisabled,
+  tokenSelectionEnabled
+}: LiquidityAddProps & { tokenSelectionEnabled: boolean }) {
   return (
     <>
       <div className={styles.swapPanel}>
@@ -118,7 +121,12 @@ function LiquidityAddForm({
             <button
               type="button"
               className={styles.assetSelector}
-              onClick={() => onOpenTokenDialog("liquidityA")}
+              onClick={
+                tokenSelectionEnabled
+                  ? () => onOpenTokenDialog("liquidityA")
+                  : undefined
+              }
+              disabled={!tokenSelectionEnabled}
             >
               <span className={styles.assetSelectorSymbol}>
                 {liquidityTokenA?.symbol ?? "Select"}
@@ -147,7 +155,12 @@ function LiquidityAddForm({
             <button
               type="button"
               className={styles.assetSelector}
-              onClick={() => onOpenTokenDialog("liquidityB")}
+              onClick={
+                tokenSelectionEnabled
+                  ? () => onOpenTokenDialog("liquidityB")
+                  : undefined
+              }
+              disabled={!tokenSelectionEnabled}
             >
               <span className={styles.assetSelectorSymbol}>
                 {liquidityTokenB?.symbol ?? "Select"}
@@ -197,8 +210,9 @@ function LiquidityRemoveForm({
   onOpenTokenDialog,
   onRemoveLiquidity,
   isSubmitting,
-  ready
-}: LiquidityRemoveProps) {
+  ready,
+  tokenSelectionEnabled
+}: LiquidityRemoveProps & { tokenSelectionEnabled: boolean }) {
   return (
     <>
       <div className={styles.swapPanel}>
@@ -217,7 +231,12 @@ function LiquidityRemoveForm({
             <button
               type="button"
               className={styles.assetSelector}
-              onClick={() => onOpenTokenDialog("liquidityA")}
+              onClick={
+                tokenSelectionEnabled
+                  ? () => onOpenTokenDialog("liquidityA")
+                  : undefined
+              }
+              disabled={!tokenSelectionEnabled}
               style={{ flex: 1 }}
             >
               <span className={styles.assetSelectorSymbol}>
@@ -228,7 +247,12 @@ function LiquidityRemoveForm({
             <button
               type="button"
               className={styles.assetSelector}
-              onClick={() => onOpenTokenDialog("liquidityB")}
+              onClick={
+                tokenSelectionEnabled
+                  ? () => onOpenTokenDialog("liquidityB")
+                  : undefined
+              }
+              disabled={!tokenSelectionEnabled}
               style={{ flex: 1 }}
             >
               <span className={styles.assetSelectorSymbol}>
