@@ -336,27 +336,21 @@ export default function PoolsPage() {
             const reserve0 = reserves[0];
             const reserve1 = reserves[1];
 
-            const reserve0Units = formatUnits(reserve0, token0.decimals);
-            const reserve1Units = formatUnits(reserve1, token1.decimals);
-
-            const reserve0Formatted = formatNumber(reserve0Units);
-            const reserve1Formatted = formatNumber(reserve1Units);
-
-            const reserve0Float = parseFloat(reserve0Units);
-            const reserve1Float = parseFloat(reserve1Units);
+            const reserve0Value = Number(
+              formatUnits(reserve0, token0.decimals)
+            );
+            const reserve1Value = Number(
+              formatUnits(reserve1, token1.decimals)
+            );
 
             const totalLiquidityValue =
-              (Number.isFinite(reserve0Float) ? reserve0Float : 0) +
-              (Number.isFinite(reserve1Float) ? reserve1Float : 0);
+              (Number.isFinite(reserve0Value) ? reserve0Value : 0) +
+              (Number.isFinite(reserve1Value) ? reserve1Value : 0);
 
             return {
               pairAddress,
               token0,
               token1,
-              reserves: {
-                token0: { raw: reserve0, formatted: reserve0Formatted },
-                token1: { raw: reserve1, formatted: reserve1Formatted }
-              },
               totalLiquidityFormatted: formatNumber(totalLiquidityValue, 2),
               totalLiquidityValue
             };
