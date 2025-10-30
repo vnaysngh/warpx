@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { type RefObject } from "react";
 import styles from "@/app/page.module.css";
 
@@ -34,6 +38,20 @@ export function TradeHeader({
   isAccountConnecting,
   hasMounted
 }: TradeHeaderProps) {
+  const pathname = usePathname();
+  const navItems = [
+    { label: "Swap", href: "/" },
+    { label: "Pools", href: "/pools" }
+  ];
+
+  const linkIsActive = (href: string) => {
+    if (!pathname) return false;
+    if (href === "/") {
+      return pathname === "/";
+    }
+    return pathname.startsWith(href);
+  };
+
   return (
     <header className={styles.navbar}>
       <div className={styles.brand}>
@@ -41,6 +59,20 @@ export function TradeHeader({
         <span className={styles.brandMain}>WarpX</span>
         {/* <span className={styles.brandSub}>Built on MegaETH</span> */}
       </div>
+
+      <nav className={styles.navCenter} aria-label="Main navigation">
+        {navItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`${styles.navLink} ${
+              linkIsActive(item.href) ? styles.navLinkActive : ""
+            }`}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
       <div className={styles.navRight}>
         <span className={styles.networkBadge}>{manifestTag}</span>
         {showWalletActions ? (

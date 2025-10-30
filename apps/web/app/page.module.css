@@ -14,8 +14,8 @@
 }
 
 .navbar {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1rem;
 }
@@ -26,6 +26,8 @@
   gap: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  flex-shrink: 0;
+  justify-self: start;
 }
 
 .logo {
@@ -45,6 +47,47 @@
   letter-spacing: 0.24em;
 }
 
+.navCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  min-width: 180px;
+  justify-self: center;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fg-subtle);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.navLink:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.navLinkActive {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
 .navRight {
   display: flex;
   align-items: center;
@@ -54,6 +97,23 @@
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.12em;
+  flex-shrink: 0;
+  justify-self: end;
+}
+
+@media (max-width: 720px) {
+  .navbar {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .navCenter {
+    justify-content: center;
+  }
+
+  .navRight {
+    justify-content: center;
+  }
 }
 
 .networkBadge {
