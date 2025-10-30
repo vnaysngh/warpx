@@ -316,6 +316,18 @@ const TOKEN_CATALOG: TokenDescriptor[] = [
     name: "Wrapped MegaETH",
     address: "0x88C1770353BD23f435F6F049cc26936009B27B69",
     decimals: 18
+  },
+  {
+    symbol: "ETH",
+    name: "Ethereum",
+    address: "0x776401b9bc8aae31a685731b7147d4445fd9fb19",
+    decimals: 18
+  },
+  {
+    symbol: "USD",
+    name: "USD Stablecoin",
+    address: "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
+    decimals: 18
   }
 ];
 
@@ -424,6 +436,10 @@ export default function Page() {
     reserveOut: bigint;
     pairAddress: string;
   } | null>(null);
+  const [swapReservesRefreshNonce, setSwapReservesRefreshNonce] = useState(0);
+  const [swapHasLiquidity, setSwapHasLiquidity] = useState<boolean | null>(
+    null
+  );
   const [tokenList, setTokenList] = useState<TokenDescriptor[]>(TOKEN_CATALOG);
   const [selectedIn, setSelectedIn] = useState<TokenDescriptor | null>(
     TOKEN_CATALOG[0] ?? null
@@ -521,10 +537,20 @@ export default function Page() {
     reserveBWei: bigint;
     totalSupplyWei: bigint;
   } | null>(null);
+  const [liquidityReservesRefreshNonce, setLiquidityReservesRefreshNonce] =
+    useState(0);
   const liquidityEditingFieldRef = useRef<"A" | "B" | null>(null);
   const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
   const quoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reverseQuoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const previousSwapSelectionRef = useRef<{
+    in: string | null;
+    out: string | null;
+  }>({ in: null, out: null });
+  const previousLiquiditySelectionRef = useRef<{
+    a: string | null;
+    b: string | null;
+  }>({ a: null, b: null });
 
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [tokenDialogSide, setTokenDialogSide] =
@@ -620,7 +646,7 @@ export default function Page() {
   const tokenAIsAddress = isAddress(liquidityTokenAAddress);
   const tokenBIsAddress = isAddress(liquidityTokenBAddress);
 
-  const { data: balanceAData } = useBalance({
+  const { data: balanceAData, refetch: refetchBalanceA } = useBalance({
     address: balanceQueryEnabled ? (address as Address) : undefined,
     token:
       balanceQueryEnabled && tokenAIsAddress
@@ -635,7 +661,7 @@ export default function Page() {
     }
   });
 
-  const { data: balanceBData } = useBalance({
+  const { data: balanceBData, refetch: refetchBalanceB } = useBalance({
     address: balanceQueryEnabled ? (address as Address) : undefined,
     token:
       balanceQueryEnabled && tokenBIsAddress
@@ -658,20 +684,50 @@ export default function Page() {
   // Fetch balance for swap "selectedIn" token
   const swapInTokenAddress = selectedIn?.address ?? "";
   const swapInIsAddress = isAddress(swapInTokenAddress);
-  const { data: swapInBalanceData } = useBalance({
-    address: balanceQueryEnabled ? (address as Address) : undefined,
-    token:
-      balanceQueryEnabled && swapInIsAddress
-        ? (swapInTokenAddress as Address)
-        : undefined,
-    chainId: Number(MEGAETH_CHAIN_ID),
-    query: {
-      enabled:
-        balanceQueryEnabled && swapInIsAddress && Boolean(swapInTokenAddress)
+  const { data: swapInBalanceData, refetch: refetchSwapInBalance } = useBalance(
+    {
+      address: balanceQueryEnabled ? (address as Address) : undefined,
+      token:
+        balanceQueryEnabled && swapInIsAddress
+          ? (swapInTokenAddress as Address)
+          : undefined,
+      chainId: Number(MEGAETH_CHAIN_ID),
+      query: {
+        enabled:
+          balanceQueryEnabled && swapInIsAddress && Boolean(swapInTokenAddress)
+      }
     }
-  });
+  );
   const swapInBalanceFormatted = swapInBalanceData?.formatted ?? null;
   const swapInSymbol = swapInBalanceData?.symbol ?? selectedIn?.symbol ?? null;
+
+  const refreshBalances = useCallback(async () => {
+    if (!balanceQueryEnabled) return;
+
+    const refetchPromises: Array<Promise<unknown>> = [];
+
+    if (tokenAIsAddress) {
+      refetchPromises.push(refetchBalanceA());
+    }
+    if (tokenBIsAddress) {
+      refetchPromises.push(refetchBalanceB());
+    }
+    if (swapInIsAddress) {
+      refetchPromises.push(refetchSwapInBalance());
+    }
+
+    if (refetchPromises.length === 0) return;
+
+    await Promise.allSettled(refetchPromises);
+  }, [
+    balanceQueryEnabled,
+    refetchBalanceA,
+    refetchBalanceB,
+    refetchSwapInBalance,
+    tokenAIsAddress,
+    tokenBIsAddress,
+    swapInIsAddress
+  ]);
 
   // Debug: Log balance query state in development
   useEffect(() => {
@@ -965,6 +1021,72 @@ export default function Page() {
     setSwapForm((prev) => ({ ...prev, tokenOut: selectedOut.address }));
   }, [selectedOut, swapForm.tokenOut]);
 
+  useEffect(() => {
+    const currentIn = selectedIn?.address
+      ? selectedIn.address.toLowerCase()
+      : null;
+    const currentOut = selectedOut?.address
+      ? selectedOut.address.toLowerCase()
+      : null;
+    const previous = previousSwapSelectionRef.current;
+
+    if (previous.in === currentIn && previous.out === currentOut) {
+      return;
+    }
+
+    previousSwapSelectionRef.current = { in: currentIn, out: currentOut };
+
+    swapEditingFieldRef.current = null;
+    if (quoteDebounceTimerRef.current) {
+      clearTimeout(quoteDebounceTimerRef.current);
+      quoteDebounceTimerRef.current = null;
+    }
+    if (reverseQuoteDebounceTimerRef.current) {
+      clearTimeout(reverseQuoteDebounceTimerRef.current);
+      reverseQuoteDebounceTimerRef.current = null;
+    }
+
+    setSwapForm((prev) => ({
+      ...prev,
+      amountIn: "",
+      minOut: "",
+      maxInput: ""
+    }));
+    setSwapQuote(null);
+    setReverseQuote(null);
+    setSwapPairReserves(null);
+    setNeedsApproval(false);
+    setCheckingAllowance(false);
+    setIsCalculatingQuote(false);
+  }, [selectedIn?.address, selectedOut?.address]);
+
+  useEffect(() => {
+    const currentA = liquidityTokenA?.address
+      ? liquidityTokenA.address.toLowerCase()
+      : null;
+    const currentB = liquidityTokenB?.address
+      ? liquidityTokenB.address.toLowerCase()
+      : null;
+    const previous = previousLiquiditySelectionRef.current;
+
+    if (previous.a === currentA && previous.b === currentB) {
+      return;
+    }
+
+    previousLiquiditySelectionRef.current = { a: currentA, b: currentB };
+
+    liquidityEditingFieldRef.current = null;
+    setLiquidityForm(() => ({ ...LIQUIDITY_DEFAULT }));
+    setLiquidityPairReserves(null);
+    setNeedsApprovalA(false);
+    setNeedsApprovalB(false);
+    setCheckingLiquidityAllowances(false);
+    setExpectedRemoveAmounts(null);
+    setUserPooledAmounts(null);
+    setLpTokenInfo(null);
+    setShowLiquidityConfirm(false);
+  }, [liquidityTokenA?.address, liquidityTokenB?.address]);
+
   // Allowance check for liquidity operations
   useEffect(() => {
     let cancelled = false;
@@ -1118,6 +1240,7 @@ export default function Page() {
 
     // If amountIn is empty, clear minOut immediately (no debounce)
     if (!swapForm.amountIn || swapForm.amountIn.trim() === "") {
+      setSwapHasLiquidity(null);
       setSwapQuote(null);
       setSwapForm((prev) => ({ ...prev, minOut: "" }));
       setIsCalculatingQuote(false);
@@ -1166,6 +1289,7 @@ export default function Page() {
 
         // Use exact Uniswap V2 formula for swap calculation
         if (!swapPairReserves) {
+          setSwapHasLiquidity(null);
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
           setIsCalculatingQuote(false);
@@ -1196,11 +1320,55 @@ export default function Page() {
         });
 
         if (amountOutWei === 0n) {
+          setSwapHasLiquidity(false);
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
           setIsCalculatingQuote(false);
           return;
         }
+
+        const idealOutWei =
+          swapPairReserves.reserveIn > 0n
+            ? (amountInWei * swapPairReserves.reserveOut) /
+              swapPairReserves.reserveIn
+            : 0n;
+
+        const drainsPool =
+          swapPairReserves.reserveOut > 0n &&
+          amountOutWei >=
+            (swapPairReserves.reserveOut > MINIMUM_LIQUIDITY
+              ? swapPairReserves.reserveOut - MINIMUM_LIQUIDITY
+              : swapPairReserves.reserveOut);
+
+        let severeImpact = false;
+        if (idealOutWei > 0n) {
+          const actualOutNumeric = Number(
+            formatUnits(amountOutWei, decimalsOut)
+          );
+          const idealOutNumeric = Number(formatUnits(idealOutWei, decimalsOut));
+          if (
+            Number.isFinite(actualOutNumeric) &&
+            Number.isFinite(idealOutNumeric) &&
+            idealOutNumeric > 0
+          ) {
+            const impact = 1 - actualOutNumeric / idealOutNumeric;
+            // Show insufficient liquidity for trades with > 50% price impact
+            // This matches Uniswap's behavior for protecting users from bad trades
+            if (impact >= 0.5) {
+              severeImpact = true;
+            }
+          }
+        }
+
+        if (drainsPool || severeImpact) {
+          setSwapHasLiquidity(false);
+          setSwapQuote(null);
+          setSwapForm((prev) => ({ ...prev, minOut: "" }));
+          setIsCalculatingQuote(false);
+          return;
+        }
+
+        setSwapHasLiquidity(true);
 
         // Format output amount
         const formattedOut = formatUnits(amountOutWei, decimalsOut);
@@ -1228,6 +1396,7 @@ export default function Page() {
         console.error("[quote] calculation error", err);
         setSwapQuote(null);
         setSwapForm((prev) => ({ ...prev, minOut: "" }));
+        setSwapHasLiquidity(false);
         setIsCalculatingQuote(false);
 
         // Handle specific error for insufficient liquidity
@@ -1467,7 +1636,8 @@ export default function Page() {
     liquidityTokenBAddress,
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
-    readProvider
+    readProvider,
+    liquidityReservesRefreshNonce
   ]);
 
   // Fetch swap pair reserves for exact calculation
@@ -1477,16 +1647,25 @@ export default function Page() {
     const fetchSwapReserves = async () => {
       // Clear reserves if tokens not properly selected or factory not available
       if (!selectedIn?.address || !selectedOut?.address || !factoryAddress) {
-        if (active) setSwapPairReserves(null);
+        if (active) {
+          setSwapPairReserves(null);
+          setSwapHasLiquidity(null);
+        }
         return;
       }
 
       if (selectedIn.address === selectedOut.address) {
-        if (active) setSwapPairReserves(null);
+        if (active) {
+          setSwapPairReserves(null);
+          setSwapHasLiquidity(null);
+        }
         return;
       }
 
       try {
+        if (active) {
+          setSwapHasLiquidity(null);
+        }
         const factory = getFactory(factoryAddress, readProvider);
         const pairAddress = await factory.getPair(
           selectedIn.address,
@@ -1494,7 +1673,10 @@ export default function Page() {
         );
 
         if (pairAddress === ZeroAddress) {
-          if (active) setSwapPairReserves(null);
+          if (active) {
+            setSwapPairReserves(null);
+            setSwapHasLiquidity(false);
+          }
           return;
         }
 
@@ -1510,6 +1692,8 @@ export default function Page() {
         const reserveIn = isToken0In ? reserves[0] : reserves[1];
         const reserveOut = isToken0In ? reserves[1] : reserves[0];
 
+        const hasLiquidity = reserveIn > 0n && reserveOut > 0n;
+
         console.log("[swap] pair reserves fetched:", {
           pairAddress,
           token0,
@@ -1522,7 +1706,16 @@ export default function Page() {
           reserveOut: reserveOut.toString()
         });
 
+        if (!hasLiquidity) {
+          if (active) {
+            setSwapPairReserves(null);
+            setSwapHasLiquidity(false);
+          }
+          return;
+        }
+
         if (active) {
+          setSwapHasLiquidity(true);
           setSwapPairReserves({
             reserveIn,
             reserveOut,
@@ -1531,7 +1724,10 @@ export default function Page() {
         }
       } catch (err) {
         console.error("[swap] fetch pair reserves failed", err);
-        if (active) setSwapPairReserves(null);
+        if (active) {
+          setSwapPairReserves(null);
+          setSwapHasLiquidity(null);
+        }
       }
     };
 
@@ -1539,7 +1735,13 @@ export default function Page() {
     return () => {
       active = false;
     };
-  }, [selectedIn?.address, selectedOut?.address, factoryAddress, readProvider]);
+  }, [
+    selectedIn?.address,
+    selectedOut?.address,
+    factoryAddress,
+    readProvider,
+    swapReservesRefreshNonce
+  ]);
 
   // Calculate expected removal amounts for remove liquidity
   useEffect(() => {
@@ -1831,6 +2033,8 @@ export default function Page() {
       ...prev,
       amountIn: swapInBalanceFormatted
     }));
+    // Mark that we're editing amountIn so quote calculation triggers
+    swapEditingFieldRef.current = "amountIn";
   };
 
   const handleSwap = async () => {
@@ -1936,8 +2140,23 @@ export default function Page() {
 
       showLoading("Swap pending...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+      await refreshBalances();
+      setSwapForm((prev) => ({
+        ...prev,
+        amountIn: "",
+        minOut: "",
+        maxInput: ""
+      }));
+      swapEditingFieldRef.current = null;
+      setSwapQuote(null);
+      setReverseQuote(null);
+      setIsCalculatingQuote(false);
+      setSwapPairReserves(null);
+      setSwapHasLiquidity(null);
+      setSwapReservesRefreshNonce((n) => n + 1);
       setAllowanceNonce((n) => n + 1);
       setNeedsApproval(false);
+      setCheckingAllowance(false);
       showSuccess("Swap executed successfully.");
     } catch (err: any) {
       console.error("[swap] failed", err);
@@ -2070,6 +2289,20 @@ export default function Page() {
       });
       showLoading("Adding liquidity...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+      await refreshBalances();
+      setLiquidityForm(LIQUIDITY_DEFAULT);
+      liquidityEditingFieldRef.current = null;
+      setShowLiquidityConfirm(false);
+      setExpectedRemoveAmounts(null);
+      setUserPooledAmounts(null);
+      setLpTokenInfo(null);
+      setLiquidityPairReserves(null);
+      setLiquidityReservesRefreshNonce((n) => n + 1);
+      setSwapPairReserves(null);
+      setSwapHasLiquidity(null);
+      setSwapReservesRefreshNonce((n) => n + 1);
+      setNeedsApprovalA(false);
+      setNeedsApprovalB(false);
       setLiquidityAllowanceNonce((n) => n + 1);
       showSuccess("Liquidity added successfully.");
     } catch (err: any) {
@@ -2164,7 +2397,19 @@ export default function Page() {
 
       showLoading("Removing liquidity...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
-
+      await refreshBalances();
+      setLiquidityPairReserves(null);
+      setLiquidityReservesRefreshNonce((n) => n + 1);
+      setExpectedRemoveAmounts(null);
+      setUserPooledAmounts(null);
+      setLpTokenInfo(null);
+      setLiquidityForm(LIQUIDITY_DEFAULT);
+      liquidityEditingFieldRef.current = null;
+      setNeedsApprovalA(false);
+      setNeedsApprovalB(false);
+      setSwapPairReserves(null);
+      setSwapReservesRefreshNonce((n) => n + 1);
+      setSwapHasLiquidity(null);
       showSuccess(
         `Liquidity removed successfully. Removed ${removeLiquidityPercent}% of your position.`
       );
@@ -2208,6 +2453,10 @@ export default function Page() {
     swapButtonDisabled = true;
   } else if (!swapFormReady) {
     swapButtonLabel = "Enter Amount";
+    swapButtonDisabled = true;
+  } else if (swapHasLiquidity === false) {
+    swapButtonLabel = "Insufficient liquidity";
+    swapButtonAction = null;
     swapButtonDisabled = true;
   } else if (isCalculatingQuote) {
     swapButtonLabel = "Calculating...";
@@ -2646,7 +2895,7 @@ export default function Page() {
             <div className={styles.swapPanel}>
               <div className={styles.assetCard}>
                 <div className={styles.assetHeader}>
-                  <span>Pay</span>
+                  <span>Sell</span>
                   <button
                     type="button"
                     className={styles.assetSelector}
@@ -2655,7 +2904,6 @@ export default function Page() {
                     <span className={styles.assetSelectorSymbol}>
                       {selectedIn?.symbol ?? "Select"}
                     </span>
-                    <span className={styles.assetSelectorChevron}>v</span>
                   </button>
                 </div>
                 <div className={styles.assetAmountRow}>
@@ -2707,7 +2955,6 @@ export default function Page() {
                     <span className={styles.assetSelectorSymbol}>
                       {selectedOut?.symbol ?? "Select"}
                     </span>
-                    <span className={styles.assetSelectorChevron}>v</span>
                   </button>
                 </div>
                 <div className={styles.assetAmountRow}>
@@ -2795,7 +3042,6 @@ export default function Page() {
                         <span className={styles.assetSelectorSymbol}>
                           {liquidityTokenA?.symbol ?? "Select"}
                         </span>
-                        <span className={styles.assetSelectorChevron}>v</span>
                       </button>
                     </div>
                     <div className={styles.assetAmountRow}>
@@ -2827,7 +3073,6 @@ export default function Page() {
                         <span className={styles.assetSelectorSymbol}>
                           {liquidityTokenB?.symbol ?? "Select"}
                         </span>
-                        <span className={styles.assetSelectorChevron}>v</span>
                       </button>
                     </div>
                     <div className={styles.assetAmountRow}>
@@ -2884,7 +3129,6 @@ export default function Page() {
                         <span className={styles.assetSelectorSymbol}>
                           {liquidityTokenA?.symbol ?? "Select"}
                         </span>
-                        <span className={styles.assetSelectorChevron}>v</span>
                       </button>
                       <span style={{ opacity: 0.5 }}>+</span>
                       <button
@@ -2896,7 +3140,6 @@ export default function Page() {
                         <span className={styles.assetSelectorSymbol}>
                           {liquidityTokenB?.symbol ?? "Select"}
                         </span>
-                        <span className={styles.assetSelectorChevron}>v</span>
                       </button>
                     </div>
 

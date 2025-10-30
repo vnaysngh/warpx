@@ -1,135 +1,78 @@
-# Turborepo starter
+# WarpX
 
-This Turborepo starter is maintained by the Turborepo core team.
+WarpX is a decentralized exchange (DEX) built on the Ethereum blockchain. It is a Uniswap V2 fork that allows users to swap ERC20 tokens.
 
-## Using this example
+## Project Structure
 
-Run the following command:
+This project is a monorepo managed by Turborepo. It contains the following packages:
+
+-   `apps/web`: A Next.js web application that provides the main user interface for the DEX.
+-   `packages/core`: Contains the core smart contracts for the DEX, including the factory and pair contracts.
+-   `packages/periphery`: Contains the router smart contract for interacting with the core contracts.
+
+## Getting Started
+
+### Prerequisites
+
+-   [Node.js](https://nodejs.org/en/) (v18 or later)
+-   [Yarn](https://yarnpkg.com/)
+-   [Hardhat](https://hardhat.org/)
+
+### Installation
+
+1.  Clone the repository:
+
+    ```sh
+    git clone https://github.com/your-username/warpx.git
+    ```
+
+2.  Install the dependencies:
+
+    ```sh
+    cd warpx
+    yarn install
+    ```
+
+### Running the Project
+
+To run the web application, use the following command:
 
 ```sh
-npx create-turbo@latest
+yarn dev
 ```
 
-## What's inside?
+This will start the Next.js development server at `http://localhost:3000`.
 
-This Turborepo includes the following packages/apps:
+## Packages
 
-### Apps and Packages
+### `apps/web`
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+This is the main web application for the WarpX DEX. It is built with Next.js and uses the following libraries:
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+-   [Wagmi](https://wagmi.sh/): For interacting with the Ethereum blockchain.
+-   [Ethers.js](https://docs.ethers.io/): For interacting with the Ethereum blockchain.
+-   [NextUI](https://nextui.org/): For the UI components.
 
-### Utilities
+### `packages/core`
 
-This Turborepo has some additional tools already setup for you:
+This package contains the core smart contracts for the DEX. The contracts are written in Solidity and are based on the Uniswap V2 contracts.
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+-   `PancakeFactory.sol`: The factory contract for creating new token pairs.
+-   `PancakePair.sol`: The contract for a single token pair.
+-   `PancakeERC20.sol`: An ERC20 token contract used for testing.
 
-### Build
+### `packages/periphery`
 
-To build all apps and packages, run the following command:
+This package contains the router smart contract for interacting with the core contracts.
 
-```
-cd derry
+-   `PancakeRouter.sol`: The router contract for swapping tokens.
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
+## Testing
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+To run the tests for the smart contracts, use the following command:
+
+```sh
+yarn test
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd derry
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd derry
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+This will run the Hardhat tests for the `core` and `periphery` packages.
