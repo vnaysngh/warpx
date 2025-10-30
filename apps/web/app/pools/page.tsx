@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  JsonRpcProvider,
-  ZeroAddress,
-  formatUnits
-} from "ethers";
+import { JsonRpcProvider } from "ethers";
 import {
   useAccount,
   useDisconnect,
@@ -17,10 +13,7 @@ import styles from "./page.module.css";
 import { ToastContainer } from "@/components/Toast";
 import { TradeHeader } from "@/components/trade/TradeHeader";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
-import {
-  PoolsTable,
-  type PoolsTableRow
-} from "@/components/pools/PoolsTable";
+import { PoolsTable, type PoolsTableRow } from "@/components/pools/PoolsTable";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useWalletProvider } from "@/hooks/useWalletProvider";
@@ -34,12 +27,8 @@ import {
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { shortAddress } from "@/lib/utils/format";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
-import {
-  getFactory,
-  getPair as getPairContract,
-  getToken
-} from "@/lib/contracts";
 import { formatNumber } from "@/lib/trade/math";
+import { fetchPair, toSdkToken } from "@/lib/trade/uniswap";
 
 export default function PoolsPage() {
   const {
@@ -55,7 +44,7 @@ export default function PoolsPage() {
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
   const walletAccount = isWalletConnected
-    ? address?.toLowerCase() ?? null
+    ? (address?.toLowerCase() ?? null)
     : null;
   const accountDisplayAddress = address ?? walletAccount ?? "";
   const shortAccountAddress = accountDisplayAddress
@@ -65,13 +54,8 @@ export default function PoolsPage() {
   const copyTimeoutRef = useRef<number | null>(null);
   const walletMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const {
-    toasts,
-    removeToast,
-    showError,
-    showLoading,
-    showSuccess
-  } = useToasts();
+  const { toasts, removeToast, showError, showLoading, showSuccess } =
+    useToasts();
   const { deployment, loadingDeployment } = useDeploymentManifest();
 
   const [hasMounted, setHasMounted] = useState(false);
@@ -79,8 +63,7 @@ export default function PoolsPage() {
   const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
 
-  const [tokenList, setTokenList] =
-    useState<TokenDescriptor[]>(TOKEN_CATALOG);
+  const [tokenList, setTokenList] = useState<TokenDescriptor[]>(TOKEN_CATALOG);
   const [pools, setPools] = useState<PoolsTableRow[]>([]);
   const [poolsLoading, setPoolsLoading] = useState(false);
   const [poolsError, setPoolsError] = useState<string | null>(null);
@@ -94,7 +77,7 @@ export default function PoolsPage() {
 
   const manifestTag = loadingDeployment
     ? "Loading manifest..."
-    : deployment?.network ?? "No manifest loaded";
+    : (deployment?.network ?? "No manifest loaded");
 
   useEffect(() => {
     setHasMounted(true);
@@ -217,58 +200,27 @@ export default function PoolsPage() {
       setPoolsError(null);
 
       try {
-        const factory = getFactory(factoryAddress, readProvider);
-        const tokenCache = new Map<string, TokenDescriptor>();
+        const descriptorMap = new Map<string, TokenDescriptor>();
         tokenList.forEach((token) =>
-          tokenCache.set(token.address.toLowerCase(), token)
+          descriptorMap.set(token.address.toLowerCase(), token)
         );
-
-        const resolveToken = async (address: string) => {
-          const normalized = address.toLowerCase();
-          const cached = tokenCache.get(normalized);
+        const sdkTokenCache = new Map<string, ReturnType<typeof toSdkToken>>();
+        const ensureSdkToken = (descriptor: TokenDescriptor) => {
+          const key = descriptor.address.toLowerCase();
+          const cached = sdkTokenCache.get(key);
           if (cached) return cached;
-
-          try {
-            const tokenContract = getToken(address, readProvider);
-            const [symbolResult, nameResult, decimalsResult] =
-              await Promise.allSettled([
-                tokenContract.symbol(),
-                tokenContract.name(),
-                tokenContract.decimals()
-              ]);
-
-            const decimals =
-              decimalsResult.status === "fulfilled"
-                ? Number(decimalsResult.value)
-                : DEFAULT_TOKEN_DECIMALS;
-            const symbol =
-              symbolResult.status === "fulfilled"
-                ? symbolResult.value
-                : `TOK${normalized.slice(2, 6).toUpperCase()}`;
-            const name =
-              nameResult.status === "fulfilled" ? nameResult.value : symbol;
-
-            const descriptor: TokenDescriptor = {
-              address,
-              symbol,
-              name,
-              decimals: Number.isFinite(decimals)
-                ? decimals
-                : DEFAULT_TOKEN_DECIMALS
-            };
-            tokenCache.set(normalized, descriptor);
-            return descriptor;
-          } catch (tokenError) {
-            console.warn("[pools] failed to resolve token", address, tokenError);
-            const fallback: TokenDescriptor = {
-              address,
-              symbol: `TOK${normalized.slice(2, 6).toUpperCase()}`,
-              name: `Token ${normalized.slice(2, 6).toUpperCase()}`,
-              decimals: DEFAULT_TOKEN_DECIMALS
-            };
-            tokenCache.set(normalized, fallback);
-            return fallback;
-          }
+          const sdkToken = toSdkToken(descriptor);
+          sdkTokenCache.set(key, sdkToken);
+          return sdkToken;
+        };
+        const fallbackDescriptor = (token: ReturnType<typeof toSdkToken>): TokenDescriptor => {
+          const suffix = token.address.slice(2, 6).toUpperCase();
+          return {
+            address: token.address,
+            symbol: token.symbol ?? `TOK${suffix}`,
+            name: token.name ?? `Token ${suffix}`,
+            decimals: token.decimals
+          };
         };
 
         const pairsToCheck: Array<{
@@ -285,7 +237,6 @@ export default function PoolsPage() {
           }
         }
 
-        const seenPairs = new Set<string>();
         const poolResults: Array<Omit<PoolsTableRow, "id">> = [];
         const CONCURRENCY = 5;
 
@@ -294,77 +245,58 @@ export default function PoolsPage() {
         ): Promise<Omit<PoolsTableRow, "id"> | null> => {
           if (cancelled) return null;
 
-          let pairAddress: string;
           try {
-            pairAddress = await factory.getPair(
-              pair.tokenA.address,
-              pair.tokenB.address
+            const tokenA = ensureSdkToken(pair.tokenA);
+            const tokenB = ensureSdkToken(pair.tokenB);
+            const sdkPair = await fetchPair(
+              tokenA,
+              tokenB,
+              readProvider,
+              factoryAddress
             );
-          } catch (lookupError) {
-            console.warn(
-              "[pools] pair lookup failed",
-              pair.tokenA.symbol,
-              pair.tokenB.symbol,
-              lookupError
-            );
-            return null;
-          }
 
-          if (!pairAddress || pairAddress === ZeroAddress) return null;
-
-          const normalizedPair = pairAddress.toLowerCase();
-          if (seenPairs.has(normalizedPair)) return null;
-          seenPairs.add(normalizedPair);
-
-          try {
-            const pairContract = getPairContract(pairAddress, readProvider);
-            const [token0Address, token1Address, reserves] = await Promise.all([
-              pairContract.token0(),
-              pairContract.token1(),
-              pairContract.getReserves()
-            ]);
+            if (!sdkPair) {
+              return null;
+            }
 
             if (cancelled) return null;
 
-            const [token0, token1] = await Promise.all([
-              resolveToken(token0Address),
-              resolveToken(token1Address)
-            ]);
+            const token0Descriptor =
+              descriptorMap.get(sdkPair.token0.address.toLowerCase()) ??
+              fallbackDescriptor(sdkPair.token0);
+            const token1Descriptor =
+              descriptorMap.get(sdkPair.token1.address.toLowerCase()) ??
+              fallbackDescriptor(sdkPair.token1);
 
-            if (cancelled) return null;
-
-            const reserve0 = reserves[0];
-            const reserve1 = reserves[1];
-
-            const reserve0Value = Number(
-              formatUnits(reserve0, token0.decimals)
-            );
-            const reserve1Value = Number(
-              formatUnits(reserve1, token1.decimals)
-            );
+            const reserve0Value = Number(sdkPair.reserve0.toExact(6));
+            const reserve1Value = Number(sdkPair.reserve1.toExact(6));
 
             const totalLiquidityValue =
               (Number.isFinite(reserve0Value) ? reserve0Value : 0) +
               (Number.isFinite(reserve1Value) ? reserve1Value : 0);
 
             return {
-              pairAddress,
-              token0,
-              token1,
+              pairAddress: sdkPair.address,
+              token0: token0Descriptor,
+              token1: token1Descriptor,
               totalLiquidityFormatted: formatNumber(totalLiquidityValue, 2),
               totalLiquidityValue
             };
           } catch (pairDataError) {
             console.warn(
               "[pools] failed to load pair data",
-              pairAddress,
+              `${pair.tokenA.symbol}/${pair.tokenB.symbol}`,
               pairDataError
             );
             return null;
           }
         };
 
-        for (let i = 0; i < pairsToCheck.length && !cancelled; i += CONCURRENCY) {
+        for (
+          let i = 0;
+          i < pairsToCheck.length && !cancelled;
+          i += CONCURRENCY
+        ) {
           const batch = pairsToCheck.slice(i, i + CONCURRENCY);
           // eslint-disable-next-line no-await-in-loop
           const batchResults = await Promise.all(
@@ -532,7 +464,6 @@ export default function PoolsPage() {
             </div>
             <p className={styles.description}>
               Explore every pool derived from the current MegaETH deployment.
-              Reserves update directly from on-chain balances.
             </p>
           </div>
 

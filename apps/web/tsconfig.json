@@ -3,7 +3,9 @@
     "types": [],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@megaeth/uniswap-sdk-core": ["../../packages/uniswap-sdk-core/dist"],
+      "@megaeth/uniswap-v2-sdk": ["../../packages/uniswap-v2-sdk/dist"]
     },
     "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],

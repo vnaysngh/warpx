@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": false,
+    "composite": false,
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@megaeth/uniswap-sdk-core": ["../uniswap-sdk-core/dist"]
+    }
+  },
+  "include": ["src/**/*"]
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BrowserProvider, JsonRpcProvider, JsonRpcSigner } from "ethers";
-import { ZeroAddress, formatUnits, parseUnits } from "ethers";
+import { formatUnits, parseUnits } from "ethers";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
@@ -10,7 +10,7 @@ import {
 } from "wagmi/actions";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { pancakeRouterAbi } from "@/lib/abis/router";
-import { getFactory, getPair, getToken } from "@/lib/contracts";
+import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
 import { LiquiditySection } from "./LiquiditySection";
@@ -28,6 +28,7 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay } from "@/lib/trade/format";
+import { fetchPair, toSdkToken } from "@/lib/trade/uniswap";
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
@@ -239,44 +240,45 @@ export function LiquidityContainer({
       }
 
       try {
-        const factory = getFactory(factoryAddress, readProvider);
-        const pairAddress = await factory.getPair(
-          liquidityTokenAAddress,
-          liquidityTokenBAddress
-        );
-        if (pairAddress === ZeroAddress) {
+        const tokenADescriptor = liquidityTokenA ?? null;
+        const tokenBDescriptor = liquidityTokenB ?? null;
+        if (!tokenADescriptor || !tokenBDescriptor) {
           if (active) setLiquidityPairReserves(null);
           return;
         }
 
-        const pairContract = getPair(pairAddress, readProvider);
-        const lpTokenContract = getToken(pairAddress, readProvider);
-        const [reserves, totalSupply] = await Promise.all([
-          pairContract.getReserves(),
-          lpTokenContract.totalSupply()
-        ]);
+        const tokenA = toSdkToken(tokenADescriptor);
+        const tokenB = toSdkToken(tokenBDescriptor);
+        const pair = await fetchPair(
+          tokenA,
+          tokenB,
+          readProvider,
+          factoryAddress
+        );
 
-        const token0 = await pairContract.token0();
-        const isToken0A =
-          token0.toLowerCase() === liquidityTokenAAddress.toLowerCase();
-
-        const reserveA = isToken0A ? reserves[0] : reserves[1];
-        const reserveB = isToken0A ? reserves[1] : reserves[0];
-        const reserveAWei = toBigInt(reserveA);
-        const reserveBWei = toBigInt(reserveB);
-        const totalSupplyWei = toBigInt(totalSupply);
-
-        if (active) {
-          setLiquidityPairReserves({
-            reserveA: formatUnits(reserveA, liquidityTokenA?.decimals ?? 18),
-            reserveB: formatUnits(reserveB, liquidityTokenB?.decimals ?? 18),
-            pairAddress,
-            totalSupply: formatUnits(totalSupply, 18),
-            reserveAWei,
-            reserveBWei,
-            totalSupplyWei
-          });
+        if (!pair) {
+          if (active) setLiquidityPairReserves(null);
+          return;
         }
+
+        if (!active) return;
+
+        const reserveAAmount = pair.reserveOf(tokenA);
+        const reserveBAmount = pair.reserveOf(tokenB);
+        const totalSupplyWei = pair.liquidityTokenTotalSupply ?? 0n;
+
+        const decimalsA = tokenADescriptor.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const decimalsB = tokenBDescriptor.decimals ?? DEFAULT_TOKEN_DECIMALS;
+
+        setLiquidityPairReserves({
+          reserveA: reserveAAmount.toExact(Math.min(6, decimalsA)),
+          reserveB: reserveBAmount.toExact(Math.min(6, decimalsB)),
+          pairAddress: pair.address,
+          totalSupply: formatUnits(totalSupplyWei, 18),
+          reserveAWei: reserveAAmount.raw,
+          reserveBWei: reserveBAmount.raw,
+          totalSupplyWei
+        });
       } catch (err) {
         console.error("[liquidity] fetch pair reserves failed", err);
         if (active) setLiquidityPairReserves(null);

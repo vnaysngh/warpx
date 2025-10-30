@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BrowserProvider, JsonRpcProvider, JsonRpcSigner } from "ethers";
-import { ZeroAddress, formatUnits, parseUnits } from "ethers";
+import { parseUnits } from "ethers";
+import type { Pair } from "@megaeth/uniswap-v2-sdk";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
@@ -10,7 +11,7 @@ import {
 } from "wagmi/actions";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { pancakeRouterAbi } from "@/lib/abis/router";
-import { getFactory, getPair, getRouter, getToken } from "@/lib/contracts";
+import { getRouter, getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
 import { SwapCard } from "./SwapCard";
@@ -20,13 +21,7 @@ import {
   MEGAETH_CHAIN_ID,
   MINIMUM_LIQUIDITY
 } from "@/lib/trade/constants";
-import {
-  formatNumber,
-  getMaximumInputAmount,
-  getMinimumOutputAmount,
-  getSwapInputAmount,
-  getSwapOutputAmount
-} from "@/lib/trade/math";
+import { formatNumber } from "@/lib/trade/math";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type {
   Quote,
@@ -36,6 +31,13 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay } from "@/lib/trade/format";
+import {
+  bpsToPercent,
+  createTradeExactIn,
+  createTradeExactOut,
+  fetchPair,
+  toSdkToken
+} from "@/lib/trade/uniswap";
 
 type EnsureWalletContext = {
   walletAccount: string | null;
@@ -133,11 +135,7 @@ export function SwapContainer({
   });
   const [swapQuote, setSwapQuote] = useState<Quote | null>(null);
   const [reverseQuote, setReverseQuote] = useState<ReverseQuote | null>(null);
-  const [swapPairReserves, setSwapPairReserves] = useState<{
-    reserveIn: bigint;
-    reserveOut: bigint;
-    pairAddress: string;
-  } | null>(null);
+  const [swapPair, setSwapPair] = useState<Pair | null>(null);
   const [swapHasLiquidity, setSwapHasLiquidity] = useState<boolean | null>(
     null
   );
@@ -252,7 +250,7 @@ export function SwapContainer({
     }));
     setSwapQuote(null);
     setReverseQuote(null);
-    setSwapPairReserves(null);
+    setSwapPair(null);
     setNeedsApproval(false);
     setCheckingAllowance(false);
     setIsCalculatingQuote(false);
@@ -264,7 +262,7 @@ export function SwapContainer({
     const fetchSwapReserves = async () => {
       if (!selectedIn?.address || !selectedOut?.address || !factoryAddress) {
         if (active) {
-          setSwapPairReserves(null);
+          setSwapPair(null);
           setSwapHasLiquidity(null);
         }
         return;
@@ -272,7 +270,7 @@ export function SwapContainer({
 
       if (selectedIn.address === selectedOut.address) {
         if (active) {
-          setSwapPairReserves(null);
+          setSwapPair(null);
           setSwapHasLiquidity(null);
         }
         return;
@@ -282,43 +280,35 @@ export function SwapContainer({
         if (active) {
           setSwapHasLiquidity(null);
         }
-        const factory = getFactory(factoryAddress, readProvider);
-        const pairAddress = await factory.getPair(
-          selectedIn.address,
-          selectedOut.address
+        const tokenIn = toSdkToken(selectedIn);
+        const tokenOut = toSdkToken(selectedOut);
+        const pair = await fetchPair(
+          tokenIn,
+          tokenOut,
+          readProvider,
+          factoryAddress
         );
 
-        if (pairAddress === ZeroAddress) {
+        if (!pair) {
           if (active) {
-            setSwapPairReserves(null);
+            setSwapPair(null);
             setSwapHasLiquidity(false);
           }
           return;
         }
 
-        const pairContract = getPair(pairAddress, readProvider);
-        const reserves = await pairContract.getReserves();
+        if (!active) return;
 
-        const token0 = await pairContract.token0();
-        const isToken0In =
-          token0.toLowerCase() === selectedIn.address.toLowerCase();
-
-        const reserveIn = toBigInt(isToken0In ? reserves[0] : reserves[1]);
-        const reserveOut = toBigInt(isToken0In ? reserves[1] : reserves[0]);
+        const reserveIn = pair.reserveOf(tokenIn).raw;
+        const reserveOut = pair.reserveOf(tokenOut).raw;
         const hasLiquidity = reserveIn > 0n && reserveOut > 0n;
 
-        if (active) {
-          setSwapPairReserves({
-            reserveIn,
-            reserveOut,
-            pairAddress
-          });
-          setSwapHasLiquidity(hasLiquidity);
-        }
+        setSwapPair(pair);
+        setSwapHasLiquidity(hasLiquidity);
       } catch (err) {
-        console.error("[swap] fetch pair reserves failed", err);
+        console.error("[swap] fetch pair failed", err);
         if (active) {
-          setSwapPairReserves(null);
+          setSwapPair(null);
           setSwapHasLiquidity(false);
         }
       }
@@ -370,20 +360,16 @@ export function SwapContainer({
       }
 
       try {
-        const tokenInContract = getToken(swapForm.tokenIn, readProvider);
-        const tokenOutContract = getToken(swapForm.tokenOut, readProvider);
+        if (!selectedIn || !selectedOut || !swapPair) {
+          setIsCalculatingQuote(false);
+          setSwapQuote(null);
+          setSwapForm((prev) => ({ ...prev, minOut: "" }));
+          return;
+        }
 
-        const decimalsIn = await tokenInContract
-          .decimals()
-          .then((value) => Number(value))
-          .catch(() => DEFAULT_TOKEN_DECIMALS);
-
-        const decimalsOut = await tokenOutContract
-          .decimals()
-          .then((value) => Number(value))
-          .catch(() => DEFAULT_TOKEN_DECIMALS);
-
-        const symbolOut = await tokenOutContract.symbol().catch(() => "TOKEN");
+        const decimalsIn = selectedIn.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const decimalsOut = selectedOut.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const symbolOut = selectedOut.symbol ?? "TOKEN";
 
         const amountInWei = parseUnits(swapForm.amountIn, decimalsIn);
         if (amountInWei <= 0n) {
@@ -391,7 +377,7 @@ export function SwapContainer({
           return;
         }
 
-        if (!swapPairReserves) {
+        if (!swapPair) {
           setSwapHasLiquidity(null);
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
@@ -399,13 +385,17 @@ export function SwapContainer({
           return;
         }
 
-        const amountOutWei = getSwapOutputAmount(
-          amountInWei,
-          swapPairReserves.reserveIn,
-          swapPairReserves.reserveOut
+        const tokenIn = toSdkToken(selectedIn);
+        const tokenOut = toSdkToken(selectedOut);
+        const trade = createTradeExactIn(
+          swapPair,
+          tokenIn,
+          tokenOut,
+          amountInWei
         );
 
-        if (amountOutWei === 0n) {
+        const outputAmount = trade.outputAmount;
+        if (outputAmount.raw === 0n) {
           setSwapHasLiquidity(false);
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
@@ -413,36 +403,19 @@ export function SwapContainer({
           return;
         }
 
-        const idealOutWei =
-          swapPairReserves.reserveIn > 0n
-            ? (amountInWei * swapPairReserves.reserveOut) /
-              swapPairReserves.reserveIn
-            : 0n;
+        const reserveOutRaw = swapPair.reserveOf(tokenOut).raw;
+        const maxOutput =
+          reserveOutRaw > MINIMUM_LIQUIDITY
+            ? reserveOutRaw - MINIMUM_LIQUIDITY
+            : reserveOutRaw;
 
-        const drainsPool =
-          swapPairReserves.reserveOut > 0n &&
-          amountOutWei >=
-            (swapPairReserves.reserveOut > MINIMUM_LIQUIDITY
-              ? swapPairReserves.reserveOut - MINIMUM_LIQUIDITY
-              : swapPairReserves.reserveOut);
-
-        let severeImpact = false;
-        if (idealOutWei > 0n) {
-          const actualOutNumeric = Number(
-            formatUnits(amountOutWei, decimalsOut)
-          );
-          const idealOutNumeric = Number(formatUnits(idealOutWei, decimalsOut));
-          if (
-            Number.isFinite(actualOutNumeric) &&
-            Number.isFinite(idealOutNumeric) &&
-            idealOutNumeric > 0
-          ) {
-            const impact = 1 - actualOutNumeric / idealOutNumeric;
-            if (impact >= 0.5) {
-              severeImpact = true;
-            }
-          }
-        }
+        const priceImpactValue = Math.abs(
+          Number(trade.priceImpact.toFixed(4))
+        );
+        const drainsPool = outputAmount.raw >= maxOutput;
+        const severeImpact = Number.isFinite(priceImpactValue)
+          ? priceImpactValue >= 0.5
+          : false;
 
         if (drainsPool || severeImpact) {
           setSwapHasLiquidity(false);
@@ -454,17 +427,17 @@ export function SwapContainer({
 
         setSwapHasLiquidity(true);
 
-        const formattedOut = formatUnits(amountOutWei, decimalsOut);
-        const limitedOut = formatNumber(formattedOut, Math.min(6, decimalsOut));
-
-        const minOutWei = getMinimumOutputAmount(
-          amountOutWei,
-          DEFAULT_SLIPPAGE_BPS
+        const outputExact = trade.outputAmount.toExact(
+          Math.min(6, decimalsOut)
         );
-        const minOutWeiAdjusted = minOutWei > 0n ? minOutWei : 1n;
-        const formattedMinOut = formatUnits(minOutWeiAdjusted, decimalsOut);
+        const limitedOut = formatNumber(outputExact, Math.min(6, decimalsOut));
+
+        const minOutAmount = trade.minimumAmountOut(
+          bpsToPercent(DEFAULT_SLIPPAGE_BPS)
+        );
+        const minOutExact = minOutAmount.toExact(Math.min(6, decimalsOut));
         const limitedMinOut = formatNumber(
-          formattedMinOut,
+          minOutExact,
           Math.min(6, decimalsOut)
         );
 
@@ -494,7 +467,9 @@ export function SwapContainer({
     swapForm.amountIn,
     swapForm.tokenIn,
     swapForm.tokenOut,
-    swapPairReserves
+    swapPair,
+    selectedIn,
+    selectedOut
   ]);
 
   useEffect(() => {
@@ -529,21 +504,16 @@ export function SwapContainer({
       }
 
       try {
-        const tokenInContract = getToken(swapForm.tokenIn, readProvider);
-        const tokenOutContract = getToken(swapForm.tokenOut, readProvider);
+        if (!selectedIn || !selectedOut || !swapPair) {
+          setIsCalculatingQuote(false);
+          setReverseQuote(null);
+          return;
+        }
 
-        const decimalsIn = await tokenInContract
-          .decimals()
-          .then((value) => Number(value))
-          .catch(() => DEFAULT_TOKEN_DECIMALS);
-
-        const decimalsOut = await tokenOutContract
-          .decimals()
-          .then((value) => Number(value))
-          .catch(() => DEFAULT_TOKEN_DECIMALS);
-
-        const symbolIn = await tokenInContract.symbol().catch(() => "TOKEN");
-        const symbolOut = await tokenOutContract.symbol().catch(() => "TOKEN");
+        const decimalsIn = selectedIn.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const decimalsOut = selectedOut.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const symbolIn = selectedIn.symbol ?? "TOKEN";
+        const symbolOut = selectedOut.symbol ?? "TOKEN";
 
         const desiredOutWei = parseUnits(swapForm.minOut, decimalsOut);
         if (desiredOutWei <= 0n) {
@@ -551,18 +521,23 @@ export function SwapContainer({
           return;
         }
 
-        if (!swapPairReserves) {
+        if (!swapPair) {
           setReverseQuote(null);
           setSwapForm((prev) => ({ ...prev, amountIn: "" }));
           setIsCalculatingQuote(false);
           return;
         }
 
-        const amountNeeded = getSwapInputAmount(
-          desiredOutWei,
-          swapPairReserves.reserveIn,
-          swapPairReserves.reserveOut
+        const tokenIn = toSdkToken(selectedIn);
+        const tokenOut = toSdkToken(selectedOut);
+        const trade = createTradeExactOut(
+          swapPair,
+          tokenIn,
+          tokenOut,
+          desiredOutWei
         );
+
+        const amountNeeded = trade.inputAmount.raw;
 
         if (amountNeeded === 0n) {
           setReverseQuote(null);
@@ -571,14 +546,15 @@ export function SwapContainer({
           return;
         }
 
-        const formattedIn = formatUnits(amountNeeded, decimalsIn);
+        const formattedIn = trade.inputAmount.toExact(Math.min(6, decimalsIn));
         const limitedIn = formatNumber(formattedIn, Math.min(6, decimalsIn));
 
-        const maxInputWei = getMaximumInputAmount(
-          amountNeeded,
-          DEFAULT_SLIPPAGE_BPS
+        const maxInputAmount = trade.maximumAmountIn(
+          bpsToPercent(DEFAULT_SLIPPAGE_BPS)
         );
-        const maxInputFormatted = formatUnits(maxInputWei, decimalsIn);
+        const maxInputFormatted = maxInputAmount.toExact(
+          Math.min(6, decimalsIn)
+        );
         const limitedMaxInput = formatNumber(
           maxInputFormatted,
           Math.min(6, decimalsIn)
@@ -627,7 +603,9 @@ export function SwapContainer({
     swapForm.tokenIn,
     swapForm.tokenOut,
     swapForm.minOut,
-    swapPairReserves,
+    swapPair,
+    selectedIn,
+    selectedOut,
     showError
   ]);
 
@@ -871,7 +849,7 @@ export function SwapContainer({
       setSwapQuote(null);
       setReverseQuote(null);
       setIsCalculatingQuote(false);
-      setSwapPairReserves(null);
+      setSwapPair(null);
       setSwapHasLiquidity(null);
       onRequestRefresh();
       setAllowanceNonce((n) => n + 1);

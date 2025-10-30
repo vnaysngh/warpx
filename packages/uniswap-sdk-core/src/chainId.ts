@@ -1,0 +1,13 @@
+export enum ChainId {
+  MAINNET = 1,
+  ROPSTEN = 3,
+  RINKEBY = 4,
+  GÖRLI = 5,
+  KOVAN = 42,
+  POLYGON = 137,
+  OPTIMISM = 10,
+  ARBITRUM_ONE = 42161,
+  BASE = 8453,
+  BNB = 56,
+  MEGAETH_TESTNET = 6342
+}

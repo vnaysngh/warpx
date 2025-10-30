@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ToastContainer } from "@/components/Toast";
 import { JsonRpcProvider } from "ethers";
 import styles from "./page.module.css";
@@ -15,7 +16,6 @@ import { megaethTestnet } from "@/lib/chains";
 import { appKit } from "@/lib/wagmi";
 import { TradeHeader } from "@/components/trade/TradeHeader";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
-import { ViewTabs } from "@/components/trade/ViewTabs";
 import { TokenDialog } from "@/components/trade/TokenDialog";
 import { SwapContainer } from "@/components/trade/SwapContainer";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
@@ -79,7 +79,9 @@ export default function Page() {
   const [hasMounted, setHasMounted] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"swap" | "liquidity">("swap");
+  const searchParams = useSearchParams();
+  const activeView =
+    searchParams?.get("view") === "liquidity" ? "liquidity" : "swap";
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [swapRefreshNonce, setSwapRefreshNonce] = useState(0);
 
@@ -247,8 +249,6 @@ export default function Page() {
           onSwitch={switchToMegaEth}
           isSwitching={isSwitchingChain}
         />
-
-        <ViewTabs activeView={activeView} onChange={setActiveView} />
 
         {activeView === "swap" && (
           <SwapContainer
