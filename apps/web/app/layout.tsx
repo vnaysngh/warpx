@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono as jetBrainsMono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { ClientLayout } from "@/components/layout/ClientLayout";
 
 const terminal = jetBrainsMono({
   subsets: ["latin"],
@@ -23,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={terminal.variable}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <ClientLayout>{children}</ClientLayout>
+        </Providers>
       </body>
     </html>
   );

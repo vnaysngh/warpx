@@ -5,14 +5,11 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
 import {
   useAccount,
-  useDisconnect,
   useSwitchChain,
   useWalletClient
 } from "wagmi";
-import layoutStyles from "../../page.module.css";
 import styles from "../page.module.css";
 import { ToastContainer } from "@/components/Toast";
-import { TradeHeader } from "@/components/trade/TradeHeader";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
@@ -26,8 +23,6 @@ import {
   DEFAULT_TOKEN_DECIMALS
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
-import { shortAddress } from "@/lib/utils/format";
-import { appKit } from "@/lib/wagmi";
 import { getPair, getToken } from "@/lib/contracts";
 import type { TokenDescriptor } from "@/lib/trade/types";
 
@@ -52,13 +47,12 @@ export default function PoolLiquidityPage() {
     status
   } = useAccount();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
-  const { disconnectAsync, isPending: isDisconnecting } = useDisconnect();
   const { data: walletClient } = useWalletClient();
   const { walletProvider, walletSigner } = useWalletProvider(walletClient);
 
   const { toasts, removeToast, showLoading, showSuccess, showError } =
     useToasts();
-  const { deployment, loadingDeployment } = useDeploymentManifest();
+  const { deployment } = useDeploymentManifest();
 
   const {
     tokenList,
@@ -84,13 +78,7 @@ export default function PoolLiquidityPage() {
   const walletAccount = isWalletConnected
     ? (address?.toLowerCase() ?? null)
     : null;
-  const accountDisplayAddress = address ?? walletAccount ?? "";
-  const shortAccountAddress = accountDisplayAddress
-    ? shortAddress(accountDisplayAddress)
-    : "";
 
-  const copyTimeoutRef = useRef<number | null>(null);
-  const walletMenuRef = useRef<HTMLDivElement | null>(null);
   const pairTargetRef = useRef<{
     token0: string | null;
     token1: string | null;
@@ -100,8 +88,6 @@ export default function PoolLiquidityPage() {
   });
 
   const [hasMounted, setHasMounted] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
-  const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [pairResolutionError, setPairResolutionError] = useState<string | null>(
     null
@@ -123,7 +109,7 @@ export default function PoolLiquidityPage() {
   }, []);
 
   useEffect(() => {
-    if (!walletAccount || !chain) {
+    if (!chain) {
       setNetworkError(null);
       return;
     }
@@ -134,34 +120,7 @@ export default function PoolLiquidityPage() {
     } else {
       setNetworkError(null);
     }
-  }, [walletAccount, chain]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        walletMenuRef.current &&
-        !walletMenuRef.current.contains(event.target as Node)
-      ) {
-        setWalletMenuOpen(false);
-      }
-    };
-    if (isWalletMenuOpen) {
-      window.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      window.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isWalletMenuOpen]);
-
-  useEffect(() => {
-    if (!address) {
-      setCopyStatus("idle");
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
-        copyTimeoutRef.current = null;
-      }
-    }
-  }, [address]);
+  }, [chain]);
 
   useEffect(() => {
     if (!tokenDialogOpen) return;
@@ -182,51 +141,6 @@ export default function PoolLiquidityPage() {
       closeTokenDialog();
     }
   }, [tokenDialogOpen, pairAddress, closeTokenDialog]);
-
-  const handleConnectClick = useCallback(() => {
-    (window as any).__appKitManualOpen = true;
-    appKit.open();
-  }, []);
-
-  const handleCopyAddress = useCallback(async () => {
-    if (!address) return;
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopyStatus("copied");
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
-      }
-      copyTimeoutRef.current = window.setTimeout(() => {
-        setCopyStatus("idle");
-        copyTimeoutRef.current = null;
-        setWalletMenuOpen(false);
-      }, 1500);
-    } catch (copyError) {
-      console.error("[wallet] Failed to copy address", copyError);
-    }
-  }, [address]);
-
-  const handleDisconnect = useCallback(async () => {
-    if (isDisconnecting) return;
-    try {
-      if (typeof (window as any).__setDisconnecting === "function") {
-        (window as any).__setDisconnecting(true);
-      }
-
-      await disconnectAsync();
-      setWalletMenuOpen(false);
-      showSuccess("Wallet disconnected.");
-    } catch (disconnectError) {
-      console.error("[wallet] Failed to disconnect", disconnectError);
-      showError("Failed to disconnect wallet. Please try again.");
-    } finally {
-      if (typeof (window as any).__setDisconnecting === "function") {
-        setTimeout(() => {
-          (window as any).__setDisconnecting(false);
-        }, 500);
-      }
-    }
-  }, [disconnectAsync, isDisconnecting, showError, showSuccess]);
 
   const switchToMegaEth = useCallback(async () => {
     if (!switchChainAsync) {
@@ -401,93 +315,67 @@ export default function PoolLiquidityPage() {
     }
   }, [pairAddress, pathname, router]);
 
-  const manifestTag = loadingDeployment
-    ? "Loading manifest..."
-    : (deployment?.network ?? "No manifest loaded");
-
   const chainId = chain?.id ?? null;
-  const showWalletActions = hasMounted && isWalletConnected;
   const handleSwapRefresh = useCallback(() => {
     // Liquidity updates do not need to trigger external side effects yet.
   }, []);
-
 
   const handleBackToPools = useCallback(() => {
     router.push("/pools");
   }, [router]);
 
   return (
-    <main className={layoutStyles.app}>
-      <div className={layoutStyles.shell}>
-        <TradeHeader
-          manifestTag={manifestTag}
-          showWalletActions={showWalletActions}
-          walletMenuRef={walletMenuRef}
-          isWalletMenuOpen={isWalletMenuOpen}
-          onWalletButtonClick={() => setWalletMenuOpen((prev) => !prev)}
-          shortAccountAddress={shortAccountAddress}
-          onCopyAddress={handleCopyAddress}
-          copyStatus={copyStatus}
-          address={address}
-          onDisconnect={handleDisconnect}
-          isDisconnecting={isDisconnecting}
-          onConnect={handleConnectClick}
-          isAccountConnecting={isAccountConnecting}
-          hasMounted={hasMounted}
-          activeNav="pools"
-        />
+    <>
+      <NetworkBanner
+        error={networkError ?? pairResolutionError}
+        onSwitch={switchToMegaEth}
+        isSwitching={isSwitchingChain || resolvingPair}
+      />
 
-        <NetworkBanner
-          error={networkError ?? pairResolutionError}
-          onSwitch={switchToMegaEth}
-          isSwitching={isSwitchingChain || resolvingPair}
-        />
-
-        <section className={styles.pageShell}>
-          <div className={styles.pageHeader}>
-            <div className={styles.headerTop}>
-              <h1 className={styles.title}>Pools</h1>
-              <div className={styles.headerActions}>
-                <button
-                  type="button"
-                  className={styles.refreshButton}
-                  onClick={handleBackToPools}
-                >
-                  ← Back
-                </button>
-              </div>
+      <section className={styles.pageShell}>
+        <div className={styles.pageHeader}>
+          <div className={styles.headerTop}>
+            <h1 className={styles.title}>Pools</h1>
+            <div className={styles.headerActions}>
+              <button
+                type="button"
+                className={styles.refreshButton}
+                onClick={handleBackToPools}
+              >
+                ← Back
+              </button>
             </div>
-            <p className={styles.description}>
-              Explore every pool derived from the current MegaETH deployment.
-            </p>
           </div>
+          <p className={styles.description}>
+            Explore every pool derived from the current MegaETH deployment.
+          </p>
+        </div>
 
-          <div className={styles.detailSection}>
-            <LiquidityContainer
-              key={`liquidity-${deployment?.router ?? "default"}-${pairAddress ?? "unknown"}`}
-              liquidityTokenA={liquidityTokenA}
-              liquidityTokenB={liquidityTokenB}
-              onOpenTokenDialog={openTokenDialog}
-              routerAddress={deployment?.router ?? ""}
-              factoryAddress={deployment?.factory ?? ""}
-              readProvider={readProvider}
-              walletAccount={walletAccount}
-              walletProvider={walletProvider}
-              walletSigner={walletSigner}
-              chainId={chainId}
-              hasMounted={hasMounted}
-              isWalletConnected={isWalletConnected}
-              isAccountConnecting={isAccountConnecting}
-              ready={ready}
-              showError={showError}
-              showSuccess={showSuccess}
-              showLoading={showLoading}
-              onSwapRefresh={handleSwapRefresh}
-              allowTokenSelection={false}
-            />
-          </div>
-        </section>
-      </div>
+        <div className={styles.detailSection}>
+          <LiquidityContainer
+            key={`liquidity-${deployment?.router ?? "default"}-${pairAddress ?? "unknown"}`}
+            liquidityTokenA={liquidityTokenA}
+            liquidityTokenB={liquidityTokenB}
+            onOpenTokenDialog={openTokenDialog}
+            routerAddress={deployment?.router ?? ""}
+            factoryAddress={deployment?.factory ?? ""}
+            readProvider={readProvider}
+            walletAccount={walletAccount}
+            walletProvider={walletProvider}
+            walletSigner={walletSigner}
+            chainId={chainId}
+            hasMounted={hasMounted}
+            isWalletConnected={isWalletConnected}
+            isAccountConnecting={isAccountConnecting}
+            ready={ready}
+            showError={showError}
+            showSuccess={showSuccess}
+            showLoading={showLoading}
+            onSwapRefresh={handleSwapRefresh}
+            allowTokenSelection={false}
+          />
+        </div>
+      </section>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
@@ -503,6 +391,6 @@ export default function PoolLiquidityPage() {
         onSelectToken={handleSelectToken}
         onSelectCustomToken={handleSelectCustomToken}
       />
-    </main>
+    </>
   );
 }

@@ -10,6 +10,8 @@ export type PoolsTableRow = {
   token1: TokenDescriptor;
   totalLiquidityFormatted: string;
   totalLiquidityValue: number;
+  userLpBalance?: string;
+  userLpBalanceRaw?: bigint;
 };
 
 type PoolsTableProps = {
@@ -110,7 +112,7 @@ export function PoolsTable({
           {!showSkeleton && showEmpty && (
             <tr>
               <td colSpan={7} className={styles.stateCell}>
-                No pools detected for the current deployment.
+                No liquidity pools found. Check back soon or create one to get started!
               </td>
             </tr>
           )}

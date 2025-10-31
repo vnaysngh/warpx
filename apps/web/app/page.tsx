@@ -1,19 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ToastContainer } from "@/components/Toast";
 import { JsonRpcProvider } from "ethers";
-import styles from "./page.module.css";
-import { shortAddress } from "@/lib/utils/format";
 import {
   useAccount,
-  useDisconnect,
   useSwitchChain,
   useWalletClient
 } from "wagmi";
 import { megaethTestnet } from "@/lib/chains";
-import { appKit } from "@/lib/wagmi";
-import { TradeHeader } from "@/components/trade/TradeHeader";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { TokenDialog } from "@/components/trade/TokenDialog";
 import { SwapContainer } from "@/components/trade/SwapContainer";
@@ -32,7 +27,6 @@ export default function Page() {
     status
   } = useAccount();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
-  const { disconnectAsync, isPending: isDisconnecting } = useDisconnect();
   const { data: walletClient } = useWalletClient();
   const { walletProvider, walletSigner } = useWalletProvider(walletClient);
 
@@ -40,13 +34,6 @@ export default function Page() {
   const walletAccount = isWalletConnected
     ? (address?.toLowerCase() ?? null)
     : null;
-  const accountDisplayAddress = address ?? walletAccount ?? "";
-  const shortAccountAddress = accountDisplayAddress
-    ? shortAddress(accountDisplayAddress)
-    : "";
-
-  const copyTimeoutRef = useRef<number | null>(null);
-  const walletMenuRef = useRef<HTMLDivElement | null>(null);
 
   const {
     toasts,
@@ -55,7 +42,7 @@ export default function Page() {
     showSuccess,
     showError
   } = useToasts();
-  const { deployment, loadingDeployment } = useDeploymentManifest();
+  const { deployment } = useDeploymentManifest();
   const {
     selectedIn,
     selectedOut,
@@ -74,8 +61,6 @@ export default function Page() {
   } = useTokenManager(deployment?.network);
 
   const [hasMounted, setHasMounted] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
-  const [isWalletMenuOpen, setWalletMenuOpen] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [swapRefreshNonce, setSwapRefreshNonce] = useState(0);
 
@@ -120,78 +105,6 @@ export default function Page() {
     };
   }, [tokenDialogOpen, closeTokenDialog]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        walletMenuRef.current &&
-        !walletMenuRef.current.contains(event.target as Node)
-      ) {
-        setWalletMenuOpen(false);
-      }
-    };
-    if (isWalletMenuOpen) {
-      window.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      window.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isWalletMenuOpen]);
-
-  useEffect(() => {
-    if (!address) {
-      setCopyStatus("idle");
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
-        copyTimeoutRef.current = null;
-      }
-    }
-  }, [address]);
-
-  const handleConnectClick = useCallback(() => {
-    (window as any).__appKitManualOpen = true;
-    appKit.open();
-  }, []);
-
-  const handleCopyAddress = useCallback(async () => {
-    if (!address) return;
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopyStatus("copied");
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
-      }
-      copyTimeoutRef.current = window.setTimeout(() => {
-        setCopyStatus("idle");
-        copyTimeoutRef.current = null;
-        setWalletMenuOpen(false);
-      }, 1500);
-    } catch (copyError) {
-      console.error("[wallet] Failed to copy address", copyError);
-    }
-  }, [address]);
-
-  const handleDisconnect = useCallback(async () => {
-    if (isDisconnecting) return;
-    try {
-      if (typeof (window as any).__setDisconnecting === "function") {
-        (window as any).__setDisconnecting(true);
-      }
-
-      await disconnectAsync();
-      setWalletMenuOpen(false);
-      showSuccess("Wallet disconnected.");
-    } catch (disconnectError) {
-      console.error("[wallet] Failed to disconnect", disconnectError);
-      showError("Failed to disconnect wallet. Please try again.");
-    } finally {
-      if (typeof (window as any).__setDisconnecting === "function") {
-        setTimeout(() => {
-          (window as any).__setDisconnecting(false);
-        }, 500);
-      }
-    }
-  }, [disconnectAsync, isDisconnecting, showError, showSuccess]);
-
   const switchToMegaEth = useCallback(async () => {
     if (!switchChainAsync) {
       showError("Wallet does not support programmatic chain switching.");
@@ -207,68 +120,43 @@ export default function Page() {
     }
   }, [switchChainAsync, showError, showLoading, showSuccess]);
 
-  const manifestTag = loadingDeployment
-    ? "Loading manifest..."
-    : (deployment?.network ?? "No manifest loaded");
-
   const chainId = chain?.id ?? null;
-  const showWalletActions = hasMounted && isWalletConnected;
   const bumpSwapRefresh = useCallback(
     () => setSwapRefreshNonce((nonce) => nonce + 1),
     []
   );
 
   return (
-    <main className={styles.app}>
-      <div className={styles.shell}>
-        <TradeHeader
-          manifestTag={manifestTag}
-          showWalletActions={showWalletActions}
-          walletMenuRef={walletMenuRef}
-          isWalletMenuOpen={isWalletMenuOpen}
-          onWalletButtonClick={() => setWalletMenuOpen((prev) => !prev)}
-          shortAccountAddress={shortAccountAddress}
-          onCopyAddress={handleCopyAddress}
-          copyStatus={copyStatus}
-          address={address}
-          onDisconnect={handleDisconnect}
-          isDisconnecting={isDisconnecting}
-          onConnect={handleConnectClick}
-          isAccountConnecting={isAccountConnecting}
-          hasMounted={hasMounted}
-          activeNav="swap"
-        />
+    <>
+      <NetworkBanner
+        error={networkError}
+        onSwitch={switchToMegaEth}
+        isSwitching={isSwitchingChain}
+      />
 
-        <NetworkBanner
-          error={networkError}
-          onSwitch={switchToMegaEth}
-          isSwitching={isSwitchingChain}
-        />
-
-        <SwapContainer
-          key={`swap-${deployment?.router ?? "default"}`}
-          selectedIn={selectedIn}
-          selectedOut={selectedOut}
-          onOpenTokenDialog={openTokenDialog}
-          onSwapTokens={swapTokens}
-          routerAddress={deployment?.router ?? ""}
-          factoryAddress={deployment?.factory ?? ""}
-          readProvider={readProvider}
-          walletAccount={walletAccount}
-          walletProvider={walletProvider}
-          walletSigner={walletSigner}
-          chainId={chainId}
-          hasMounted={hasMounted}
-          isWalletConnected={isWalletConnected}
-          isAccountConnecting={isAccountConnecting}
-          ready={ready}
-          showError={showError}
-          showSuccess={showSuccess}
-          showLoading={showLoading}
-          refreshNonce={swapRefreshNonce}
-          onRequestRefresh={bumpSwapRefresh}
-        />
-      </div>
+      <SwapContainer
+        key={`swap-${deployment?.router ?? "default"}`}
+        selectedIn={selectedIn}
+        selectedOut={selectedOut}
+        onOpenTokenDialog={openTokenDialog}
+        onSwapTokens={swapTokens}
+        routerAddress={deployment?.router ?? ""}
+        factoryAddress={deployment?.factory ?? ""}
+        readProvider={readProvider}
+        walletAccount={walletAccount}
+        walletProvider={walletProvider}
+        walletSigner={walletSigner}
+        chainId={chainId}
+        hasMounted={hasMounted}
+        isWalletConnected={isWalletConnected}
+        isAccountConnecting={isAccountConnecting}
+        ready={ready}
+        showError={showError}
+        showSuccess={showSuccess}
+        showLoading={showLoading}
+        refreshNonce={swapRefreshNonce}
+        onRequestRefresh={bumpSwapRefresh}
+      />
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
@@ -284,6 +172,6 @@ export default function Page() {
         onSelectToken={handleSelectToken}
         onSelectCustomToken={handleSelectCustomToken}
       />
-    </main>
+    </>
   );
 }
