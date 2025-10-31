@@ -58,10 +58,15 @@ export default function PoolsPage() {
   const [poolsError, setPoolsError] = useState<string | null>(null);
   const [poolsRefreshNonce, setPoolsRefreshNonce] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
 
   const readProvider = useMemo(() => {
     const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
     return new JsonRpcProvider(rpcUrl);
+  }, []);
+
+  useEffect(() => {
+    setHasMounted(true);
   }, []);
 
   useEffect(() => {
@@ -380,7 +385,7 @@ export default function PoolsPage() {
           </p>
         </div>
 
-        {isWalletConnected && (
+        {hasMounted && isWalletConnected && (
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div className={pageStyles.segmented}>
               <button

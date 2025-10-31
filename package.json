@@ -7,6 +7,8 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
+    "deploy-router": "hardhat run packages/periphery/deploy/megaeth.ts --network megaethTestnet",
+    "deploy-tokens": "hardhat run scripts/deploy-more-tokens.ts --network megaethTestnet",
     "deploy-more-tokens": "hardhat run scripts/deploy-more-tokens.ts --network megaethTestnet"
   },
   "devDependencies": {
