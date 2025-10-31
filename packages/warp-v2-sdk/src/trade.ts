@@ -4,7 +4,7 @@ import {
   Percent,
   Price,
   Token
-} from "@megaeth/uniswap-sdk-core";
+} from "@megaeth/warp-sdk-core";
 import { Pair } from "./pair";
 import { Route } from "./route";
 

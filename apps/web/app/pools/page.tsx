@@ -26,7 +26,7 @@ import {
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 import { formatNumber } from "@/lib/trade/math";
-import { fetchPair, toSdkToken } from "@/lib/trade/uniswap";
+import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 import { getToken } from "@/lib/contracts";
 
 export default function PoolsPage() {

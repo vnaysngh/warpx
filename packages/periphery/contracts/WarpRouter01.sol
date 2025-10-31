@@ -1,7 +1,7 @@
 pragma solidity =0.6.6;
 
 import '../../core/contracts/interfaces/IWarpFactory.sol';
-import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
+import '../../warp-lib/contracts/libraries/TransferHelper.sol';
 
 import './libraries/WarpLibrary.sol';
 import './interfaces/IWarpRouter01.sol';

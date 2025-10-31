@@ -1,7 +1,7 @@
 pragma solidity >=0.5.0;
 
 import '../../../core/contracts/interfaces/IWarpPair.sol';
-import '@uniswap/lib/contracts/libraries/FixedPoint.sol';
+import '../../../warp-lib/contracts/libraries/FixedPoint.sol';
 
 // library with helper methods for oracles that are concerned with computing average prices
 library WarpOracleLibrary {

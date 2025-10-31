@@ -7,7 +7,7 @@ import {
 } from "./constants";
 
 /**
- * Format numbers with smart decimal handling (Uniswap/PancakeSwap style)
+ * Format numbers with smart decimal handling (Warp AMM style)
  * - Strips trailing zeros
  * - Shows appropriate precision based on magnitude
  */
@@ -57,9 +57,9 @@ export const formatPercent = (
 };
 
 /**
- * Calculate output amount for a swap using Uniswap V2 constant product formula
+ * Calculate output amount for a swap using Warp V2 constant product formula
  * Formula: outputAmount = (inputAmount * 997 * reserveOut) / (1000 * reserveIn + inputAmount * 997)
- * This accounts for the 0.3% Uniswap fee applied to input
+ * This accounts for the 0.3% Warp fee applied to input
  */
 export const getSwapOutputAmount = (
   inputAmountWei: bigint,
@@ -128,7 +128,7 @@ export const getMaximumInputAmount = (
 };
 
 /**
- * Calculate liquidity tokens minted when adding liquidity (Uniswap V2 formula)
+ * Calculate liquidity tokens minted when adding liquidity (Warp V2 formula)
  * Initial liquidity: sqrt(amountA * amountB) - MINIMUM_LIQUIDITY
  * Existing liquidity: min((amountA * totalSupply) / reserveA, (amountB * totalSupply) / reserveB)
  */

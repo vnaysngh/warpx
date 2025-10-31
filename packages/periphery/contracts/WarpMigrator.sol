@@ -1,19 +1,19 @@
 pragma solidity =0.6.6;
 
-import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
+import '../../warp-lib/contracts/libraries/TransferHelper.sol';
 
 import './interfaces/IWarpMigrator.sol';
-import './interfaces/V1/IUniswapV1Factory.sol';
-import './interfaces/V1/IUniswapV1Exchange.sol';
+import './interfaces/V1/IWarpV1Factory.sol';
+import './interfaces/V1/IWarpV1Exchange.sol';
 import './interfaces/IWarpRouter01.sol';
 import './interfaces/IERC20.sol';
 
 contract WarpMigrator is IWarpMigrator {
-    IUniswapV1Factory immutable factoryV1;
+    IWarpV1Factory immutable factoryV1;
     IWarpRouter01 immutable router;
 
     constructor(address _factoryV1, address _router) public {
-        factoryV1 = IUniswapV1Factory(_factoryV1);
+        factoryV1 = IWarpV1Factory(_factoryV1);
         router = IWarpRouter01(_router);
     }
 
@@ -25,7 +25,7 @@ contract WarpMigrator is IWarpMigrator {
         external
         override
     {
-        IUniswapV1Exchange exchangeV1 = IUniswapV1Exchange(factoryV1.getExchange(token));
+        IWarpV1Exchange exchangeV1 = IWarpV1Exchange(factoryV1.getExchange(token));
         uint liquidityV1 = exchangeV1.balanceOf(msg.sender);
         require(exchangeV1.transferFrom(msg.sender, address(this), liquidityV1), 'TRANSFER_FROM_FAILED');
         (uint amountETHV1, uint amountTokenV1) = exchangeV1.removeLiquidity(liquidityV1, 1, 1, uint(-1));

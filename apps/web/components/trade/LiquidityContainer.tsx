@@ -9,7 +9,7 @@ import {
   writeContract
 } from "wagmi/actions";
 import { erc20Abi } from "@/lib/abis/erc20";
-import { pancakeRouterAbi } from "@/lib/abis/router";
+import { warpRouterAbi } from "@/lib/abis/router";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
@@ -28,7 +28,7 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay } from "@/lib/trade/format";
-import { fetchPair, toSdkToken } from "@/lib/trade/uniswap";
+import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
@@ -740,7 +740,7 @@ export function LiquidityContainer({
       showLoading("Confirm transaction in your wallet...");
       const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
-        abi: pancakeRouterAbi,
+        abi: warpRouterAbi,
         functionName: "addLiquidity",
         args: [
           tokenA as `0x${string}`,
@@ -872,7 +872,7 @@ export function LiquidityContainer({
       showLoading("Confirm transaction in your wallet...");
       const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
-        abi: pancakeRouterAbi,
+        abi: warpRouterAbi,
         functionName: "removeLiquidity",
         args: [
           tokenA as `0x${string}`,

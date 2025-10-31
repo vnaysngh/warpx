@@ -27,6 +27,17 @@ out/
 build
 dist
 
+# Package build artifacts
+packages/*/node_modules/
+packages/*/dist/
+packages/*/build/
+packages/*/artifacts/
+packages/*/cache/
+packages/*/.turbo/
+packages/*/coverage/
+packages/*/typechain/
+packages/*/tsconfig.tsbuildinfo
+
 
 # Debug
 npm-debug.log*

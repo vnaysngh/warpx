@@ -1,7 +1,7 @@
 {
   "name": "@megaeth/amm-periphery",
   "version": "0.1.0",
-  "description": "MegaETH-aligned fork of PancakeSwap v2 periphery contracts (routers, migrator, examples).",
+  "description": "MegaETH-aligned Warp v2 periphery contracts (routers, migrator, examples).",
   "homepage": "https://docs.megaeth.com/",
   "repository": {
     "type": "git",
@@ -13,7 +13,7 @@
   ],
   "dependencies": {
     "@megaeth/amm-core": "link:../core",
-    "@uniswap/lib": "1.1.1"
+    "@warp/lib": "link:../warp-lib"
   },
   "license": "GPL-3.0-or-later"
 }

@@ -1,4 +1,4 @@
-import { Price, Token } from "@megaeth/uniswap-sdk-core";
+import { Price, Token } from "@megaeth/warp-sdk-core";
 import { Pair } from "./pair";
 
 export class Route {

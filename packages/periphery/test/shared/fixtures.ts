@@ -4,17 +4,17 @@ import { deployContract } from 'ethereum-waffle'
 
 import { expandTo18Decimals } from './utilities'
 
-import WarpFactory from '@uniswap/v2-core/build/WarpFactory.json'
-import IWarpPair from '@uniswap/v2-core/build/IWarpPair.json'
+import WarpFactory from '../../../../artifacts/packages/core/contracts/WarpFactory.sol/WarpFactory.json'
+import WarpPairArtifact from '../../../../artifacts/packages/core/contracts/WarpPair.sol/WarpPair.json'
 
-import ERC20 from '../../build/ERC20.json'
-import WETH9 from '../../build/WETH9.json'
-import UniswapV1Exchange from '../../build/UniswapV1Exchange.json'
-import UniswapV1Factory from '../../build/UniswapV1Factory.json'
-import WarpRouter01 from '../../build/WarpRouter01.json'
-import WarpMigrator from '../../build/WarpMigrator.json'
-import WarpRouter02 from '../../build/WarpRouter02.json'
-import RouterEventEmitter from '../../build/RouterEventEmitter.json'
+import ERC20 from '../../../../artifacts/packages/periphery/contracts/test/ERC20.sol/ERC20.json'
+import WETH9 from '../../../../artifacts/packages/periphery/contracts/test/WETH9.sol/WETH9.json'
+import WarpV1Exchange from '../../buildV1/WarpV1Exchange.json'
+import WarpV1Factory from '../../buildV1/WarpV1Factory.json'
+import WarpRouter01 from '../../../../artifacts/packages/periphery/contracts/WarpRouter01.sol/WarpRouter01.json'
+import WarpMigrator from '../../../../artifacts/packages/periphery/contracts/WarpMigrator.sol/WarpMigrator.json'
+import WarpRouter02 from '../../../../artifacts/packages/periphery/contracts/WarpRouter.sol/WarpRouter.json'
+import RouterEventEmitter from '../../../../artifacts/packages/periphery/contracts/test/RouterEventEmitter.sol/RouterEventEmitter.json'
 
 const overrides = {
   gasLimit: 9999999
@@ -45,8 +45,8 @@ export async function v2Fixture(provider: Web3Provider, [wallet]: Wallet[]): Pro
   const WETHPartner = await deployContract(wallet, ERC20, [expandTo18Decimals(10000)])
 
   // deploy V1
-  const factoryV1 = await deployContract(wallet, UniswapV1Factory, [])
-  await factoryV1.initializeFactory((await deployContract(wallet, UniswapV1Exchange, [])).address)
+  const factoryV1 = await deployContract(wallet, WarpV1Factory, [])
+  await factoryV1.initializeFactory((await deployContract(wallet, WarpV1Exchange, [])).address)
 
   // deploy V2
   const factoryV2 = await deployContract(wallet, WarpFactory, [wallet.address])
@@ -64,14 +64,14 @@ export async function v2Fixture(provider: Web3Provider, [wallet]: Wallet[]): Pro
   // initialize V1
   await factoryV1.createExchange(WETHPartner.address, overrides)
   const WETHExchangeV1Address = await factoryV1.getExchange(WETHPartner.address)
-  const WETHExchangeV1 = new Contract(WETHExchangeV1Address, JSON.stringify(UniswapV1Exchange.abi), provider).connect(
+  const WETHExchangeV1 = new Contract(WETHExchangeV1Address, JSON.stringify(WarpV1Exchange.abi), provider).connect(
     wallet
   )
 
   // initialize V2
   await factoryV2.createPair(tokenA.address, tokenB.address)
   const pairAddress = await factoryV2.getPair(tokenA.address, tokenB.address)
-  const pair = new Contract(pairAddress, JSON.stringify(IWarpPair.abi), provider).connect(wallet)
+  const pair = new Contract(pairAddress, JSON.stringify(WarpPairArtifact.abi), provider).connect(wallet)
 
   const token0Address = await pair.token0()
   const token0 = tokenA.address === token0Address ? tokenA : tokenB
@@ -79,7 +79,7 @@ export async function v2Fixture(provider: Web3Provider, [wallet]: Wallet[]): Pro
 
   await factoryV2.createPair(WETH.address, WETHPartner.address)
   const WETHPairAddress = await factoryV2.getPair(WETH.address, WETHPartner.address)
-  const WETHPair = new Contract(WETHPairAddress, JSON.stringify(IWarpPair.abi), provider).connect(wallet)
+  const WETHPair = new Contract(WETHPairAddress, JSON.stringify(WarpPairArtifact.abi), provider).connect(wallet)
 
   return {
     token0,

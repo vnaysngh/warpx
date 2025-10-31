@@ -4,8 +4,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@megaeth/uniswap-sdk-core": ["../../packages/uniswap-sdk-core/dist"],
-      "@megaeth/uniswap-v2-sdk": ["../../packages/uniswap-v2-sdk/dist"]
+      "@megaeth/warp-sdk-core": ["../../packages/warp-sdk-core/dist"],
+      "@megaeth/warp-v2-sdk": ["../../packages/warp-v2-sdk/dist"]
     },
     "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],

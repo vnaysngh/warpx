@@ -752,6 +752,12 @@
 "@megaeth/amm-core@link:packages/core":
   version "0.1.0"
 
+"@megaeth/warp-sdk-core@link:packages/warp-sdk-core":
+  version "0.1.0"
+
+"@megaeth/warp-v2-sdk@link:packages/warp-v2-sdk":
+  version "0.1.0"
+
 "@metamask/eth-json-rpc-provider@^1.0.0":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@metamask/eth-json-rpc-provider/-/eth-json-rpc-provider-1.0.1.tgz#3fd5316c767847f4ca107518b611b15396a5a32c"
@@ -1897,10 +1903,8 @@
   resolved "https://registry.yarnpkg.com/@types/trusted-types/-/trusted-types-2.0.7.tgz#baccb07a970b91707df3a3e8ba6896c57ead2d11"
   integrity sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==
 
-"@uniswap/lib@1.1.1":
+"@warp/lib@link:packages/warp-lib":
   version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@uniswap/lib/-/lib-1.1.1.tgz#0afd29601846c16e5d082866cbb24a9e0758e6bc"
-  integrity sha512-2yK7sLpKIT91TiS5sewHtOa7YuM8IuBXVl4GZv2jZFys4D2sY7K5vZh6MqD25TPA95Od+0YzCVq6cTF2IKrOmg==
 
 "@wagmi/connectors@6.1.1", "@wagmi/connectors@>=5.9.9":
   version "6.1.1"

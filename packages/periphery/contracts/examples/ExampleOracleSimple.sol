@@ -2,7 +2,7 @@ pragma solidity =0.6.6;
 
 import '../../../core/contracts/interfaces/IWarpFactory.sol';
 import '../../../core/contracts/interfaces/IWarpPair.sol';
-import '@uniswap/lib/contracts/libraries/FixedPoint.sol';
+import '../../../warp-lib/contracts/libraries/FixedPoint.sol';
 
 import '../libraries/WarpOracleLibrary.sol';
 import '../libraries/WarpLibrary.sol';

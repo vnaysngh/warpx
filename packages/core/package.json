@@ -1,6 +1,6 @@
 {
   "name": "@megaeth/amm-core",
-  "description": "MegaETH-focused fork of PancakeSwap v2 core contracts (factory, pair, libraries).",
+  "description": "MegaETH-focused Warp v2 core contracts (factory, pair, libraries).",
   "version": "0.1.0",
   "homepage": "https://docs.megaeth.com/",
   "repository": {

@@ -1,8 +1,6 @@
-# Pancake Factory
+# Warp Factory
 
-[![Actions Status](https://github.com/pancakeswap/pancake-swap-core/workflows/CI/badge.svg)](https://github.com/pancakeswap/pancake-swap-core/actions)
-
-In-depth documentation on PancakeSwap is available at [docs.pancakeswap.finance](https://docs.pancakeswap.finance/).
+Core Warp factory and pair contracts that power the WarpX automated market maker.
 
 # Local Development
 

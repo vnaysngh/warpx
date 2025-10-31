@@ -1,8 +1,8 @@
 pragma solidity =0.6.6;
 
 import '../../../core/contracts/interfaces/IWarpPair.sol';
-import '@uniswap/lib/contracts/libraries/Babylonian.sol';
-import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
+import '../../../warp-lib/contracts/libraries/Babylonian.sol';
+import '../../../warp-lib/contracts/libraries/TransferHelper.sol';
 
 import '../interfaces/IERC20.sol';
 import '../interfaces/IWarpRouter01.sol';
