@@ -8,7 +8,7 @@
     "rootDir": "src",
     "baseUrl": ".",
     "paths": {
-      "@megaeth/uniswap-sdk-core": ["../uniswap-sdk-core/dist"]
+      "@megaeth/warp-sdk-core": ["../warp-sdk-core/dist"]
     }
   },
   "include": ["src/**/*"]

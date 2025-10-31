@@ -6,14 +6,14 @@ import {
   CurrencyAmount,
   Percent,
   Token
-} from "@megaeth/uniswap-sdk-core";
+} from "@megaeth/warp-sdk-core";
 import {
   Fetcher,
   Pair,
   Route,
   Trade,
   TradeType
-} from "@megaeth/uniswap-v2-sdk";
+} from "@megaeth/warp-v2-sdk";
 import type { TokenDescriptor } from "./types";
 import { MEGAETH_CHAIN_ID } from "./constants";
 

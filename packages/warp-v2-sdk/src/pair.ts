@@ -1,4 +1,4 @@
-import { CurrencyAmount, Price, Token } from "@megaeth/uniswap-sdk-core";
+import { CurrencyAmount, Price, Token } from "@megaeth/warp-sdk-core";
 
 const ZERO = 0n;
 const FEE_NUMERATOR = 997n;
