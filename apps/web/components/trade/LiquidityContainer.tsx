@@ -28,7 +28,7 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay } from "@/lib/trade/format";
-import { fetchPair, toSdkToken } from "@/lib/trade/uniswap";
+import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;

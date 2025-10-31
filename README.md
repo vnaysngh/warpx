@@ -1,6 +1,6 @@
 # WarpX
 
-WarpX is a decentralized exchange (DEX) built on the Ethereum blockchain. It is a Uniswap V2 fork that allows users to swap ERC20 tokens.
+WarpX is a decentralized exchange (DEX) built on the Ethereum blockchain. It is a V2-style AMM that allows users to swap ERC20 tokens.
 
 ## Project Structure
 
@@ -55,7 +55,7 @@ This is the main web application for the WarpX DEX. It is built with Next.js and
 
 ### `packages/core`
 
-This package contains the core smart contracts for the DEX. The contracts are written in Solidity and are based on the Uniswap V2 contracts.
+This package contains the core smart contracts for the DEX. The contracts are written in Solidity and implement a V2-style AMM protocol.
 
 -   `WarpFactory.sol`: The factory contract for creating new token pairs.
 -   `WarpPair.sol`: The contract for a single token pair.

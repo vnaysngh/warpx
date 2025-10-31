@@ -1,5 +1,5 @@
 import { Contract, JsonRpcProvider, ZeroAddress } from "ethers";
-import { CurrencyAmount, Token } from "@megaeth/uniswap-sdk-core";
+import { CurrencyAmount, Token } from "@megaeth/warp-sdk-core";
 import { Pair } from "./pair";
 
 const FACTORY_ABI = [

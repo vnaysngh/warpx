@@ -1,7 +1,7 @@
 {
-  "name": "@megaeth/uniswap-sdk-core",
+  "name": "@megaeth/warp-v2-sdk",
   "version": "0.1.0",
-  "description": "Minimal Uniswap v2 SDK core primitives adapted for MegaETH testnet.",
+  "description": "Warp v2 pair, route, and trade helpers for MegaETH testnet.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@megaeth/warp-sdk-core": "workspace:*",
     "ethers": "^6.13.0"
   }
 }

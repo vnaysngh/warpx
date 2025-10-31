@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BrowserProvider, JsonRpcProvider, JsonRpcSigner } from "ethers";
 import { parseUnits } from "ethers";
-import type { Pair } from "@megaeth/uniswap-v2-sdk";
+import type { Pair } from "@megaeth/warp-v2-sdk";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
@@ -37,7 +37,7 @@ import {
   createTradeExactOut,
   fetchPair,
   toSdkToken
-} from "@/lib/trade/uniswap";
+} from "@/lib/trade/warp";
 
 type EnsureWalletContext = {
   walletAccount: string | null;

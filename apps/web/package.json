@@ -12,8 +12,8 @@
     "fetch-reserves": "node scripts/fetchPairReserves.mjs"
   },
   "dependencies": {
-    "@megaeth/uniswap-sdk-core": "workspace:*",
-    "@megaeth/uniswap-v2-sdk": "workspace:*",
+    "@megaeth/warp-sdk-core": "workspace:*",
+    "@megaeth/warp-v2-sdk": "workspace:*",
     "@reown/appkit": "^1.8.12",
     "@reown/appkit-adapter-wagmi": "^1.8.12",
     "@tanstack/react-query": "^5.90.5",

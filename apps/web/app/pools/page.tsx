@@ -30,7 +30,7 @@ import { parseErrorMessage } from "@/lib/trade/errors";
 import { shortAddress } from "@/lib/utils/format";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 import { formatNumber } from "@/lib/trade/math";
-import { fetchPair, toSdkToken } from "@/lib/trade/uniswap";
+import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 
 export default function PoolsPage() {
   const {
