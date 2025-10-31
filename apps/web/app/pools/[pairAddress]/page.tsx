@@ -256,6 +256,13 @@ export default function PoolLiquidityPage() {
 
         if (cancelled) return;
 
+        const [descriptor0, descriptor1] = await Promise.all([
+          ensureDescriptor(token0Address),
+          ensureDescriptor(token1Address)
+        ]);
+
+        if (cancelled) return;
+
         const token0Lower = token0Address.toLowerCase();
         const token1Lower = token1Address.toLowerCase();
 
@@ -263,13 +270,6 @@ export default function PoolLiquidityPage() {
           token0: token0Lower,
           token1: token1Lower
         };
-
-        const [descriptor0, descriptor1] = await Promise.all([
-          ensureDescriptor(token0Address),
-          ensureDescriptor(token1Address)
-        ]);
-
-        if (cancelled) return;
 
         if (descriptor0) {
           setLiquidityTokenA(descriptor0);

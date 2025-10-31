@@ -2,39 +2,33 @@
   "network": "megaethTestnet",
   "tokens": [
     {
-      "name": "MegaETH Token C",
-      "symbol": "MEGC",
-      "address": "0x59948fa72d6e560f0d29F21881570a376CD2fe7E",
-      "decimals": 18
-    },
-    {
-      "name": "MegaETH Token D",
-      "symbol": "MEGD",
-      "address": "0xb8331e50BACA5d81ce6643CA0Ea37FCeC722c0eB",
-      "decimals": 18
-    },
-    {
-      "name": "MegaETH Token E",
-      "symbol": "MEGE",
-      "address": "0x7F612466944952bEA1B7B202B08FB04d6bCdE0a8",
-      "decimals": 18
-    },
-    {
-      "name": "MegaETH Token F",
-      "symbol": "MEGF",
-      "address": "0x0fbA9174eCE3dB8F2ca60Da6C3e9720cf15cf952",
-      "decimals": 18
-    },
-    {
-      "name": "MegaETH Token G",
-      "symbol": "MEGG",
-      "address": "0x36D8d5Dd1feD9863AB4F6eFFCEd2fCA4723b6460",
+      "name": "Ethereum",
+      "symbol": "ETH",
+      "address": "0x776401b9bc8aae31a685731b7147d4445fd9fb19",
       "decimals": 18
     },
     {
       "name": "WarpX",
       "symbol": "WARPX",
       "address": "0xAf94EC793270d2FcF2Ad3700EBE3ba3488B266c3",
+      "decimals": 18
+    },
+    {
+      "name": "GTE Token",
+      "symbol": "GTE",
+      "address": "0x9629684df53db9e4484697d0a50c442b2bfa80a8",
+      "decimals": 18
+    },
+    {
+      "name": "MEGA",
+      "symbol": "MEGA",
+      "address": "0x10a6be7d23989d00d528e68cf8051d095f741145",
+      "decimals": 18
+    },
+    {
+      "name": "USD",
+      "symbol": "USD",
+      "address": "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
       "decimals": 18
     }
   ]

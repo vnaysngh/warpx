@@ -1,0 +1,206 @@
+import { ethers } from "hardhat";
+import * as fs from "fs";
+import * as path from "path";
+
+type DeploymentManifest = {
+  network: string;
+  router: string;
+  factory: string;
+};
+
+type TokenManifestEntry = {
+  name: string;
+  symbol: string;
+  address: string;
+  decimals: number;
+};
+
+type TokenManifest = {
+  network: string;
+  tokens: TokenManifestEntry[];
+};
+
+const TOKEN_A_SYMBOL = process.env.LIQUIDITY_TOKEN_A ?? "WARPX";
+const TOKEN_B_SYMBOL = process.env.LIQUIDITY_TOKEN_B ?? "ETH";
+const TOKEN_A_AMOUNT = process.env.LIQUIDITY_TOKEN_A_AMOUNT ?? "1000";
+const TOKEN_B_AMOUNT = process.env.LIQUIDITY_TOKEN_B_AMOUNT ?? "0.001";
+const DEADLINE_MINUTES = Number(process.env.LIQUIDITY_DEADLINE_MINUTES ?? "10");
+
+function loadJsonFile<T>(filePath: string): T {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Required file missing: ${filePath}`);
+  }
+  return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
+}
+
+function findToken(
+  manifest: TokenManifest,
+  symbol: string
+): TokenManifestEntry {
+  const token = manifest.tokens.find(
+    (entry) => entry.symbol.toLowerCase() === symbol.toLowerCase()
+  );
+
+  if (!token) {
+    throw new Error(
+      `Token with symbol ${symbol} not found in ${manifest.network}.tokens.json`
+    );
+  }
+
+  return token;
+}
+
+async function ensureAllowance(
+  token: ethers.Contract,
+  owner: string,
+  spender: string,
+  required: bigint,
+  symbol: string
+) {
+  const current = await token.allowance(owner, spender);
+  if (current >= required) {
+    return;
+  }
+
+  console.log(`Approving ${symbol} allowance for router…`);
+  const tx = await token.approve(spender, ethers.MaxUint256);
+  await tx.wait();
+}
+
+async function main() {
+  const network = process.env.HARDHAT_NETWORK ?? "megaethTestnet";
+  const root = path.resolve(__dirname, "..");
+  const deploymentsDir = path.join(root, "deployments");
+
+  const deploymentManifest = loadJsonFile<DeploymentManifest>(
+    path.join(deploymentsDir, `${network}.json`)
+  );
+  const tokenManifest = loadJsonFile<TokenManifest>(
+    path.join(deploymentsDir, `${network}.tokens.json`)
+  );
+
+  const tokenAData = findToken(tokenManifest, TOKEN_A_SYMBOL);
+  const tokenBData = findToken(tokenManifest, TOKEN_B_SYMBOL);
+
+  const [deployer] = await ethers.getSigners();
+  const deployerAddress = await deployer.getAddress();
+
+  console.log(`Network: ${network}`);
+  console.log(`Router: ${deploymentManifest.router}`);
+  console.log(`Factory: ${deploymentManifest.factory}`);
+  console.log(`Deployer: ${deployerAddress}`);
+  console.log(`Token A (${tokenAData.symbol}): ${tokenAData.address}`);
+  console.log(`Token B (${tokenBData.symbol}): ${tokenBData.address}`);
+
+  const router = await ethers.getContractAt(
+    "WarpRouter",
+    deploymentManifest.router,
+    deployer
+  );
+  const factory = await ethers.getContractAt(
+    "IWarpFactory",
+    deploymentManifest.factory,
+    deployer
+  );
+  const tokenA = await ethers.getContractAt(
+    "packages/periphery/contracts/interfaces/IERC20.sol:IERC20",
+    tokenAData.address,
+    deployer
+  );
+  const tokenB = await ethers.getContractAt(
+    "packages/periphery/contracts/interfaces/IERC20.sol:IERC20",
+    tokenBData.address,
+    deployer
+  );
+
+  const amountADesired = ethers.parseUnits(
+    TOKEN_A_AMOUNT,
+    tokenAData.decimals ?? 18
+  );
+  const amountBDesired = ethers.parseUnits(
+    TOKEN_B_AMOUNT,
+    tokenBData.decimals ?? 18
+  );
+  const deadline = Math.floor(Date.now() / 1000) + DEADLINE_MINUTES * 60;
+
+  const balanceA = await tokenA.balanceOf(deployerAddress);
+  if (balanceA < amountADesired) {
+    throw new Error(
+      `Insufficient ${tokenAData.symbol} balance. Need ${TOKEN_A_AMOUNT}, have ${ethers.formatUnits(
+        balanceA,
+        tokenAData.decimals ?? 18
+      )}`
+    );
+  }
+
+  const balanceB = await tokenB.balanceOf(deployerAddress);
+  if (balanceB < amountBDesired) {
+    throw new Error(
+      `Insufficient ${tokenBData.symbol} balance. Need ${TOKEN_B_AMOUNT}, have ${ethers.formatUnits(
+        balanceB,
+        tokenBData.decimals ?? 18
+      )}`
+    );
+  }
+
+  await ensureAllowance(
+    tokenA,
+    deployerAddress,
+    deploymentManifest.router,
+    amountADesired,
+    tokenAData.symbol
+  );
+  await ensureAllowance(
+    tokenB,
+    deployerAddress,
+    deploymentManifest.router,
+    amountBDesired,
+    tokenBData.symbol
+  );
+
+  const existingPair = await factory.getPair(
+    tokenAData.address,
+    tokenBData.address
+  );
+  if (existingPair !== ethers.ZeroAddress) {
+    console.log(`Existing pair detected at ${existingPair}`);
+  } else {
+    console.log(
+      "No existing pair found. Router will create it when adding liquidity."
+    );
+  }
+
+  console.log(
+    `Adding liquidity ${TOKEN_A_AMOUNT} ${tokenAData.symbol} + ${TOKEN_B_AMOUNT} ${tokenBData.symbol}`
+  );
+  const tx = await router.addLiquidity(
+    tokenAData.address,
+    tokenBData.address,
+    amountADesired,
+    amountBDesired,
+    amountADesired,
+    amountBDesired,
+    deployerAddress,
+    deadline
+  );
+
+  const receipt = await tx.wait();
+  console.log(`Liquidity added. Tx hash: ${receipt?.hash ?? tx.hash}`);
+
+  const pairAfter = await factory.getPair(
+    tokenAData.address,
+    tokenBData.address
+  );
+  if (pairAfter === ethers.ZeroAddress) {
+    console.warn(
+      "Pair address unknown after addLiquidity. Check the transaction manually."
+    );
+  } else {
+    console.log(`Pair address: ${pairAfter}`);
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

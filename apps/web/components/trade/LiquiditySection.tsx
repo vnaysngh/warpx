@@ -87,9 +87,15 @@ export function LiquiditySection({
       </div>
 
       {mode === "add" ? (
-        <LiquidityAddForm {...addProps} tokenSelectionEnabled={tokenSelectionEnabled} />
+        <LiquidityAddForm
+          {...addProps}
+          tokenSelectionEnabled={tokenSelectionEnabled}
+        />
       ) : (
-        <LiquidityRemoveForm {...removeProps} tokenSelectionEnabled={tokenSelectionEnabled} />
+        <LiquidityRemoveForm
+          {...removeProps}
+          tokenSelectionEnabled={tokenSelectionEnabled}
+        />
       )}
     </section>
   );
@@ -143,9 +149,7 @@ function LiquidityAddForm({
           </div>
           <span className={styles.helper}>
             Balance:{" "}
-            {liquidityTokenA
-              ? `${formatBalance(tokenABalanceFormatted)} ${tokenASymbol ?? liquidityTokenA.symbol}`
-              : "—"}
+            {liquidityTokenA ? `${formatBalance(tokenABalanceFormatted)}` : "—"}
           </span>
         </div>
 
@@ -177,9 +181,7 @@ function LiquidityAddForm({
           </div>
           <span className={styles.helper}>
             Balance:{" "}
-            {liquidityTokenB
-              ? `${formatBalance(tokenBBalanceFormatted)} ${tokenBSymbol ?? liquidityTokenB.symbol}`
-              : "—"}
+            {liquidityTokenB ? `${formatBalance(tokenBBalanceFormatted)}` : "—"}
           </span>
         </div>
       </div>
@@ -345,7 +347,9 @@ function LiquidityRemoveForm({
             min="1"
             max="100"
             value={removeLiquidityPercent}
-            onChange={(event) => onRemoveLiquidityPercentChange(event.target.value)}
+            onChange={(event) =>
+              onRemoveLiquidityPercentChange(event.target.value)
+            }
             style={{
               width: "100%",
               marginBottom: "0.75rem",
@@ -376,8 +380,7 @@ function LiquidityRemoveForm({
                     removeLiquidityPercent === pct
                       ? "rgba(107, 114, 128, 0.15)"
                       : "transparent",
-                  color:
-                    removeLiquidityPercent === pct ? "#d1d5db" : "inherit",
+                  color: removeLiquidityPercent === pct ? "#d1d5db" : "inherit",
                   cursor: "pointer",
                   fontSize: "0.875rem",
                   transition: "all 0.15s ease"
