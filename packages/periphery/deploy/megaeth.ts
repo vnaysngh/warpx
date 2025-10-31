@@ -36,7 +36,7 @@ async function main() {
   console.log(`Using deployer ${deployerAddress}`)
   console.log(`Factory feeToSetter ${feeToSetter}`)
 
-  const Factory = await ethers.getContractFactory('PancakeFactory')
+  const Factory = await ethers.getContractFactory('WarpFactory')
   const factory = await Factory.deploy(feeToSetter)
   await factory.waitForDeployment()
   const factoryAddress = await factory.getAddress()
@@ -48,7 +48,7 @@ async function main() {
   const wmegaethAddress = await wmegaeth.getAddress()
   console.log(`WMegaETH deployed at ${wmegaethAddress}`)
 
-  const Router = await ethers.getContractFactory('PancakeRouter')
+  const Router = await ethers.getContractFactory('WarpRouter')
   const router = await Router.deploy(factoryAddress, wmegaethAddress)
   await router.waitForDeployment()
   const routerAddress = await router.getAddress()

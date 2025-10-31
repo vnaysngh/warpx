@@ -4,7 +4,7 @@ import {
   JsonRpcProvider,
   JsonRpcSigner,
 } from "ethers";
-import { pancakeRouterAbi } from "./abis/router";
+import { warpRouterAbi } from "./abis/router";
 import { erc20Abi } from "./abis/erc20";
 import { wmegaAbi } from "./abis/wmega";
 import { factoryAbi } from "./abis/factory";
@@ -55,7 +55,7 @@ type SignerOrProvider = JsonRpcSigner | BrowserProvider | JsonRpcProvider;
 export const getRouter = (
   address: string,
   signerOrProvider: SignerOrProvider,
-) => new Contract(address, pancakeRouterAbi, signerOrProvider) as RouterContract;
+) => new Contract(address, warpRouterAbi, signerOrProvider) as RouterContract;
 
 export const getToken = (
   address: string,
