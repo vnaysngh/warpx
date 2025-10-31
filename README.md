@@ -57,15 +57,15 @@ This is the main web application for the WarpX DEX. It is built with Next.js and
 
 This package contains the core smart contracts for the DEX. The contracts are written in Solidity and are based on the Uniswap V2 contracts.
 
--   `PancakeFactory.sol`: The factory contract for creating new token pairs.
--   `PancakePair.sol`: The contract for a single token pair.
--   `PancakeERC20.sol`: An ERC20 token contract used for testing.
+-   `WarpFactory.sol`: The factory contract for creating new token pairs.
+-   `WarpPair.sol`: The contract for a single token pair.
+-   `WarpERC20.sol`: An ERC20 token contract used for testing.
 
 ### `packages/periphery`
 
 This package contains the router smart contract for interacting with the core contracts.
 
--   `PancakeRouter.sol`: The router contract for swapping tokens.
+-   `WarpRouter.sol`: The router contract for swapping tokens.
 
 ## Testing
 

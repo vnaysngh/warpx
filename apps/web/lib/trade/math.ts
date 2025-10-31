@@ -7,7 +7,7 @@ import {
 } from "./constants";
 
 /**
- * Format numbers with smart decimal handling (Uniswap/PancakeSwap style)
+ * Format numbers with smart decimal handling (Uniswap/Warp style)
  * - Strips trailing zeros
  * - Shows appropriate precision based on magnitude
  */
