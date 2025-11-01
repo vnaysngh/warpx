@@ -61,7 +61,20 @@ export function SwapCard({
               className={styles.assetSelector}
               onClick={() => onOpenTokenDialog("swapIn")}
             >
-              <span className={styles.assetSelectorSymbol}>
+              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {selectedIn?.logo && (
+                  <img
+                    src={selectedIn.logo}
+                    alt={selectedIn.symbol}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 {selectedIn?.symbol ?? "Select"}
               </span>
             </button>
@@ -144,7 +157,20 @@ export function SwapCard({
               className={styles.assetSelector}
               onClick={() => onOpenTokenDialog("swapOut")}
             >
-              <span className={styles.assetSelectorSymbol}>
+              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {selectedOut?.logo && (
+                  <img
+                    src={selectedOut.logo}
+                    alt={selectedOut.symbol}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 {selectedOut?.symbol ?? "Select"}
               </span>
             </button>

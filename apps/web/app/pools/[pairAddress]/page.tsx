@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
-import {
-  useAccount,
-  useSwitchChain,
-  useWalletClient
-} from "wagmi";
+import { useAccount, useSwitchChain, useWalletClient } from "wagmi";
 import styles from "../page.module.css";
 import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
@@ -26,7 +22,9 @@ import { parseErrorMessage } from "@/lib/trade/errors";
 import { getPair } from "@/lib/contracts";
 import type { TokenDescriptor } from "@/lib/trade/types";
 
-const NATIVE_SYMBOL = (process.env.NEXT_PUBLIC_NATIVE_SYMBOL ?? "ETH").toUpperCase();
+const NATIVE_SYMBOL = (
+  process.env.NEXT_PUBLIC_NATIVE_SYMBOL ?? "ETH"
+).toUpperCase();
 
 const isNativeToken = (token?: TokenDescriptor | null) =>
   Boolean(token?.isNative) || token?.symbol?.toUpperCase() === NATIVE_SYMBOL;
@@ -76,8 +74,12 @@ export default function PoolLiquidityPage() {
 
   const wrappedNativeAddress = deployment?.wmegaeth ?? null;
   const wrappedNativeLower = wrappedNativeAddress?.toLowerCase() ?? null;
-  const [pairTokenAddresses, setPairTokenAddresses] = useState<{ token0: string | null; token1: string | null }>({
-    token0: null, token1: null
+  const [pairTokenAddresses, setPairTokenAddresses] = useState<{
+    token0: string | null;
+    token1: string | null;
+  }>({
+    token0: null,
+    token1: null
   });
 
   const {
@@ -382,7 +384,7 @@ export default function PoolLiquidityPage() {
             </div>
           </div>
           <p className={styles.description}>
-            Explore every pool derived from the current MegaETH deployment.
+            Provide liquidity to trading pairs and earn fees from every swap..
           </p>
         </div>
 

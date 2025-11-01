@@ -31,30 +31,35 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     address: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66",
     decimals: 18,
     isNative: true,
-    wrappedAddress: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66"
+    wrappedAddress: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66",
+    logo: "/logos/eth.jpeg"
   },
   {
     symbol: "WARPX",
     name: "WarpX",
     address: "0xAf94EC793270d2FcF2Ad3700EBE3ba3488B266c3",
-    decimals: 18
+    decimals: 18,
+    logo: "/logos/warpx.jpeg"
   },
   {
     symbol: "GTE",
     name: "GTE Token",
     address: "0x9629684df53db9e4484697d0a50c442b2bfa80a8",
-    decimals: 18
+    decimals: 18,
+    logo: "/logos/gte.png"
   },
   {
     symbol: "MEGA",
     name: "MEGA",
     address: "0x10a6be7d23989d00d528e68cf8051d095f741145",
-    decimals: 18
+    decimals: 18,
+    logo: "/logos/mega.png"
   },
   {
     symbol: "USD",
     name: "USD",
     address: "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
-    decimals: 18
+    decimals: 18,
+    logo: "/logos/usd.png"
   }
 ];

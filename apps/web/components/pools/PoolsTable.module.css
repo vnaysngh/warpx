@@ -97,15 +97,23 @@
 .tokenBadgePrimary {
   position: absolute;
   left: 0;
-  transform: translateX(-25%);
-  background: linear-gradient(135deg, rgba(136, 99, 255, 0.45), rgba(68, 38, 169, 0.55));
+  z-index: 2;
+  background: linear-gradient(
+    135deg,
+    rgba(136, 99, 255, 0.45),
+    rgba(68, 38, 169, 0.55)
+  );
 }
 
 .tokenBadgeSecondary {
   position: absolute;
-  right: 0;
-  transform: translateX(25%);
-  background: linear-gradient(135deg, rgba(10, 255, 157, 0.3), rgba(26, 137, 255, 0.4));
+  left: 17px;
+  z-index: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(10, 255, 157, 0.3),
+    rgba(26, 137, 255, 0.4)
+  );
 }
 
 .poolMeta {
@@ -139,7 +147,7 @@
 
 .tvlCell {
   width: 140px;
-  text-align: right;
+  /* text-align: right; */
   font-variant-numeric: tabular-nums;
 }
 

@@ -1,8 +1,5 @@
 import { shortAddress } from "@/lib/utils/format";
-import type {
-  TokenDescriptor,
-  TokenDialogSlot
-} from "@/lib/trade/types";
+import type { TokenDescriptor, TokenDialogSlot } from "@/lib/trade/types";
 import styles from "@/app/page.module.css";
 
 type TokenDialogProps = {
@@ -44,7 +41,7 @@ export function TokenDialog({
           <span className={styles.dialogTitle}>
             Select{" "}
             {tokenDialogSide === "swapIn"
-              ? "pay"
+              ? "sell"
               : tokenDialogSide === "swapOut"
                 ? "receive"
                 : tokenDialogSide === "liquidityA"
@@ -83,8 +80,29 @@ export function TokenDialog({
                 onClick={() => onSelectToken(token)}
               >
                 <div className={styles.dialogMeta}>
-                  <span className={styles.dialogSymbol}>{token.symbol}</span>
-                  <span className={styles.dialogAddress}>{token.name}</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}
+                  >
+                    {token.logo && (
+                      <img
+                        src={token.logo}
+                        alt={token.symbol}
+                        style={{
+                          width: "24px",
+                          height: "24px",
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          flexShrink: 0
+                        }}
+                      />
+                    )}
+                    <span className={styles.dialogSymbol}>{token.symbol}</span>
+                  </div>
+                  {/* <span className={styles.dialogAddress}>{token.name}</span> */}
                 </div>
                 <span className={styles.dialogAddress}>
                   {shortAddress(token.address)}

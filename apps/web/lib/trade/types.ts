@@ -5,6 +5,7 @@ export type TokenDescriptor = {
   decimals: number;
   isNative?: boolean;
   wrappedAddress?: string;
+  logo?: string;
 };
 
 export type TokenManifest = {
@@ -14,6 +15,7 @@ export type TokenManifest = {
     address: string;
     decimals?: number;
     isNative?: boolean;
+    logo?: string;
   }>;
 };
 

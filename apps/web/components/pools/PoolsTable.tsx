@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import type { TokenDescriptor } from "@/lib/trade/types";
 import styles from "./PoolsTable.module.css";
@@ -34,7 +34,10 @@ export function PoolsTable({
   const showError = Boolean(error);
 
   return (
-    <div className={styles.tableContainer} data-loading={loading ? "true" : "false"}>
+    <div
+      className={styles.tableContainer}
+      data-loading={loading ? "true" : "false"}
+    >
       <table className={styles.table}>
         <thead>
           <tr>
@@ -42,16 +45,14 @@ export function PoolsTable({
             <th>Pool</th>
             <th>Protocol</th>
             <th>Fee tier</th>
-            <th>TVL (est.)</th>
-            <th>Pool APR</th>
-            <th>Reward APR</th>
+            <th>TVL in ETH</th>
           </tr>
         </thead>
         <tbody>
           {showSkeleton &&
             Array.from({ length: 5 }).map((_, index) => (
               <tr key={`skeleton-${index}`} className={styles.skeletonRow}>
-                <td colSpan={7}>
+                <td colSpan={5}>
                   <div className={styles.skeletonLine} />
                 </td>
               </tr>
@@ -82,44 +83,66 @@ export function PoolsTable({
                 <td className={styles.poolCell}>
                   <div className={styles.poolStack}>
                     <div className={styles.tokenStack}>
-                      <span className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}>
-                        {pool.token0.symbol.slice(0, 3).toUpperCase()}
-                      </span>
-                      <span className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}>
-                        {pool.token1.symbol.slice(0, 3).toUpperCase()}
-                      </span>
+                      {pool.token0.logo ? (
+                        <img
+                          src={pool.token0.logo}
+                          alt={pool.token0.symbol}
+                          className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
+                          style={{ objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span
+                          className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
+                        >
+                          {pool.token0.symbol.slice(0, 3).toUpperCase()}
+                        </span>
+                      )}
+                      {pool.token1.logo ? (
+                        <img
+                          src={pool.token1.logo}
+                          alt={pool.token1.symbol}
+                          className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
+                          style={{ objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span
+                          className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
+                        >
+                          {pool.token1.symbol.slice(0, 3).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div className={styles.poolMeta}>
                       <div className={styles.poolLabel}>
                         {pool.token0.symbol}/{pool.token1.symbol}
                       </div>
                       <div className={styles.poolAddress}>
-                        {pool.pairAddress.slice(0, 6)}…{pool.pairAddress.slice(-4)}
+                        {pool.pairAddress.slice(0, 6)}…
+                        {pool.pairAddress.slice(-4)}
                       </div>
                     </div>
                   </div>
                 </td>
                 <td className={styles.protocolCell}>v2</td>
-                <td className={styles.feeCell}>0.30%</td>
+                <td className={styles.feeCell}>0.20%</td>
                 <td className={styles.tvlCell}>
-                  ≈ {pool.totalLiquidityFormatted}
+                  {pool.totalLiquidityFormatted} ETH
                 </td>
-                <td className={styles.aprCell}>—</td>
-                <td className={styles.rewardAprCell}>—</td>
               </tr>
             ))}
 
           {!showSkeleton && showEmpty && (
             <tr>
-              <td colSpan={7} className={styles.stateCell}>
-                No liquidity pools found. Check back soon or create one to get started!
+              <td colSpan={5} className={styles.stateCell}>
+                No liquidity pools found. Check back soon or create one to get
+                started!
               </td>
             </tr>
           )}
 
           {showError && (
             <tr>
-              <td colSpan={7} className={styles.stateCell}>
+              <td colSpan={5} className={styles.stateCell}>
                 <div className={styles.stateContent}>
                   <span>{error}</span>
                   <button

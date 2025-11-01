@@ -143,7 +143,8 @@ export default function PoolsPage() {
           address: token.address,
           decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
           isNative: Boolean(token.isNative),
-          wrappedAddress: token.isNative ? deployment?.wmegaeth : undefined
+          wrappedAddress: token.isNative ? deployment?.wmegaeth : undefined,
+          logo: token.logo
         }));
 
         setTokenList((prev) => {
@@ -275,9 +276,26 @@ export default function PoolsPage() {
             const reserve0Value = Number(sdkPair.reserve0.toExact(6));
             const reserve1Value = Number(sdkPair.reserve1.toExact(6));
 
-            const totalLiquidityValue =
-              (Number.isFinite(reserve0Value) ? reserve0Value : 0) +
-              (Number.isFinite(reserve1Value) ? reserve1Value : 0);
+            // Calculate TVL in ETH
+            // Check which token is ETH/WETH
+            const token0Lower = sdkPair.token0.address.toLowerCase();
+            const token1Lower = sdkPair.token1.address.toLowerCase();
+            const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
+
+            let totalLiquidityValue = 0;
+
+            if (wethLower && token0Lower === wethLower) {
+              // Token0 is WETH, so TVL = reserve0 * 2
+              totalLiquidityValue = (Number.isFinite(reserve0Value) ? reserve0Value : 0) * 2;
+            } else if (wethLower && token1Lower === wethLower) {
+              // Token1 is WETH, so TVL = reserve1 * 2
+              totalLiquidityValue = (Number.isFinite(reserve1Value) ? reserve1Value : 0) * 2;
+            } else {
+              // No ETH in pair, sum both reserves as fallback
+              totalLiquidityValue =
+                (Number.isFinite(reserve0Value) ? reserve0Value : 0) +
+                (Number.isFinite(reserve1Value) ? reserve1Value : 0);
+            }
 
             // Fetch user LP balance if wallet is connected
             let userLpBalance: string | undefined;
@@ -416,7 +434,7 @@ export default function PoolsPage() {
             <h1 className={styles.title}>Pools</h1>
           </div>
           <p className={styles.description}>
-            Explore every pool derived from the current MegaETH deployment.
+            Provide liquidity to trading pairs and earn fees from every swap.
           </p>
         </div>
 

@@ -106,7 +106,8 @@ const mapTokenEntry = (
       address: wrappedAddress,
       decimals,
       wrappedAddress,
-      isNative: true
+      isNative: true,
+      logo: "logo" in entry ? entry.logo : undefined
     };
   }
 
@@ -120,7 +121,8 @@ const mapTokenEntry = (
     name,
     address,
     decimals,
-    isNative: false
+    isNative: false,
+    logo: "logo" in entry ? entry.logo : undefined
   };
 };
 

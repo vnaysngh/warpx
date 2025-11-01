@@ -134,7 +134,20 @@ function LiquidityAddForm({
               }
               disabled={!tokenSelectionEnabled}
             >
-              <span className={styles.assetSelectorSymbol}>
+              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {liquidityTokenA?.logo && (
+                  <img
+                    src={liquidityTokenA.logo}
+                    alt={liquidityTokenA.symbol}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 {liquidityTokenA?.symbol ?? "Select"}
               </span>
             </button>
@@ -166,7 +179,20 @@ function LiquidityAddForm({
               }
               disabled={!tokenSelectionEnabled}
             >
-              <span className={styles.assetSelectorSymbol}>
+              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {liquidityTokenB?.logo && (
+                  <img
+                    src={liquidityTokenB.logo}
+                    alt={liquidityTokenB.symbol}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 {liquidityTokenB?.symbol ?? "Select"}
               </span>
             </button>
@@ -241,7 +267,20 @@ function LiquidityRemoveForm({
               disabled={!tokenSelectionEnabled}
               style={{ flex: 1 }}
             >
-              <span className={styles.assetSelectorSymbol}>
+              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {liquidityTokenA?.logo && (
+                  <img
+                    src={liquidityTokenA.logo}
+                    alt={liquidityTokenA.symbol}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 {liquidityTokenA?.symbol ?? "Select"}
               </span>
             </button>
@@ -257,7 +296,20 @@ function LiquidityRemoveForm({
               disabled={!tokenSelectionEnabled}
               style={{ flex: 1 }}
             >
-              <span className={styles.assetSelectorSymbol}>
+              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {liquidityTokenB?.logo && (
+                  <img
+                    src={liquidityTokenB.logo}
+                    alt={liquidityTokenB.symbol}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 {liquidityTokenB?.symbol ?? "Select"}
               </span>
             </button>
@@ -447,7 +499,13 @@ function LiquidityRemoveForm({
         <button
           className={`${styles.primaryButton} ${styles.primaryFull}`}
           onClick={onRemoveLiquidity}
-          disabled={!ready || isSubmitting || !liquidityPairReserves}
+          disabled={
+            !ready ||
+            isSubmitting ||
+            !liquidityPairReserves ||
+            !lpTokenInfo ||
+            Number(lpTokenInfo.balance) === 0
+          }
           type="button"
         >
           {isSubmitting ? "Removing..." : "Remove Liquidity"}
