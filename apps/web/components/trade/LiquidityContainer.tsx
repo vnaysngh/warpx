@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BrowserProvider, JsonRpcProvider, JsonRpcSigner } from "ethers";
 import { formatUnits, parseUnits } from "ethers";
+import { pairAbi } from "@/lib/abis/pair";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
@@ -28,14 +29,17 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay } from "@/lib/trade/format";
-import { fetchPair, toSdkToken } from "@/lib/trade/warp";
+
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
   liquidityTokenB: TokenDescriptor | null;
   onOpenTokenDialog: (slot: TokenDialogSlot) => void;
   routerAddress: string;
-  factoryAddress: string;
+  pairAddress: string;
+  pairToken0?: string | null;
+  pairToken1?: string | null;
+  wrappedNativeAddress?: string;
   readProvider: JsonRpcProvider;
   walletAccount: string | null;
   walletProvider: BrowserProvider | null;
@@ -69,7 +73,10 @@ export function LiquidityContainer({
   liquidityTokenB,
   onOpenTokenDialog,
   routerAddress,
-  factoryAddress,
+  pairAddress,
+  pairToken0,
+  pairToken1,
+  wrappedNativeAddress,
   readProvider,
   walletAccount,
   walletProvider,
@@ -127,6 +134,8 @@ export function LiquidityContainer({
 
   const liquidityTokenAAddress = liquidityTokenA?.address ?? "";
   const liquidityTokenBAddress = liquidityTokenB?.address ?? "";
+  const liquidityTokenAIsNative = Boolean(liquidityTokenA?.isNative);
+  const liquidityTokenBIsNative = Boolean(liquidityTokenB?.isNative);
 
   const handleOpenTokenDialog = useCallback(
     (slot: TokenDialogSlot) => {
@@ -149,13 +158,13 @@ export function LiquidityContainer({
     address:
       balanceQueryEnabled && walletAccount ? (walletAccount as Address) : undefined,
     token:
-      balanceQueryEnabled && tokenAIsAddress
-        ? (liquidityTokenAAddress as Address)
+      balanceQueryEnabled && (liquidityTokenAIsNative || tokenAIsAddress)
+        ? (liquidityTokenAIsNative ? undefined : (liquidityTokenAAddress as Address))
         : undefined,
     chainId: Number(MEGAETH_CHAIN_ID),
     query: {
       enabled:
-        balanceQueryEnabled && tokenAIsAddress && Boolean(liquidityTokenAAddress)
+        balanceQueryEnabled && (liquidityTokenAIsNative || tokenAIsAddress) && Boolean(liquidityTokenAAddress)
     }
   });
 
@@ -166,13 +175,13 @@ export function LiquidityContainer({
     address:
       balanceQueryEnabled && walletAccount ? (walletAccount as Address) : undefined,
     token:
-      balanceQueryEnabled && tokenBIsAddress
-        ? (liquidityTokenBAddress as Address)
+      balanceQueryEnabled && (liquidityTokenBIsNative || tokenBIsAddress)
+        ? (liquidityTokenBIsNative ? undefined : (liquidityTokenBAddress as Address))
         : undefined,
     chainId: Number(MEGAETH_CHAIN_ID),
     query: {
       enabled:
-        balanceQueryEnabled && tokenBIsAddress && Boolean(liquidityTokenBAddress)
+        balanceQueryEnabled && (liquidityTokenBIsNative || tokenBIsAddress) && Boolean(liquidityTokenBAddress)
     }
   });
 
@@ -181,13 +190,46 @@ export function LiquidityContainer({
   const tokenASymbol = balanceAData?.symbol ?? liquidityTokenA?.symbol ?? null;
   const tokenBSymbol = balanceBData?.symbol ?? liquidityTokenB?.symbol ?? null;
 
+  const balanceAWei = balanceAData?.value ?? null;
+  const balanceBWei = balanceBData?.value ?? null;
+  const decimalsLiquidityA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+  const decimalsLiquidityB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+
+  const parsedLiquidityAmountA = useMemo(() => {
+    if (!liquidityForm.amountA) return null;
+    try {
+      return parseUnits(liquidityForm.amountA, decimalsLiquidityA);
+    } catch (error) {
+      return null;
+    }
+  }, [liquidityForm.amountA, decimalsLiquidityA]);
+
+  const parsedLiquidityAmountB = useMemo(() => {
+    if (!liquidityForm.amountB) return null;
+    try {
+      return parseUnits(liquidityForm.amountB, decimalsLiquidityB);
+    } catch (error) {
+      return null;
+    }
+  }, [liquidityForm.amountB, decimalsLiquidityB]);
+
+  const insufficientLiquidityA = useMemo(() => {
+    if (!parsedLiquidityAmountA || balanceAWei === null) return false;
+    return parsedLiquidityAmountA > balanceAWei;
+  }, [parsedLiquidityAmountA, balanceAWei]);
+
+  const insufficientLiquidityB = useMemo(() => {
+    if (!parsedLiquidityAmountB || balanceBWei === null) return false;
+    return parsedLiquidityAmountB > balanceBWei;
+  }, [parsedLiquidityAmountB, balanceBWei]);
+
   const refreshBalances = useCallback(async () => {
     const refetchPromises: Array<Promise<unknown>> = [];
 
-    if (tokenAIsAddress) {
+    if (tokenAIsAddress || liquidityTokenAIsNative) {
       refetchPromises.push(refetchBalanceA());
     }
-    if (tokenBIsAddress) {
+    if (tokenBIsAddress || liquidityTokenBIsNative) {
       refetchPromises.push(refetchBalanceB());
     }
 
@@ -248,7 +290,7 @@ export function LiquidityContainer({
     let active = true;
     const fetchPairReserves = async () => {
       if (
-        !factoryAddress ||
+        !pairAddress ||
         !liquidityTokenAAddress ||
         !liquidityTokenBAddress
       ) {
@@ -256,44 +298,54 @@ export function LiquidityContainer({
         return;
       }
 
+      if (!liquidityTokenA || !liquidityTokenB) {
+        if (active) setLiquidityPairReserves(null);
+        return;
+      }
+
       try {
-        const tokenADescriptor = liquidityTokenA ?? null;
-        const tokenBDescriptor = liquidityTokenB ?? null;
-        if (!tokenADescriptor || !tokenBDescriptor) {
-          if (active) setLiquidityPairReserves(null);
-          return;
-        }
-
-        const tokenA = toSdkToken(tokenADescriptor);
-        const tokenB = toSdkToken(tokenBDescriptor);
-        const pair = await fetchPair(
-          tokenA,
-          tokenB,
-          readProvider,
-          factoryAddress
-        );
-
-        if (!pair) {
-          if (active) setLiquidityPairReserves(null);
-          return;
-        }
+        const [reservesData, totalSupplyData] = await Promise.all([
+          readContract(wagmiConfig, {
+            address: pairAddress as `0x${string}`,
+            abi: pairAbi,
+            functionName: "getReserves"
+          }),
+          readContract(wagmiConfig, {
+            address: pairAddress as `0x${string}`,
+            abi: pairAbi,
+            functionName: "totalSupply"
+          })
+        ]);
 
         if (!active) return;
 
-        const reserveAAmount = pair.reserveOf(tokenA);
-        const reserveBAmount = pair.reserveOf(tokenB);
-        const totalSupplyWei = pair.liquidityTokenTotalSupply ?? 0n;
+        const [reserve0, reserve1] = reservesData as readonly [bigint, bigint, number];
+        const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
-        const decimalsA = tokenADescriptor.decimals ?? DEFAULT_TOKEN_DECIMALS;
-        const decimalsB = tokenBDescriptor.decimals ?? DEFAULT_TOKEN_DECIMALS;
+        const tokenALower = liquidityTokenAAddress.toLowerCase();
+        const tokenBLower = liquidityTokenBAddress.toLowerCase();
+        const pairToken0Lower = pairToken0?.toLowerCase() ?? null;
+        const pairToken1Lower = pairToken1?.toLowerCase() ?? null;
+
+        if (!pairToken0Lower || !pairToken1Lower) {
+          if (active) setLiquidityPairReserves(null);
+          return;
+        }
+
+        const reserveAWei =
+          pairToken0Lower === tokenALower ? reserve0 : reserve1;
+        const reserveBWei =
+          pairToken0Lower === tokenBLower ? reserve0 : reserve1;
+        const totalSupplyWei = totalSupplyData as bigint;
 
         setLiquidityPairReserves({
-          reserveA: reserveAAmount.toExact(Math.min(6, decimalsA)),
-          reserveB: reserveBAmount.toExact(Math.min(6, decimalsB)),
-          pairAddress: pair.address,
+          reserveA: formatUnits(reserveAWei, decimalsA),
+          reserveB: formatUnits(reserveBWei, decimalsB),
+          pairAddress,
           totalSupply: formatUnits(totalSupplyWei, 18),
-          reserveAWei: reserveAAmount.raw,
-          reserveBWei: reserveBAmount.raw,
+          reserveAWei,
+          reserveBWei,
           totalSupplyWei
         });
       } catch (err) {
@@ -312,17 +364,27 @@ export function LiquidityContainer({
       active = false;
     };
   }, [
-    factoryAddress,
+    pairAddress,
+    pairToken0,
+    pairToken1,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
-    liquidityTokenA?.decimals,
-    liquidityTokenB?.decimals,
+    liquidityTokenA,
+    liquidityTokenB,
     liquidityReservesRefreshNonce
   ]);
 
   useEffect(() => {
     let cancelled = false;
     const evaluate = async () => {
+      if (liquidityMode !== "add") {
+        if (!cancelled) {
+          setNeedsApprovalA(false);
+          setNeedsApprovalB(false);
+          setCheckingLiquidityAllowances(false);
+        }
+        return;
+      }
       if (
         !walletAccount ||
         !routerAddress ||
@@ -344,8 +406,6 @@ export function LiquidityContainer({
           setCheckingLiquidityAllowances(true);
         }
         const provider = walletProvider ?? readProvider;
-        const tokenAContract = getToken(liquidityTokenAAddress, provider);
-        const tokenBContract = getToken(liquidityTokenBAddress, provider);
 
         const decimalsA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
         const decimalsB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
@@ -353,14 +413,32 @@ export function LiquidityContainer({
         const desiredA = parseUnits(liquidityForm.amountA, decimalsA);
         const desiredB = parseUnits(liquidityForm.amountB, decimalsB);
 
+        const allowanceAPromise = liquidityTokenAIsNative
+          ? Promise.resolve(desiredA)
+          : getToken(liquidityTokenAAddress, provider).allowance(
+              walletAccount,
+              routerAddress
+            );
+
+        const allowanceBPromise = liquidityTokenBIsNative
+          ? Promise.resolve(desiredB)
+          : getToken(liquidityTokenBAddress, provider).allowance(
+              walletAccount,
+              routerAddress
+            );
+
         const [allowanceA, allowanceB] = await Promise.all([
-          tokenAContract.allowance(walletAccount, routerAddress),
-          tokenBContract.allowance(walletAccount, routerAddress)
+          allowanceAPromise,
+          allowanceBPromise
         ]);
 
         if (!cancelled) {
-          setNeedsApprovalA(toBigInt(allowanceA) < desiredA);
-          setNeedsApprovalB(toBigInt(allowanceB) < desiredB);
+          setNeedsApprovalA(
+            liquidityTokenAIsNative ? false : toBigInt(allowanceA) < desiredA
+          );
+          setNeedsApprovalB(
+            liquidityTokenBIsNative ? false : toBigInt(allowanceB) < desiredB
+          );
         }
       } catch (err) {
         console.error("liquidity allowance check failed", err);
@@ -378,6 +456,7 @@ export function LiquidityContainer({
       cancelled = true;
     };
   }, [
+    liquidityMode,
     walletAccount,
     walletProvider,
     routerAddress,
@@ -388,7 +467,9 @@ export function LiquidityContainer({
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
     liquidityAllowanceNonce,
-    readProvider
+    readProvider,
+    liquidityTokenAIsNative,
+    liquidityTokenBIsNative
   ]);
 
   useEffect(() => {
@@ -651,6 +732,10 @@ export function LiquidityContainer({
   const handleAddLiquidity = useCallback(async () => {
     const ctx = ensureWallet();
     if (!ctx) return;
+    if (!liquidityTokenA || !liquidityTokenB) {
+      showError("Select tokens to provide liquidity.");
+      return;
+    }
     const tokenA = liquidityTokenAAddress;
     const tokenB = liquidityTokenBAddress;
     const { amountA, amountB } = liquidityForm;
@@ -662,102 +747,163 @@ export function LiquidityContainer({
       showError("Provide both token amounts for liquidity.");
       return;
     }
+    if (liquidityTokenAIsNative && liquidityTokenBIsNative) {
+      showError("Native ETH must be paired with an ERC-20 token.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      const decimalsA = await readContract(wagmiConfig, {
-        address: tokenA as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "decimals",
-        chainId: Number(MEGAETH_CHAIN_ID)
-      })
-        .then((value) => Number(value))
-        .catch(() => DEFAULT_TOKEN_DECIMALS);
-      const decimalsB = await readContract(wagmiConfig, {
-        address: tokenB as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "decimals",
-        chainId: Number(MEGAETH_CHAIN_ID)
-      })
-        .then((value) => Number(value))
-        .catch(() => DEFAULT_TOKEN_DECIMALS);
+      const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
+      const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
       const amountAWei = parseUnits(amountA, decimalsA);
       const amountBWei = parseUnits(amountB, decimalsB);
 
-      const allowanceA = await readContract(wagmiConfig, {
-        address: tokenA as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
-        chainId: Number(MEGAETH_CHAIN_ID)
-      });
-
-      if (toBigInt(allowanceA) < amountAWei) {
-        showLoading("Confirm transaction in your wallet...");
-        const approveAHash = await writeContract(wagmiConfig, {
-          address: tokenA as `0x${string}`,
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [routerAddress as `0x${string}`, amountAWei],
-          account: ctx.account as `0x${string}`,
-          chainId: Number(MEGAETH_CHAIN_ID),
-          gas: 100000n
-        });
-        showLoading(
-          `${liquidityTokenA?.symbol || "Token A"} approval pending...`
-        );
-        await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
-        setNeedsApprovalA(false);
+      if (amountAWei <= 0n || amountBWei <= 0n) {
+        showError("Enter valid liquidity amounts.");
+        setIsSubmitting(false);
+        return;
       }
 
-      const allowanceB = await readContract(wagmiConfig, {
-        address: tokenB as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
-        chainId: Number(MEGAETH_CHAIN_ID)
-      });
+      const deadline = BigInt(nowPlusMinutes(10));
 
-      if (toBigInt(allowanceB) < amountBWei) {
-        showLoading("Confirm transaction in your wallet...");
-        const approveBHash = await writeContract(wagmiConfig, {
-          address: tokenB as `0x${string}`,
+      if (liquidityTokenAIsNative || liquidityTokenBIsNative) {
+        if (!wrappedNativeAddress || !isAddress(wrappedNativeAddress)) {
+          showError("Wrapped native address unavailable.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        const nativeAmountWei = liquidityTokenAIsNative ? amountAWei : amountBWei;
+        const ercAmountWei = liquidityTokenAIsNative ? amountBWei : amountAWei;
+        const ercTokenAddress = liquidityTokenAIsNative ? tokenB : tokenA;
+        const ercTokenSymbol = liquidityTokenAIsNative
+          ? liquidityTokenB.symbol
+          : liquidityTokenA.symbol;
+
+        const allowance = await readContract(wagmiConfig, {
+          address: ercTokenAddress as `0x${string}`,
           abi: erc20Abi,
-          functionName: "approve",
-          args: [routerAddress as `0x${string}`, amountBWei],
+          functionName: "allowance",
+          args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+          chainId: Number(MEGAETH_CHAIN_ID)
+        });
+
+        if (toBigInt(allowance) < ercAmountWei) {
+          showLoading("Confirm transaction in your wallet...");
+          const approveHash = await writeContract(wagmiConfig, {
+            address: ercTokenAddress as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [routerAddress as `0x${string}`, ercAmountWei],
+            account: ctx.account as `0x${string}`,
+            chainId: Number(MEGAETH_CHAIN_ID),
+            gas: 100000n
+          });
+          showLoading(`${ercTokenSymbol || "Token"} approval pending...`);
+          await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+          if (liquidityTokenAIsNative) {
+            setNeedsApprovalB(false);
+          } else {
+            setNeedsApprovalA(false);
+          }
+        }
+
+        showLoading("Confirm transaction in your wallet...");
+        const txHash = await writeContract(wagmiConfig, {
+          address: routerAddress as `0x${string}`,
+          abi: warpRouterAbi,
+          functionName: "addLiquidityETH",
+          args: [
+            ercTokenAddress as `0x${string}`,
+            ercAmountWei,
+            0n,
+            0n,
+            ctx.account as `0x${string}`,
+            deadline
+          ],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
-          gas: 100000n
+          gas: 5000000n,
+          value: nativeAmountWei
         });
-        showLoading(
-          `${liquidityTokenB?.symbol || "Token B"} approval pending...`
-        );
-        await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
-        setNeedsApprovalB(false);
+        showLoading("Adding liquidity...");
+        await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+      } else {
+        const [allowanceA, allowanceB] = await Promise.all([
+          readContract(wagmiConfig, {
+            address: tokenA as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "allowance",
+            args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+            chainId: Number(MEGAETH_CHAIN_ID)
+          }),
+          readContract(wagmiConfig, {
+            address: tokenB as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "allowance",
+            args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+            chainId: Number(MEGAETH_CHAIN_ID)
+          })
+        ]);
+
+        if (toBigInt(allowanceA) < amountAWei) {
+          showLoading("Confirm transaction in your wallet...");
+          const approveAHash = await writeContract(wagmiConfig, {
+            address: tokenA as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [routerAddress as `0x${string}`, amountAWei],
+            account: ctx.account as `0x${string}`,
+            chainId: Number(MEGAETH_CHAIN_ID),
+            gas: 100000n
+          });
+          showLoading(`${liquidityTokenA.symbol || "Token A"} approval pending...`);
+          await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
+          setNeedsApprovalA(false);
+        }
+
+        if (toBigInt(allowanceB) < amountBWei) {
+          showLoading("Confirm transaction in your wallet...");
+          const approveBHash = await writeContract(wagmiConfig, {
+            address: tokenB as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [routerAddress as `0x${string}`, amountBWei],
+            account: ctx.account as `0x${string}`,
+            chainId: Number(MEGAETH_CHAIN_ID),
+            gas: 100000n
+          });
+          showLoading(`${liquidityTokenB.symbol || "Token B"} approval pending...`);
+          await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
+          setNeedsApprovalB(false);
+        }
+
+        showLoading("Confirm transaction in your wallet...");
+        const txHash = await writeContract(wagmiConfig, {
+          address: routerAddress as `0x${string}`,
+          abi: warpRouterAbi,
+          functionName: "addLiquidity",
+          args: [
+            tokenA as `0x${string}`,
+            tokenB as `0x${string}`,
+            amountAWei,
+            amountBWei,
+            0n,
+            0n,
+            ctx.account as `0x${string}`,
+            deadline
+          ],
+          account: ctx.account as `0x${string}`,
+          chainId: Number(MEGAETH_CHAIN_ID),
+          gas: 5000000n
+        });
+        showLoading("Adding liquidity...");
+        await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       }
 
-      showLoading("Confirm transaction in your wallet...");
-      const txHash = await writeContract(wagmiConfig, {
-        address: routerAddress as `0x${string}`,
-        abi: warpRouterAbi,
-        functionName: "addLiquidity",
-        args: [
-          tokenA as `0x${string}`,
-          tokenB as `0x${string}`,
-          amountAWei,
-          amountBWei,
-          0n,
-          0n,
-          ctx.account as `0x${string}`,
-          BigInt(nowPlusMinutes(10))
-        ],
-        account: ctx.account as `0x${string}`,
-        chainId: Number(MEGAETH_CHAIN_ID),
-        gas: 5000000n
-      });
-      showLoading("Adding liquidity...");
-      await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       await refreshBalances();
       setLiquidityForm(LIQUIDITY_DEFAULT);
       liquidityEditingFieldRef.current = null;
@@ -780,17 +926,20 @@ export function LiquidityContainer({
     }
   }, [
     ensureWallet,
+    liquidityTokenA,
+    liquidityTokenB,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
+    liquidityTokenAIsNative,
+    liquidityTokenBIsNative,
     liquidityForm,
     showError,
     showLoading,
     showSuccess,
-    liquidityTokenA,
-    liquidityTokenB,
     refreshBalances,
     routerAddress,
-    onSwapRefresh
+    onSwapRefresh,
+    wrappedNativeAddress
   ]);
 
   const handleConfirmAddLiquidity = useCallback(() => {
@@ -870,23 +1019,47 @@ export function LiquidityContainer({
       }
 
       showLoading("Confirm transaction in your wallet...");
-      const txHash = await writeContract(wagmiConfig, {
-        address: routerAddress as `0x${string}`,
-        abi: warpRouterAbi,
-        functionName: "removeLiquidity",
-        args: [
-          tokenA as `0x${string}`,
-          tokenB as `0x${string}`,
-          liquidityToRemove,
-          0n,
-          0n,
-          ctx.account as `0x${string}`,
-          BigInt(nowPlusMinutes(10))
-        ],
-        account: ctx.account as `0x${string}`,
-        chainId: Number(MEGAETH_CHAIN_ID),
-        gas: 500000n
-      });
+      const deadline = BigInt(nowPlusMinutes(10));
+
+      const txRequest = liquidityTokenAIsNative || liquidityTokenBIsNative
+        ? {
+            address: routerAddress as `0x${string}`,
+            abi: warpRouterAbi,
+            functionName: "removeLiquidityETH",
+            args: [
+              (liquidityTokenAIsNative ? tokenB : tokenA) as `0x${string}`,
+              liquidityToRemove,
+              0n,
+              0n,
+              ctx.account as `0x${string}`,
+              deadline
+            ],
+            account: ctx.account as `0x${string}`,
+            chainId: Number(MEGAETH_CHAIN_ID),
+            gas: 500000n
+          }
+        : {
+            address: routerAddress as `0x${string}`,
+            abi: warpRouterAbi,
+            functionName: "removeLiquidity",
+            args: [
+              tokenA as `0x${string}`,
+              tokenB as `0x${string}`,
+              liquidityToRemove,
+              0n,
+              0n,
+              ctx.account as `0x${string}`,
+              deadline
+            ],
+            account: ctx.account as `0x${string}`,
+            chainId: Number(MEGAETH_CHAIN_ID),
+            gas: 500000n
+          };
+
+      const txHash = await writeContract(
+        wagmiConfig,
+        txRequest as Parameters<typeof writeContract>[1]
+      );
 
       showLoading("Removing liquidity...");
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
@@ -917,6 +1090,8 @@ export function LiquidityContainer({
     liquidityPairReserves,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
+    liquidityTokenAIsNative,
+    liquidityTokenBIsNative,
     refreshBalances,
     removeLiquidityPercent,
     routerAddress,
@@ -950,6 +1125,17 @@ export function LiquidityContainer({
     if (liquidityMode === "add" && !liquidityAmountsReady) {
       return "Enter Amounts";
     }
+    if (liquidityMode === "add" && liquidityAmountsReady) {
+      if (insufficientLiquidityA && insufficientLiquidityB) {
+        return "Insufficient token balances";
+      }
+      if (insufficientLiquidityA) {
+        return `Insufficient ${liquidityTokenA?.symbol ?? "token A"} balance`;
+      }
+      if (insufficientLiquidityB) {
+        return `Insufficient ${liquidityTokenB?.symbol ?? "token B"} balance`;
+      }
+    }
     if (checkingLiquidityAllowances) {
       return "Checking...";
     }
@@ -972,6 +1158,8 @@ export function LiquidityContainer({
     liquidityMode,
     liquidityAmountsReady,
     checkingLiquidityAllowances,
+    insufficientLiquidityA,
+    insufficientLiquidityB,
     needsApprovalA,
     needsApprovalB,
     liquidityTokenA?.symbol,
@@ -985,6 +1173,9 @@ export function LiquidityContainer({
     if (!chainId || chainId !== Number(MEGAETH_CHAIN_ID)) return true;
     if (!liquidityTokensReady) return true;
     if (liquidityMode === "add" && !liquidityAmountsReady) return true;
+    if (liquidityMode === "add" && liquidityAmountsReady) {
+      if (insufficientLiquidityA || insufficientLiquidityB) return true;
+    }
     if (checkingLiquidityAllowances) return true;
     if (liquidityMode === "add" && (needsApprovalA || needsApprovalB)) {
       return isSubmitting;
@@ -1016,6 +1207,8 @@ export function LiquidityContainer({
     liquidityMode,
     liquidityAmountsReady,
     checkingLiquidityAllowances,
+    insufficientLiquidityA,
+    insufficientLiquidityB,
     needsApprovalA,
     needsApprovalB,
     isSubmitting,

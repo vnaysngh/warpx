@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 
-import { createPublicClient, http, getContract, keccak256, encodePacked } from 'viem';
-import { readFileSync } from 'fs';
+import { createPublicClient, http, getContract, formatUnits } from 'viem';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+const TOKEN_A_SYMBOL = (process.env.PAIR_TOKEN_A ?? 'GTE').toUpperCase();
+const TOKEN_B_SYMBOL = (process.env.PAIR_TOKEN_B ?? 'ETH').toUpperCase();
+const NETWORK = process.env.PAIR_NETWORK ?? 'megaethTestnet';
+const NATIVE_SYMBOL = (process.env.PAIR_NATIVE_SYMBOL ?? 'ETH').toUpperCase();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,22 +60,57 @@ const PAIR_ABI = [
 
 async function fetchPairReserves() {
   try {
-    // Read deployments
-    const deploymentsPath = join(__dirname, '../public/deployments/megaethTestnet.sample.json');
-    const tokensPath = join(__dirname, '../public/deployments/megaethtestnet.tokens.json');
+    const deploymentsPath = join(__dirname, '../public/deployments', `${NETWORK}.json`);
+    const tokensPath = join(__dirname, '../public/deployments', `${NETWORK}.tokens.json`);
+
+    if (!existsSync(deploymentsPath)) {
+      throw new Error(`Deployment file not found: ${deploymentsPath}`);
+    }
+    if (!existsSync(tokensPath)) {
+      throw new Error(`Token manifest not found: ${tokensPath}`);
+    }
 
     const deployments = JSON.parse(readFileSync(deploymentsPath, 'utf-8'));
     const tokensData = JSON.parse(readFileSync(tokensPath, 'utf-8'));
 
-    const factory = deployments.factory;
-    const tokens = tokensData.tokens;
+    const { factory, wmegaeth } = deployments;
+    const tokens = tokensData.tokens ?? [];
 
-    if (!tokens || tokens.length < 2) {
-      throw new Error('Not enough tokens in deployment file');
+    const findToken = (symbol) => tokens.find((token) => token.symbol?.toUpperCase() === symbol);
+
+    const rawTokenA = findToken(TOKEN_A_SYMBOL);
+    const rawTokenB = findToken(TOKEN_B_SYMBOL);
+
+    if (!rawTokenA && TOKEN_A_SYMBOL !== NATIVE_SYMBOL) {
+      throw new Error(`Token ${TOKEN_A_SYMBOL} not found in token manifest`);
     }
 
-    const tokenA = tokens[0];
-    const tokenB = tokens[1];
+    if (!rawTokenB && TOKEN_B_SYMBOL !== NATIVE_SYMBOL) {
+      throw new Error(`Token ${TOKEN_B_SYMBOL} not found in token manifest`);
+    }
+
+    const resolveToken = (symbol, tokenData) => {
+      if (symbol === NATIVE_SYMBOL) {
+        if (!wmegaeth) {
+          throw new Error(`Wrapped native address (wmegaeth) missing from ${NETWORK}.json`);
+        }
+        return {
+          symbol,
+          address: wmegaeth,
+          decimals: 18,
+          isNative: true,
+        };
+      }
+      return {
+        symbol: tokenData.symbol,
+        address: tokenData.address,
+        decimals: tokenData.decimals ?? 18,
+        isNative: false,
+      };
+    };
+
+    const tokenA = resolveToken(TOKEN_A_SYMBOL, rawTokenA);
+    const tokenB = resolveToken(TOKEN_B_SYMBOL, rawTokenB);
 
     console.log(`Fetching reserves for pair: ${tokenA.symbol} / ${tokenB.symbol}`);
     console.log(`TokenA: ${tokenA.address}`);
@@ -120,8 +160,8 @@ async function fetchPairReserves() {
     const reserveB = isTokenAToken0 ? reserve1 : reserve0;
 
     // Format with decimals
-    const reserveAFormatted = Number(reserveA) / Math.pow(10, tokenA.decimals);
-    const reserveBFormatted = Number(reserveB) / Math.pow(10, tokenB.decimals);
+    const reserveAFormatted = parseFloat(formatUnits(reserveA, tokenA.decimals));
+    const reserveBFormatted = parseFloat(formatUnits(reserveB, tokenB.decimals));
 
     // Smart formatting function - no scientific notation
     const formatReserve = (value) => {

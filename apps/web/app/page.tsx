@@ -58,7 +58,7 @@ export default function Page() {
     showCustomOption,
     activeAddress,
     swapTokens
-  } = useTokenManager(deployment?.network);
+  } = useTokenManager(deployment);
 
   const [hasMounted, setHasMounted] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
@@ -141,7 +141,7 @@ export default function Page() {
         onOpenTokenDialog={openTokenDialog}
         onSwapTokens={swapTokens}
         routerAddress={deployment?.router ?? ""}
-        factoryAddress={deployment?.factory ?? ""}
+        wrappedNativeAddress={deployment?.wmegaeth}
         readProvider={readProvider}
         walletAccount={walletAccount}
         walletProvider={walletProvider}

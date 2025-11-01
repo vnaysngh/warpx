@@ -29,6 +29,26 @@ import { formatNumber } from "@/lib/trade/math";
 import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 import { getToken } from "@/lib/contracts";
 
+const NATIVE_SYMBOL = (process.env.NEXT_PUBLIC_NATIVE_SYMBOL ?? "ETH").toUpperCase();
+
+const isNativeToken = (token?: TokenDescriptor | null) =>
+  Boolean(token?.isNative) || token?.symbol?.toUpperCase() === NATIVE_SYMBOL;
+
+const orderTokensForDisplay = <T extends TokenDescriptor>(
+  tokenA: T,
+  tokenB: T
+): [T, T] => {
+  const aNative = isNativeToken(tokenA);
+  const bNative = isNativeToken(tokenB);
+  if (aNative && !bNative) {
+    return [tokenB, tokenA];
+  }
+  if (bNative && !aNative) {
+    return [tokenA, tokenB];
+  }
+  return [tokenA, tokenB];
+};
+
 export default function PoolsPage() {
   const {
     address,
@@ -48,6 +68,7 @@ export default function PoolsPage() {
   const { toasts, removeToast, showError, showLoading, showSuccess } =
     useToasts();
   const { deployment } = useDeploymentManifest();
+  const wrappedNativeAddress = deployment?.wmegaeth ?? null;
 
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [showMyPositionsOnly, setShowMyPositionsOnly] = useState(false);
@@ -116,23 +137,26 @@ export default function PoolsPage() {
 
         if (cancelled || !manifest?.tokens?.length) return;
 
-        const manifestTokens: TokenDescriptor[] = manifest.tokens.map(
-          (token) => ({
-            symbol: token.symbol,
-            name: token.name,
-            address: token.address,
-            decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
-          })
-        );
+        const manifestTokens: TokenDescriptor[] = manifest.tokens.map((token) => ({
+          symbol: token.symbol,
+          name: token.name,
+          address: token.address,
+          decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
+          isNative: Boolean(token.isNative),
+          wrappedAddress: token.isNative ? deployment?.wmegaeth : undefined
+        }));
 
         setTokenList((prev) => {
           const merged = new Map<string, TokenDescriptor>();
           const addToken = (token: TokenDescriptor) => {
             if (!token.address) return;
-            merged.set(token.address.toLowerCase(), {
-              ...token,
-              decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
-            });
+            const key = token.address.toLowerCase();
+            if (!merged.has(key)) {
+              merged.set(key, {
+                ...token,
+                decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
+              });
+            }
           };
 
           [...TOKEN_CATALOG, ...prev, ...manifestTokens].forEach(addToken);
@@ -175,11 +199,15 @@ export default function PoolsPage() {
         };
         const fallbackDescriptor = (token: ReturnType<typeof toSdkToken>): TokenDescriptor => {
           const suffix = token.address.slice(2, 6).toUpperCase();
+          const symbol = token.symbol ?? `TOK${suffix}`;
+          const isNative = symbol.toUpperCase() === NATIVE_SYMBOL;
           return {
-            address: token.address,
-            symbol: token.symbol ?? `TOK${suffix}`,
+            address: isNative && wrappedNativeAddress ? wrappedNativeAddress : token.address,
+            symbol,
             name: token.name ?? `Token ${suffix}`,
-            decimals: token.decimals
+            decimals: token.decimals,
+            isNative,
+            wrappedAddress: isNative ? wrappedNativeAddress ?? token.address : undefined
           };
         };
 
@@ -190,8 +218,10 @@ export default function PoolsPage() {
 
         for (let i = 0; i < tokenList.length; i++) {
           for (let j = i + 1; j < tokenList.length; j++) {
-            const tokenA = tokenList[i];
-            const tokenB = tokenList[j];
+            const [tokenA, tokenB] = orderTokensForDisplay(
+              tokenList[i],
+              tokenList[j]
+            );
             if (!tokenA?.address || !tokenB?.address) continue;
             pairsToCheck.push({ tokenA, tokenB });
           }
@@ -237,6 +267,11 @@ export default function PoolsPage() {
               descriptorMap.get(sdkPair.token1.address.toLowerCase()) ??
               fallbackDescriptor(sdkPair.token1);
 
+            const [displayToken0, displayToken1] = orderTokensForDisplay(
+              token0Descriptor,
+              token1Descriptor
+            );
+
             const reserve0Value = Number(sdkPair.reserve0.toExact(6));
             const reserve1Value = Number(sdkPair.reserve1.toExact(6));
 
@@ -265,8 +300,8 @@ export default function PoolsPage() {
 
             return {
               pairAddress: sdkPair.address,
-              token0: token0Descriptor,
-              token1: token1Descriptor,
+              token0: displayToken0,
+              token1: displayToken1,
               totalLiquidityFormatted: formatNumber(totalLiquidityValue, 2),
               totalLiquidityValue,
               userLpBalance,

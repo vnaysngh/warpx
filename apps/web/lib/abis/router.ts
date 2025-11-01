@@ -71,6 +71,23 @@ export const warpRouterAbi = [
   },
   {
     "type": "function",
+    "name": "removeLiquidityETH",
+    "inputs": [
+      { "type": "address", "name": "token" },
+      { "type": "uint256", "name": "liquidity" },
+      { "type": "uint256", "name": "amountTokenMin" },
+      { "type": "uint256", "name": "amountETHMin" },
+      { "type": "address", "name": "to" },
+      { "type": "uint256", "name": "deadline" }
+    ],
+    "outputs": [
+      { "type": "uint256", "name": "amountToken" },
+      { "type": "uint256", "name": "amountETH" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "swapExactTokensForTokens",
     "inputs": [
       { "type": "uint256", "name": "amountIn" },

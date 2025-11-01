@@ -3,6 +3,8 @@ export type TokenDescriptor = {
   name: string;
   address: string;
   decimals: number;
+  isNative?: boolean;
+  wrappedAddress?: string;
 };
 
 export type TokenManifest = {
@@ -11,6 +13,7 @@ export type TokenManifest = {
     name: string;
     address: string;
     decimals?: number;
+    isNative?: boolean;
   }>;
 };
 

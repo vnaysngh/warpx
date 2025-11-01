@@ -21,6 +21,8 @@ type SwapCardProps = {
   swapInBalanceFormatted: string | null;
   swapInSymbol: string | null;
   onSetMaxSwapAmount: () => void;
+  receiveValue: string;
+  minReceived: string | null;
   summaryMessage: string | null;
   buttonLabel: string;
   buttonDisabled: boolean;
@@ -41,6 +43,8 @@ export function SwapCard({
   swapInBalanceFormatted,
   swapInSymbol,
   onSetMaxSwapAmount,
+  receiveValue,
+  minReceived,
   summaryMessage,
   buttonLabel,
   buttonDisabled,
@@ -149,10 +153,15 @@ export function SwapCard({
             <input
               className={styles.amountInput}
               placeholder={swapQuote ? swapQuote.amount : "0.0"}
-              value={swapForm.minOut}
+              value={receiveValue}
               onChange={(event) => onMinOutChange(event.target.value)}
             />
           </div>
+          {minReceived && (
+            <span className={styles.helper}>
+              Min received: {minReceived} {selectedOut?.symbol ?? ""}
+            </span>
+          )}
           {reverseQuote && (
             <span className={styles.helper}>
               Needs ≈ {reverseQuote.amount} {reverseQuote.symbolIn}

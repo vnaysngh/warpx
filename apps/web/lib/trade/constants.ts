@@ -24,35 +24,36 @@ export const LIQUIDITY_DEFAULT: LiquidityFormState = {
   amountA: "",
   amountB: ""
 };
-
 export const TOKEN_CATALOG: TokenDescriptor[] = [
-  {
-    symbol: "MEGA",
-    name: "MegaETH",
-    address: "0x2Ea161D82Cf2D965819C45cdA2fDE0AF79161639",
-    decimals: 18
-  },
-  {
-    symbol: "MEGB",
-    name: "MegaETH Beta",
-    address: "0x96F01598fc45334bF2566614Fb046Cc7A8F132C8",
-    decimals: 18
-  },
-  {
-    symbol: "WMEGA",
-    name: "Wrapped MegaETH",
-    address: "0x88C1770353BD23f435F6F049cc26936009B27B69",
-    decimals: 18
-  },
   {
     symbol: "ETH",
     name: "Ethereum",
-    address: "0x776401b9bc8aae31a685731b7147d4445fd9fb19",
+    address: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66",
+    decimals: 18,
+    isNative: true,
+    wrappedAddress: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66"
+  },
+  {
+    symbol: "WARPX",
+    name: "WarpX",
+    address: "0xAf94EC793270d2FcF2Ad3700EBE3ba3488B266c3",
+    decimals: 18
+  },
+  {
+    symbol: "GTE",
+    name: "GTE Token",
+    address: "0x9629684df53db9e4484697d0a50c442b2bfa80a8",
+    decimals: 18
+  },
+  {
+    symbol: "MEGA",
+    name: "MEGA",
+    address: "0x10a6be7d23989d00d528e68cf8051d095f741145",
     decimals: 18
   },
   {
     symbol: "USD",
-    name: "USD Stablecoin",
+    name: "USD",
     address: "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
     decimals: 18
   }

@@ -4,8 +4,9 @@
     {
       "name": "Ethereum",
       "symbol": "ETH",
-      "address": "0x776401b9bc8aae31a685731b7147d4445fd9fb19",
-      "decimals": 18
+      "address": "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66",
+      "decimals": 18,
+      "isNative": true
     },
     {
       "name": "WarpX",

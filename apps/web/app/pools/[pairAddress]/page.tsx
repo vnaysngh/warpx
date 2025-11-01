@@ -23,8 +23,28 @@ import {
   DEFAULT_TOKEN_DECIMALS
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
-import { getPair, getToken } from "@/lib/contracts";
+import { getPair } from "@/lib/contracts";
 import type { TokenDescriptor } from "@/lib/trade/types";
+
+const NATIVE_SYMBOL = (process.env.NEXT_PUBLIC_NATIVE_SYMBOL ?? "ETH").toUpperCase();
+
+const isNativeToken = (token?: TokenDescriptor | null) =>
+  Boolean(token?.isNative) || token?.symbol?.toUpperCase() === NATIVE_SYMBOL;
+
+const orderTokensForDisplay = <T extends TokenDescriptor>(
+  tokenA: T,
+  tokenB: T
+): [T, T] => {
+  const aNative = isNativeToken(tokenA);
+  const bNative = isNativeToken(tokenB);
+  if (aNative && !bNative) {
+    return [tokenB, tokenA];
+  }
+  if (bNative && !aNative) {
+    return [tokenA, tokenB];
+  }
+  return [tokenA, tokenB];
+};
 
 const normalizeParam = (
   value: string | string[] | undefined
@@ -54,6 +74,12 @@ export default function PoolLiquidityPage() {
     useToasts();
   const { deployment } = useDeploymentManifest();
 
+  const wrappedNativeAddress = deployment?.wmegaeth ?? null;
+  const wrappedNativeLower = wrappedNativeAddress?.toLowerCase() ?? null;
+  const [pairTokenAddresses, setPairTokenAddresses] = useState<{ token0: string | null; token1: string | null }>({
+    token0: null, token1: null
+  });
+
   const {
     tokenList,
     setTokenList,
@@ -72,7 +98,17 @@ export default function PoolLiquidityPage() {
     filteredTokens,
     showCustomOption,
     activeAddress
-  } = useTokenManager(deployment?.network);
+  } = useTokenManager(deployment);
+
+  const tokenListMap = useMemo(() => {
+    const map = new Map<string, TokenDescriptor>();
+    tokenList.forEach((token) => {
+      if (token.address) {
+        map.set(token.address.toLowerCase(), token);
+      }
+    });
+    return map;
+  }, [tokenList]);
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
   const walletAccount = isWalletConnected
@@ -185,63 +221,48 @@ export default function PoolLiquidityPage() {
       address: string
     ): Promise<TokenDescriptor | null> => {
       const lower = address.toLowerCase();
-      const fromList =
-        tokenList.find((token) => token.address.toLowerCase() === lower) ??
-        null;
+      const fromList = tokenListMap.get(lower);
       if (fromList) return fromList;
 
-      try {
-        const tokenContract = getToken(address, readProvider);
-        const [symbolRaw, nameRaw, decimalsRaw] = await Promise.all([
-          tokenContract.symbol().catch(() => ""),
-          tokenContract.name().catch(() => ""),
-          tokenContract.decimals().catch(() => DEFAULT_TOKEN_DECIMALS)
-        ]);
-        const symbol =
-          symbolRaw && typeof symbolRaw === "string"
-            ? symbolRaw
-            : `TOK${lower.slice(2, 6).toUpperCase()}`;
-        const name = nameRaw && typeof nameRaw === "string" ? nameRaw : symbol;
-        const decimals =
-          typeof decimalsRaw === "number" && Number.isFinite(decimalsRaw)
-            ? decimalsRaw
-            : DEFAULT_TOKEN_DECIMALS;
-
-        const descriptor: TokenDescriptor = {
-          symbol,
-          name,
-          address,
-          decimals
-        };
-
-        if (!cancelled) {
-          setTokenList((prev) => {
-            if (prev.some((token) => token.address.toLowerCase() === lower)) {
-              return prev;
-            }
-            return [...prev, descriptor];
-          });
-        }
-
-        return descriptor;
-      } catch (descriptorError) {
-        console.error("[pool] failed to load token metadata", descriptorError);
-        const fallback: TokenDescriptor = {
-          symbol: `TOK${lower.slice(2, 6).toUpperCase()}`,
-          name: `Token ${lower.slice(2, 6).toUpperCase()}`,
-          address,
-          decimals: DEFAULT_TOKEN_DECIMALS
+      if (wrappedNativeLower && lower === wrappedNativeLower) {
+        const nativeDescriptor: TokenDescriptor = {
+          symbol: NATIVE_SYMBOL,
+          name: NATIVE_SYMBOL,
+          address: wrappedNativeAddress!,
+          decimals: DEFAULT_TOKEN_DECIMALS,
+          isNative: true,
+          wrappedAddress: wrappedNativeAddress!
         };
         if (!cancelled) {
           setTokenList((prev) => {
             if (prev.some((token) => token.address.toLowerCase() === lower)) {
               return prev;
             }
-            return [...prev, fallback];
+            return [...prev, nativeDescriptor];
           });
         }
-        return fallback;
+        return nativeDescriptor;
       }
+
+      const suffix = lower.slice(2, 6).toUpperCase();
+      const fallback: TokenDescriptor = {
+        symbol: `TOK${suffix}`,
+        name: `Token ${suffix}`,
+        address,
+        decimals: DEFAULT_TOKEN_DECIMALS,
+        isNative: false
+      };
+
+      if (!cancelled) {
+        setTokenList((prev) => {
+          if (prev.some((token) => token.address.toLowerCase() === lower)) {
+            return prev;
+          }
+          return [...prev, fallback];
+        });
+      }
+
+      return fallback;
     };
 
     const resolvePairTokens = async () => {
@@ -249,10 +270,22 @@ export default function PoolLiquidityPage() {
       setPairResolutionError(null);
       try {
         const pairContract = getPair(pairAddress, readProvider);
-        const [token0Address, token1Address] = await Promise.all([
-          pairContract.token0(),
-          pairContract.token1()
-        ]);
+        let token0Address: string;
+        let token1Address: string;
+        try {
+          [token0Address, token1Address] = await Promise.all([
+            pairContract.token0(),
+            pairContract.token1()
+          ]);
+        } catch (contractError) {
+          console.error("[pool] failed to read pair tokens", contractError);
+          if (!cancelled) {
+            setPairResolutionError(
+              "Unable to load pool tokens. Verify the pool address."
+            );
+          }
+          return;
+        }
 
         if (cancelled) return;
 
@@ -270,6 +303,7 @@ export default function PoolLiquidityPage() {
           token0: token0Lower,
           token1: token1Lower
         };
+        setPairTokenAddresses({ token0: token0Lower, token1: token1Lower });
 
         if (descriptor0) {
           setLiquidityTokenA(descriptor0);
@@ -300,8 +334,9 @@ export default function PoolLiquidityPage() {
     pairAddress,
     tokenList,
     readProvider,
-    liquidityTokenA?.address,
-    liquidityTokenB?.address,
+    tokenListMap,
+    wrappedNativeLower,
+    wrappedNativeAddress,
     setLiquidityTokenA,
     setLiquidityTokenB,
     setTokenList
@@ -358,7 +393,10 @@ export default function PoolLiquidityPage() {
             liquidityTokenB={liquidityTokenB}
             onOpenTokenDialog={openTokenDialog}
             routerAddress={deployment?.router ?? ""}
-            factoryAddress={deployment?.factory ?? ""}
+            wrappedNativeAddress={deployment?.wmegaeth}
+            pairAddress={pairAddress ?? ""}
+            pairToken0={pairTokenAddresses.token0}
+            pairToken1={pairTokenAddresses.token1}
             readProvider={readProvider}
             walletAccount={walletAccount}
             walletProvider={walletProvider}
