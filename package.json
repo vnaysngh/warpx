@@ -10,7 +10,8 @@
     "deploy-router": "hardhat run packages/periphery/deploy/megaeth.ts --network megaethTestnet",
     "deploy-tokens": "hardhat run scripts/deploy-more-tokens.ts --network megaethTestnet",
     "deploy-more-tokens": "hardhat run scripts/deploy-more-tokens.ts --network megaethTestnet",
-    "seed-warpx-liquidity": "hardhat run scripts/seed-warpx-eth-liquidity.ts --network megaethTestnet"
+    "seed-warpx-liquidity": "hardhat run scripts/seed-warpx-eth-liquidity.ts --network megaethTestnet",
+    "check-gte-price": "hardhat run scripts/check-gte-price.ts --network megaethTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
