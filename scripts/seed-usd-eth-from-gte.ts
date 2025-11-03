@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Script to add MEGA/ETH liquidity to WarpX by matching GTE.xyz's price
+ * Script to add GTE/ETH liquidity to WarpX by matching GTE.xyz's price
  * Fetches reserves from GTE's factory and calculates exact amounts
  */
 
@@ -31,7 +31,7 @@ const GTE_FACTORY = "0xDB9D607C0D7709C8d2a3a841c970A554AF9B8B45";
 const GTE_ROUTER = "0xA6b579684E943F7D00d616A48cF99b5147fC57A5";
 
 // Your desired ETH amount
-const ETH_AMOUNT = process.env.ETH_AMOUNT ?? "0.005";
+const ETH_AMOUNT = process.env.ETH_AMOUNT ?? "0.0012";
 const DEADLINE_MINUTES = Number(process.env.LIQUIDITY_DEADLINE_MINUTES ?? "10");
 const NATIVE_SYMBOL = "ETH";
 
@@ -104,14 +104,14 @@ async function main() {
     path.join(deploymentsDir, `${network}.tokens.json`)
   );
 
-  // Find MEGA token
-  const megaTokenData = findToken(tokenManifest, "MEGA");
+  // Find GTE token
+  const megaTokenData = findToken(tokenManifest, "GTE");
 
   const [deployer] = await ethers.getSigners();
   const deployerAddress = await deployer.getAddress();
 
   console.log("=".repeat(60));
-  console.log("🎯 SEED MEGA/ETH LIQUIDITY - MATCHING GTE PRICE");
+  console.log("🎯 SEED GTE/ETH LIQUIDITY - MATCHING GTE PRICE");
   console.log("=".repeat(60));
   console.log(`Network: ${network}`);
   console.log(`Deployer: ${deployerAddress}`);
@@ -146,8 +146,8 @@ async function main() {
   }
   console.log("");
 
-  // Step 2: Connect to GTE factory to find MEGA/ETH pair
-  console.log("🔍 Step 2: Fetching MEGA/ETH pair from GTE factory...");
+  // Step 2: Connect to GTE factory to find GTE/ETH pair
+  console.log("🔍 Step 2: Fetching GTE/ETH pair from GTE factory...");
   const gteFactory = await ethers.getContractAt(
     FACTORY_ABI,
     GTE_FACTORY,
@@ -161,14 +161,14 @@ async function main() {
 
   if (gtePairAddress === ethers.ZeroAddress) {
     throw new Error(
-      `MEGA/ETH pair does not exist on GTE factory!\n` +
-        `MEGA: ${megaTokenData.address}\n` +
+      `GTE/ETH pair does not exist on GTE factory!\n` +
+        `GTE: ${megaTokenData.address}\n` +
         `GTE WETH: ${gteWETH}\n` +
         `Your WETH: ${deploymentManifest.wmegaeth}`
     );
   }
 
-  console.log(`✅ GTE MEGA/ETH Pair: ${gtePairAddress}`);
+  console.log(`✅ GTE GTE/ETH Pair: ${gtePairAddress}`);
 
   // Step 3: Get reserves from GTE pair
   console.log("\n📊 Step 3: Reading reserves from GTE pair...");
@@ -188,21 +188,22 @@ async function main() {
   const reserveETH = isMEGAToken0 ? reserve1 : reserve0;
 
   console.log(
-    `  MEGA Reserve: ${ethers.formatUnits(reserveMEGA, megaTokenData.decimals)}`
+    `  GTE Reserve: ${ethers.formatUnits(reserveMEGA, megaTokenData.decimals)}`
   );
   console.log(`  ETH Reserve: ${ethers.formatUnits(reserveETH, 18)}`);
   console.log(`  Block Timestamp: ${blockTimestamp}`);
 
   // Calculate price
-  const priceMEGAperETH = (reserveMEGA * ethers.parseUnits("1", 18)) / reserveETH;
+  const priceMEGAperETH =
+    (reserveMEGA * ethers.parseUnits("1", 18)) / reserveETH;
   const priceETHperMEGA =
     (reserveETH * ethers.parseUnits("1", megaTokenData.decimals)) / reserveMEGA;
 
   console.log(
-    `  Spot Price: 1 ETH = ${ethers.formatUnits(priceMEGAperETH, megaTokenData.decimals)} MEGA`
+    `  Spot Price: 1 ETH = ${ethers.formatUnits(priceMEGAperETH, megaTokenData.decimals)} GTE`
   );
   console.log(
-    `  Spot Price: 1 MEGA = ${ethers.formatUnits(priceETHperMEGA, 18)} ETH`
+    `  Spot Price: 1 GTE = ${ethers.formatUnits(priceETHperMEGA, 18)} ETH`
   );
 
   // Show what GTE's UI displays (quote with fee)
@@ -213,11 +214,11 @@ async function main() {
   const quoteMEGA = numerator / denominator;
 
   console.log(
-    `  Quote (with 0.3% fee): 1 ETH → ${ethers.formatUnits(quoteMEGA, megaTokenData.decimals)} MEGA`
+    `  Quote (with 0.3% fee): 1 ETH → ${ethers.formatUnits(quoteMEGA, megaTokenData.decimals)} GTE`
   );
   console.log(`  (This is what GTE's swap UI shows)`);
 
-  // Step 4: Calculate exact MEGA amount for your desired ETH
+  // Step 4: Calculate exact GTE amount for your desired ETH
   console.log(
     `\n💰 Step 4: Calculating exact amounts for ${ETH_AMOUNT} ETH...`
   );
@@ -229,7 +230,7 @@ async function main() {
 
   console.log(`  ETH Amount: ${ethers.formatUnits(amountETHDesired, 18)}`);
   console.log(
-    `  MEGA Amount: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)}`
+    `  GTE Amount: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)}`
   );
 
   // Verify the ratio matches EXACTLY
@@ -239,10 +240,10 @@ async function main() {
 
   console.log("\n✅ Price Verification:");
   console.log(
-    `  Your ratio: ${ethers.formatUnits(yourRatio, megaTokenData.decimals)} MEGA per ETH`
+    `  Your ratio: ${ethers.formatUnits(yourRatio, megaTokenData.decimals)} GTE per ETH`
   );
   console.log(
-    `  GTE ratio:  ${ethers.formatUnits(gteRatio, megaTokenData.decimals)} MEGA per ETH`
+    `  GTE ratio:  ${ethers.formatUnits(gteRatio, megaTokenData.decimals)} GTE per ETH`
   );
   console.log(
     `  Match: ${yourRatio === gteRatio ? "✅ PERFECT" : "⚠️  DEVIATION DETECTED"}`
@@ -273,13 +274,13 @@ async function main() {
   const ethBalance = await deployer.provider.getBalance(deployerAddress);
 
   console.log(
-    `  MEGA Balance: ${ethers.formatUnits(megaBalance, megaTokenData.decimals)}`
+    `  GTE Balance: ${ethers.formatUnits(megaBalance, megaTokenData.decimals)}`
   );
   console.log(`  ETH Balance: ${ethers.formatUnits(ethBalance, 18)}`);
 
   if (megaBalance < amountMEGAExact) {
     throw new Error(
-      `Insufficient MEGA balance!\n` +
+      `Insufficient GTE balance!\n` +
         `  Need: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)}\n` +
         `  Have: ${ethers.formatUnits(megaBalance, megaTokenData.decimals)}`
     );
@@ -295,14 +296,14 @@ async function main() {
 
   console.log("✅ Sufficient balances");
 
-  // Step 6: Approve MEGA
-  console.log("\n🔓 Step 6: Approving MEGA token...");
+  // Step 6: Approve GTE
+  console.log("\n🔓 Step 6: Approving GTE token...");
   await ensureAllowance(
     megaToken,
     deployerAddress,
     deploymentManifest.router,
     amountMEGAExact,
-    "MEGA"
+    "GTE"
   );
 
   // Step 7: Check if pair already exists on WarpX
@@ -330,7 +331,7 @@ async function main() {
   // Step 8: Add liquidity
   console.log("\n🚀 Step 8: Adding liquidity to WarpX router...");
   console.log(
-    `  Adding: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)} MEGA`
+    `  Adding: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)} GTE`
   );
   console.log(`       + ${ethers.formatUnits(amountETHDesired, 18)} ETH`);
 
@@ -368,16 +369,16 @@ async function main() {
   console.log("\n" + "=".repeat(60));
   console.log("✅ LIQUIDITY ADDED SUCCESSFULLY!");
   console.log("=".repeat(60));
-  console.log(`WarpX MEGA/ETH Pair: ${pairAfter}`);
+  console.log(`WarpX GTE/ETH Pair: ${pairAfter}`);
   console.log(`TX Hash: ${receipt?.hash ?? tx.hash}`);
   console.log("");
   console.log("📊 Summary:");
   console.log(
-    `  MEGA Added: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)}`
+    `  GTE Added: ${ethers.formatUnits(amountMEGAExact, megaTokenData.decimals)}`
   );
   console.log(`  ETH Added: ${ethers.formatUnits(amountETHDesired, 18)}`);
   console.log(
-    `  Initial Price: 1 ETH = ${ethers.formatUnits(priceMEGAperETH, megaTokenData.decimals)} MEGA`
+    `  Initial Price: 1 ETH = ${ethers.formatUnits(priceMEGAperETH, megaTokenData.decimals)} GTE`
   );
   console.log(`  Matches GTE: ✅ YES`);
   console.log("=".repeat(60));

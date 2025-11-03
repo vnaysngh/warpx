@@ -14,7 +14,7 @@ const TOKENS: TokenConfig[] = [
     name: "WarpX",
     symbol: "WARPX",
     decimals: 18,
-    initialSupply: ethers.parseUnits("1000000", 18)
+    initialSupply: ethers.parseUnits("1000000000", 18)
   }
 ];
 // const TOKENS: TokenConfig[] = [

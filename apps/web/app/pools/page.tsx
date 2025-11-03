@@ -312,7 +312,10 @@ export default function PoolsPage() {
               pairAddress: sdkPair.address,
               token0: displayToken0,
               token1: displayToken1,
-              totalLiquidityFormatted: formatNumber(totalLiquidityValue, 2),
+              totalLiquidityFormatted: formatNumber(
+                totalLiquidityValue,
+                totalLiquidityValue < 1 ? 6 : 2
+              ),
               totalLiquidityValue,
               userLpBalance,
               userLpBalanceRaw
