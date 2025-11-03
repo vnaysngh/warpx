@@ -899,9 +899,43 @@ export function SwapContainer({
     swapButtonDisabled = isSubmitting;
   }
 
-  const swapSummaryMessage = swapQuote
-    ? `Quote ≈ ${swapQuote.amount} ${swapQuote.symbol} (min received with ${slippagePercentDisplay}% slippage: ${swapForm.minOut || "0"})`
-    : null;
+  const swapSummaryMessage = useMemo(() => {
+    if (!swapQuote || !swapForm.amountIn || !selectedIn || !selectedOut) {
+      return null;
+    }
+
+    try {
+      const amountInNum = Number(swapForm.amountIn);
+      const amountOutNum = Number(swapQuote.amount);
+
+      if (amountInNum <= 0 || amountOutNum <= 0) {
+        return null;
+      }
+
+      // Calculate exchange rate (1 unit of input = X units of output)
+      const rate = amountOutNum / amountInNum;
+
+      // Format rate based on magnitude
+      let formattedRate: string;
+      if (rate >= 1) {
+        // For rates >= 1, show 2-4 decimal places
+        formattedRate = rate.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4
+        });
+      } else {
+        // For rates < 1, show more precision
+        formattedRate = rate.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 6
+        });
+      }
+
+      return `1 ${selectedIn.symbol} = ${formattedRate} ${selectedOut.symbol}`;
+    } catch (err) {
+      return null;
+    }
+  }, [swapQuote, swapForm.amountIn, selectedIn, selectedOut]);
 
   const receiveAmountValue =
     swapEditingFieldRef.current === "minOut"

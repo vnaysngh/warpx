@@ -207,10 +207,10 @@ export function SwapCard({
         >
           {buttonLabel}
         </button>
+        {summaryMessage && (
+          <div className={styles.exchangeRate}>{summaryMessage}</div>
+        )}
       </div>
-      {summaryMessage && (
-        <span className={styles.summaryPrimary}>{summaryMessage}</span>
-      )}
     </section>
   );
 }
