@@ -91,7 +91,7 @@ export function PoolsTable({
                           src={pool.token0.logo}
                           alt={pool.token0.symbol}
                           className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
-                          style={{ objectFit: 'cover' }}
+                          style={{ objectFit: "cover" }}
                         />
                       ) : (
                         <span
@@ -106,7 +106,7 @@ export function PoolsTable({
                           src={pool.token1.logo}
                           alt={pool.token1.symbol}
                           className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
-                          style={{ objectFit: 'cover' }}
+                          style={{ objectFit: "cover" }}
                         />
                       ) : (
                         <span
@@ -119,11 +119,14 @@ export function PoolsTable({
                     <div className={styles.poolMeta}>
                       <div className={styles.poolLabel}>
                         {pool.token0.symbol}/{pool.token1.symbol}
-                        {pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n && (
-                          <span className={styles.positionBadge} title="You have a position in this pool">
+                        {pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n ? (
+                          <span
+                            className={styles.positionBadge}
+                            title="You have a position in this pool"
+                          >
                             ●
                           </span>
-                        )}
+                        ) : null}
                       </div>
                       <div className={styles.poolAddress}>
                         {pool.pairAddress.slice(0, 6)}…
@@ -147,7 +150,8 @@ export function PoolsTable({
           {!showSkeleton && showEmpty && (
             <tr>
               <td colSpan={5} className={styles.stateCell}>
-                No liquidity pools available yet. Pools will appear here once they are initialized on the protocol.
+                No liquidity pools available yet. Pools will appear here once
+                they are initialized on the protocol.
               </td>
             </tr>
           )}
