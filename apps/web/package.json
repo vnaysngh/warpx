@@ -12,8 +12,8 @@
     "fetch-reserves": "node scripts/fetchPairReserves.mjs"
   },
   "dependencies": {
-    "@megaeth/warp-sdk-core": "link:../../packages/warp-sdk-core",
-    "@megaeth/warp-v2-sdk": "link:../../packages/warp-v2-sdk",
+    "@megaeth/warp-sdk-core": "*",
+    "@megaeth/warp-v2-sdk": "*",
     "@reown/appkit": "^1.8.12",
     "@reown/appkit-adapter-wagmi": "^1.8.12",
     "@tanstack/react-query": "^5.90.5",

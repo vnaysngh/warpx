@@ -930,17 +930,6 @@
 "@megaeth/amm-core@link:packages/core":
   version "0.1.0"
 
-"@megaeth/warp-sdk-core@link:packages/warp-sdk-core":
-  version "0.1.0"
-  dependencies:
-    ethers "^6.13.0"
-
-"@megaeth/warp-v2-sdk@link:packages/warp-v2-sdk":
-  version "0.1.0"
-  dependencies:
-    "@megaeth/warp-sdk-core" "link:packages/warp-sdk-core"
-    ethers "^6.13.0"
-
 "@metamask/eth-json-rpc-provider@^1.0.0":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@metamask/eth-json-rpc-provider/-/eth-json-rpc-provider-1.0.1.tgz#3fd5316c767847f4ca107518b611b15396a5a32c"
