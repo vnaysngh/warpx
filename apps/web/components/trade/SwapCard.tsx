@@ -63,6 +63,7 @@ export function SwapCard({
             >
               <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {selectedIn?.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={selectedIn.logo}
                     alt={selectedIn.symbol}
@@ -159,6 +160,7 @@ export function SwapCard({
             >
               <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {selectedOut?.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={selectedOut.logo}
                     alt={selectedOut.symbol}

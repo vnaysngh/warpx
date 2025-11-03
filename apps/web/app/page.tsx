@@ -57,7 +57,6 @@ export default function Page() {
   } = useTokenManager(deployment);
 
   const [hasMounted, setHasMounted] = useState(false);
-  const [networkError, setNetworkError] = useState<string | null>(null);
   const [swapRefreshNonce, setSwapRefreshNonce] = useState(0);
 
   const readProvider = useMemo(() => {
@@ -70,23 +69,22 @@ export default function Page() {
     return Boolean(walletAccount && deployment && onMegaEth);
   }, [chain, walletAccount, deployment]);
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  useEffect(() => {
+  // Compute network error as derived state instead of in effect
+  const networkError = useMemo(() => {
     if (!walletAccount || !chain) {
-      setNetworkError(null);
-      return;
+      return null;
     }
     if (chain.id !== Number(MEGAETH_CHAIN_ID)) {
-      setNetworkError(
-        `Switch to MegaETH Testnet (chain id ${Number(MEGAETH_CHAIN_ID)})`
-      );
-    } else {
-      setNetworkError(null);
+      return `Switch to MegaETH Testnet (chain id ${Number(MEGAETH_CHAIN_ID)})`;
     }
+    return null;
   }, [walletAccount, chain]);
+
+  useEffect(() => {
+    // Client-side hydration flag - intentional setState on mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!tokenDialogOpen) return;

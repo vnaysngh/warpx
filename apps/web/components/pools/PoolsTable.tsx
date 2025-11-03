@@ -79,11 +79,14 @@ export function PoolsTable({
                   }
                 }}
               >
-                <td className={styles.indexCell}>{pool.id}</td>
-                <td className={styles.poolCell}>
+                <td className={styles.indexCell} data-label="#">
+                  {pool.id}
+                </td>
+                <td className={styles.poolCell} data-label="Pool">
                   <div className={styles.poolStack}>
                     <div className={styles.tokenStack}>
                       {pool.token0.logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={pool.token0.logo}
                           alt={pool.token0.symbol}
@@ -98,6 +101,7 @@ export function PoolsTable({
                         </span>
                       )}
                       {pool.token1.logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={pool.token1.logo}
                           alt={pool.token1.symbol}
@@ -128,9 +132,13 @@ export function PoolsTable({
                     </div>
                   </div>
                 </td>
-                <td className={styles.protocolCell}>v2</td>
-                <td className={styles.feeCell}>0.20%</td>
-                <td className={styles.tvlCell}>
+                <td className={styles.protocolCell} data-label="Protocol">
+                  v2
+                </td>
+                <td className={styles.feeCell} data-label="Fee tier">
+                  0.20%
+                </td>
+                <td className={styles.tvlCell} data-label="TVL in ETH">
                   {pool.totalLiquidityFormatted} ETH
                 </td>
               </tr>

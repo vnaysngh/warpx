@@ -25,10 +25,12 @@
     "wagmi": "^2.19.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@types/node": "^22.15.3",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.1",
     "eslint": "^9.38.0",
+    "eslint-config-next": "^16.0.1",
     "typescript": "5.9.2"
   }
 }

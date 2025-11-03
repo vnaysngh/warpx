@@ -18,6 +18,83 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.brandArea {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  justify-self: start;
+}
+
+.mobileMenuButton {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobileMenuButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.mobileMenuButton:focus-visible {
+  outline: 2px solid rgba(10, 255, 157, 0.45);
+  outline-offset: 3px;
+}
+
+.mobileMenuIcon {
+  position: relative;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: background 0.2s ease;
+}
+
+.mobileMenuIcon::before,
+.mobileMenuIcon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.mobileMenuIcon::before {
+  transform: translateY(-6px);
+}
+
+.mobileMenuIcon::after {
+  transform: translateY(6px);
+}
+
+.mobileMenuButton[aria-expanded="true"] .mobileMenuIcon {
+  background: transparent;
+}
+
+.mobileMenuButton[aria-expanded="true"] .mobileMenuIcon::before {
+  transform: rotate(45deg);
+}
+
+.mobileMenuButton[aria-expanded="true"] .mobileMenuIcon::after {
+  transform: rotate(-45deg);
 }
 
 .brand {
@@ -101,18 +178,264 @@
   justify-self: end;
 }
 
-@media (max-width: 720px) {
+.mobileMenuOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  z-index: 90;
+}
+
+.mobileMenu {
+  width: min(340px, 92vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.75rem 1.5rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 12, 12, 0.95);
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.35);
+  animation: mobileMenuSlideIn 0.25s ease forwards;
+}
+
+@keyframes mobileMenuSlideIn {
+  from {
+    transform: translateX(20%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.mobileMenuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mobileMenuBrand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mobileMenuTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.mobileMenuClose {
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobileMenuClose:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.mobileMenuClose:focus-visible {
+  outline: 2px solid rgba(10, 255, 157, 0.4);
+  outline-offset: 3px;
+}
+
+.mobileNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.mobileNavLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.75rem;
+  color: var(--fg);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobileNavLink:hover {
+  border-color: rgba(10, 255, 157, 0.3);
+  background: rgba(10, 255, 157, 0.09);
+  transform: translateY(-1px);
+}
+
+.mobileNavLinkActive {
+  border-color: rgba(10, 255, 157, 0.4);
+  background: rgba(10, 255, 157, 0.12);
+  box-shadow: 0 12px 28px rgba(10, 255, 157, 0.18);
+}
+
+.mobileMenuDivider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  border: none;
+}
+
+.mobileMenuFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-top: auto;
+}
+
+.mobileWalletSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.mobileWalletMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mobileWalletLabel {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mobileWalletAccount {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: var(--fg);
+  letter-spacing: 0.1em;
+}
+
+.mobileWalletActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.mobileWalletAction,
+.mobileWalletActionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.55rem 1.2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg);
+  text-decoration: none;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobileWalletAction:hover,
+.mobileWalletActionLink:hover {
+  border-color: rgba(10, 255, 157, 0.35);
+  background: rgba(10, 255, 157, 0.1);
+  transform: translateY(-1px);
+}
+
+.mobileWalletAction:disabled,
+.mobileWalletDisconnect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mobileWalletStatus {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.mobileWalletDisconnect {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 92, 92, 0.35);
+  background: rgba(255, 92, 92, 0.12);
+  color: #ff7c7c;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.65rem 1rem;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobileWalletDisconnect:hover:not(:disabled) {
+  background: rgba(255, 92, 92, 0.2);
+  border-color: rgba(255, 92, 92, 0.5);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 960px) {
   .navbar {
-    grid-template-columns: 1fr;
-    justify-items: center;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .navCenter {
-    justify-content: center;
+  .brandArea {
+    gap: 0.65rem;
   }
 
+  .brand {
+    gap: 0.6rem;
+  }
+
+  .navCenter,
   .navRight {
-    justify-content: center;
+    display: none;
+  }
+
+  .mobileMenuButton {
+    display: inline-flex;
   }
 }
 
@@ -312,6 +635,9 @@
 }
 
 .statusAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   padding: 0.5rem 1rem;
   border: 1px solid var(--border);
@@ -848,12 +1174,123 @@
 }
 
 @media (max-width: 720px) {
-  .navRight {
-    justify-content: flex-start;
+  .app {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .shell {
+    gap: 2.25rem;
   }
 
   .tabs {
     align-self: stretch;
     justify-content: space-between;
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+  }
+
+  .status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .statusAction {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .statusStack {
+    gap: 0.8rem;
+  }
+
+  .summary {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .summaryPrimary {
+    margin-top: 0.25rem;
+    text-align: left;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 540px) {
+  .app {
+    padding: 1.2rem 0.75rem 2.5rem;
+  }
+
+  .shell {
+    gap: 2rem;
+  }
+
+  .card {
+    padding: 1rem;
+    max-width: 100%;
+  }
+
+  .assetCard {
+    padding: 0.7rem 0.8rem;
+  }
+
+  .amountInput {
+    font-size: clamp(1rem, 7vw, 1.3rem);
+  }
+
+  .statusAction {
+    padding: 0.6rem 1rem;
+  }
+
+  .networkBadge,
+  .walletButton {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .tab {
+    padding: 0.6rem 1.1rem;
+  }
+
+  .summary {
+    gap: 0.75rem;
+  }
+
+  .dialog {
+    padding: 1rem;
+  }
+
+  .dialogHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .dialogClose {
+    width: 100%;
+    text-align: center;
+  }
+
+  .mobileMenu {
+    width: min(360px, 100%);
+    padding: 1.5rem 1.25rem;
+  }
+
+  .mobileWalletSection {
+    padding: 0.85rem;
   }
 }

@@ -232,6 +232,7 @@ export function LiquidityContainer({
     if (refetchPromises.length === 0) return;
 
     await Promise.allSettled(refetchPromises);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenAIsAddress, tokenBIsAddress, refetchBalanceA, refetchBalanceB]);
 
   const ensureWallet = useCallback(
@@ -456,7 +457,6 @@ export function LiquidityContainer({
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
     liquidityAllowanceNonce,
-    readProvider,
     liquidityTokenAIsNative,
     liquidityTokenBIsNative
   ]);
@@ -598,7 +598,8 @@ export function LiquidityContainer({
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
     liquidityTokenA,
-    liquidityTokenB
+    liquidityTokenB,
+    readProvider
   ]);
 
   const liquidityTokensReady =

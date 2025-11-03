@@ -136,6 +136,7 @@ function LiquidityAddForm({
             >
               <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {liquidityTokenA?.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={liquidityTokenA.logo}
                     alt={liquidityTokenA.symbol}
@@ -181,6 +182,7 @@ function LiquidityAddForm({
             >
               <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {liquidityTokenB?.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={liquidityTokenB.logo}
                     alt={liquidityTokenB.symbol}
@@ -269,6 +271,7 @@ function LiquidityRemoveForm({
             >
               <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {liquidityTokenA?.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={liquidityTokenA.logo}
                     alt={liquidityTokenA.symbol}
@@ -298,6 +301,7 @@ function LiquidityRemoveForm({
             >
               <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {liquidityTokenB?.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={liquidityTokenB.logo}
                     alt={liquidityTokenB.symbol}

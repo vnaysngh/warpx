@@ -173,6 +173,8 @@ export function useTokenManager(deployment?: DeploymentMetadata) {
   });
 
   useEffect(() => {
+    // Sync token list when native symbol or wrapped address changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTokenList((prev) => {
       const remapped = prev
         .map((token) => mapNativeToken(token, nativeSymbol, wrappedNativeAddress))
@@ -290,7 +292,9 @@ export function useTokenManager(deployment?: DeploymentMetadata) {
     const nextAAddr = normalizedA?.address?.toLowerCase() ?? null;
     const nextBAddr = normalizedB?.address?.toLowerCase() ?? null;
 
+    // Sync selected tokens when token list changes - intentional state updates
     if (lastAddrs.selectedIn !== nextInAddr) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIn(nextSelectedIn);
       lastSetAddresses.current.selectedIn = nextInAddr;
     }

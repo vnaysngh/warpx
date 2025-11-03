@@ -82,7 +82,7 @@ export function MatchPriceExample() {
           <p><strong>ETH to add:</strong> {result.ethAmount}</p>
           <p><strong>Price:</strong> 1 BNB = {result.price} ETH</p>
           <p style={{ color: 'green', marginTop: '10px' }}>
-            ✅ This matches Uniswap's price EXACTLY (no rounding errors)
+            ✅ This matches Uniswap&apos;s price EXACTLY (no rounding errors)
           </p>
         </div>
       )}

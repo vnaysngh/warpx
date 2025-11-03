@@ -45,24 +45,28 @@ export function useWalletProvider(
   useEffect(() => {
     let cancelled = false;
 
-    if (!walletProvider) {
-      setWalletSigner(null);
-      return;
-    }
+    const updateSigner = async () => {
+      if (!walletProvider) {
+        if (!cancelled) {
+          setWalletSigner(null);
+        }
+        return;
+      }
 
-    walletProvider
-      .getSigner()
-      .then((resolvedSigner) => {
+      try {
+        const resolvedSigner = await walletProvider.getSigner();
         if (!cancelled) {
           setWalletSigner(resolvedSigner);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("[wallet] Failed to resolve signer", err);
         if (!cancelled) {
           setWalletSigner(null);
         }
-      });
+      }
+    };
+
+    updateSigner();
 
     return () => {
       cancelled = true;

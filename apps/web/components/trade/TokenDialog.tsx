@@ -88,6 +88,7 @@ export function TokenDialog({
                     }}
                   >
                     {token.logo && (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={token.logo}
                         alt={token.symbol}

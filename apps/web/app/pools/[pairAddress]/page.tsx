@@ -329,6 +329,7 @@ export default function PoolLiquidityPage() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pairAddress,
     tokenList,

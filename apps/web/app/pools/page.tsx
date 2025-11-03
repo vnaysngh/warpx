@@ -168,6 +168,7 @@ export default function PoolsPage() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployment?.network]);
 
   useEffect(() => {
@@ -332,7 +333,6 @@ export default function PoolsPage() {
           i += CONCURRENCY
         ) {
           const batch = pairsToCheck.slice(i, i + CONCURRENCY);
-          // eslint-disable-next-line no-await-in-loop
           const batchResults = await Promise.all(
             batch.map((pair) => processPair(pair))
           );
@@ -374,6 +374,7 @@ export default function PoolsPage() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployment?.factory, tokenList, readProvider, poolsRefreshNonce, walletAccount]);
 
   const switchToMegaEth = useCallback(async () => {
