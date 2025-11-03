@@ -5,11 +5,7 @@
     "declaration": true,
     "declarationMap": false,
     "composite": false,
-    "rootDir": "src",
-    "baseUrl": ".",
-    "paths": {
-      "@megaeth/warp-sdk-core": ["../warp-sdk-core/dist"]
-    }
+    "rootDir": "src"
   },
   "include": ["src/**/*"]
 }
