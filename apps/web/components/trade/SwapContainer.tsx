@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BrowserProvider, JsonRpcProvider, JsonRpcSigner } from "ethers";
-import { formatUnits, parseUnits } from "ethers";
+import type { JsonRpcProvider } from "ethers";
+import { formatUnits, parseUnits, MaxUint256 } from "ethers";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
@@ -31,9 +31,6 @@ import type {
 import { formatBalanceDisplay } from "@/lib/trade/format";
 type EnsureWalletContext = {
   walletAccount: string | null;
-  walletProvider: BrowserProvider | null;
-  walletSigner: JsonRpcSigner | null;
-  readProvider: JsonRpcProvider;
   ready: boolean;
   showError: (message: string) => void;
 };
@@ -49,8 +46,6 @@ type SwapContainerProps = {
   wrappedNativeAddress?: string;
   readProvider: JsonRpcProvider;
   walletAccount: string | null;
-  walletProvider: BrowserProvider | null;
-  walletSigner: JsonRpcSigner | null;
   chainId: number | null | undefined;
   hasMounted: boolean;
   isWalletConnected: boolean;
@@ -69,13 +64,10 @@ const nowPlusMinutes = (minutes: number) =>
 const createEnsureWallet =
   ({
     walletAccount,
-    walletProvider,
-    walletSigner,
-    readProvider,
     ready,
     showError
   }: EnsureWalletContext) =>
-  (options?: { requireSigner?: boolean }) => {
+  () => {
     if (!walletAccount) {
       showError("Connect your wallet to continue.");
       return null;
@@ -84,15 +76,8 @@ const createEnsureWallet =
       showError("Switch to the MegaETH Testnet to interact with the contracts.");
       return null;
     }
-    if (options?.requireSigner && (!walletProvider || !walletSigner)) {
-      showError("Unlock your wallet to sign this transaction and try again.");
-      return null;
-    }
     return {
-      account: walletAccount,
-      provider: readProvider,
-      walletProvider,
-      signer: walletSigner
+      account: walletAccount
     };
   };
 
@@ -105,8 +90,6 @@ export function SwapContainer({
   wrappedNativeAddress,
   readProvider,
   walletAccount,
-  walletProvider,
-  walletSigner,
   chainId,
   hasMounted,
   isWalletConnected,
@@ -136,6 +119,7 @@ export function SwapContainer({
   const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
   const quoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reverseQuoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const allowanceDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previousSwapSelectionRef = useRef<{
     in: string | null;
     out: string | null;
@@ -145,13 +129,10 @@ export function SwapContainer({
     () =>
       createEnsureWallet({
         walletAccount,
-        walletProvider,
-        walletSigner,
-        readProvider,
         ready,
         showError
       }),
-    [walletAccount, walletProvider, walletSigner, readProvider, ready, showError]
+    [walletAccount, ready, showError]
   );
 
   const swapInDescriptor = selectedIn;
@@ -251,6 +232,10 @@ export function SwapContainer({
     if (reverseQuoteDebounceTimerRef.current) {
       clearTimeout(reverseQuoteDebounceTimerRef.current);
       reverseQuoteDebounceTimerRef.current = null;
+    }
+    if (allowanceDebounceTimerRef.current) {
+      clearTimeout(allowanceDebounceTimerRef.current);
+      allowanceDebounceTimerRef.current = null;
     }
 
     setSwapForm((prev) => ({
@@ -511,41 +496,43 @@ export function SwapContainer({
   ]);
 
   useEffect(() => {
-    let cancelled = false;
-    const evaluateAllowance = async () => {
-      if (
-        !walletAccount ||
-        !routerAddress ||
-        !isAddress(swapForm.tokenIn) ||
-        !swapForm.amountIn ||
-        Number(swapForm.amountIn) <= 0
-      ) {
-        if (!cancelled) {
-          setNeedsApproval(false);
-          setCheckingAllowance(false);
-        }
-        return;
-      }
-      if (swapInIsNative) {
-        if (!cancelled) {
-          setNeedsApproval(false);
-          setCheckingAllowance(false);
-        }
-        return;
-      }
+    // Clear previous debounce timer
+    if (allowanceDebounceTimerRef.current) {
+      clearTimeout(allowanceDebounceTimerRef.current);
+    }
+
+    // Reset immediately if conditions aren't met
+    if (
+      !walletAccount ||
+      !routerAddress ||
+      !isAddress(swapForm.tokenIn) ||
+      !swapForm.amountIn ||
+      Number(swapForm.amountIn) <= 0 ||
+      swapInIsNative
+    ) {
+      setNeedsApproval(false);
+      setCheckingAllowance(false);
+      return;
+    }
+
+    // Debounce the allowance check to avoid rate limiting
+    allowanceDebounceTimerRef.current = setTimeout(async () => {
+      let cancelled = false;
+
       try {
-        if (!cancelled) setCheckingAllowance(true);
-        const token = getToken(swapForm.tokenIn, readProvider);
-        const decimals = await token
-          .decimals()
-          .then((value) => Number(value))
-          .catch(() => DEFAULT_TOKEN_DECIMALS);
+        setCheckingAllowance(true);
+        // Use descriptor decimals instead of fetching from contract
+        const decimals = swapInDecimals;
         const desired = parseUnits(swapForm.amountIn, decimals);
+
         if (desired <= 0n) {
           if (!cancelled) setNeedsApproval(false);
           return;
         }
+
+        const token = getToken(swapForm.tokenIn, readProvider);
         const allowance = await token.allowance(walletAccount, routerAddress);
+
         if (!cancelled) setNeedsApproval(toBigInt(allowance) < desired);
       } catch (err) {
         console.error("allowance check failed", err);
@@ -553,10 +540,12 @@ export function SwapContainer({
       } finally {
         if (!cancelled) setCheckingAllowance(false);
       }
-    };
-    evaluateAllowance();
+    }, 500); // 500ms debounce
+
     return () => {
-      cancelled = true;
+      if (allowanceDebounceTimerRef.current) {
+        clearTimeout(allowanceDebounceTimerRef.current);
+      }
     };
   }, [
     walletAccount,
@@ -565,7 +554,8 @@ export function SwapContainer({
     swapForm.amountIn,
     allowanceNonce,
     readProvider,
-    swapInIsNative
+    swapInIsNative,
+    swapInDecimals
   ]);
 
   const handleSetMaxSwapAmount = useCallback(() => {
@@ -608,18 +598,13 @@ export function SwapContainer({
     }
     try {
       setIsSubmitting(true);
-      const decimals = swapInDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
-      const parsedAmount = parseUnits(
-        amount && amount.length ? amount : "1000000",
-        decimals
-      );
 
       showLoading("Confirm transaction in your wallet...");
       const txHash = await writeContract(wagmiConfig, {
         address: tokenAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [routerAddress as `0x${string}`, parsedAmount],
+        args: [routerAddress as `0x${string}`, MaxUint256],
         account: ctx.account as `0x${string}`,
         chainId: Number(MEGAETH_CHAIN_ID),
         gas: 100000n
@@ -650,7 +635,7 @@ export function SwapContainer({
   ]);
 
   const handleSwap = useCallback(async () => {
-    const ctx = ensureWallet({ requireSigner: true });
+    const ctx = ensureWallet();
     if (!ctx) return;
     const { tokenIn, tokenOut, amountIn, minOut, maxInput } = swapForm;
     if (!amountIn || !minOut) {
@@ -784,7 +769,7 @@ export function SwapContainer({
             address: tokenIn as `0x${string}`,
             abi: erc20Abi,
             functionName: "approve",
-            args: [routerAddress as `0x${string}`, amountToApprove],
+            args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n

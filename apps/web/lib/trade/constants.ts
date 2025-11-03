@@ -8,8 +8,8 @@ export const MEGAETH_CHAIN_ID = 6342n;
 export const DEFAULT_SLIPPAGE_BPS = 50n; // 0.50% default slippage tolerance
 export const ONE_BIPS = 10000n; // 10000 basis points = 100%
 export const MINIMUM_LIQUIDITY = 1000n; // Minimum liquidity burned
-export const FEES_DENOMINATOR = 1000n; // Standard Warp fee = 0.3% = 3/1000
-export const FEES_NUMERATOR = 997n; // 1000 - 3 fee
+export const FEES_DENOMINATOR = 1000n; // Standard Warp fee = 0.2% = 2/1000
+export const FEES_NUMERATOR = 998n; // 1000 - 2 fee
 export const DEFAULT_TOKEN_DECIMALS = 18;
 
 export const SWAP_DEFAULT: SwapFormState = {
@@ -28,16 +28,16 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
   {
     symbol: "ETH",
     name: "Ethereum",
-    address: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66",
+    address: "0x04Fb692A1B93db8BE3fc1134F4168A989AEF225B",
     decimals: 18,
     isNative: true,
-    wrappedAddress: "0x03eCB2c43D04852c1919eAfFbc61560A05c89E66",
+    wrappedAddress: "0x04Fb692A1B93db8BE3fc1134F4168A989AEF225B",
     logo: "/logos/eth.jpeg"
   },
   {
     symbol: "WARPX",
     name: "WarpX",
-    address: "0xAf94EC793270d2FcF2Ad3700EBE3ba3488B266c3",
+    address: "0xD34401c0Ba9f79AE5c5C0087825F35f195cEC7C6",
     decimals: 18,
     logo: "/logos/warpx.jpeg"
   },

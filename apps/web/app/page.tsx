@@ -5,8 +5,7 @@ import { ToastContainer } from "@/components/Toast";
 import { JsonRpcProvider } from "ethers";
 import {
   useAccount,
-  useSwitchChain,
-  useWalletClient
+  useSwitchChain
 } from "wagmi";
 import { megaethTestnet } from "@/lib/chains";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
@@ -14,7 +13,6 @@ import { TokenDialog } from "@/components/trade/TokenDialog";
 import { SwapContainer } from "@/components/trade/SwapContainer";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
-import { useWalletProvider } from "@/hooks/useWalletProvider";
 import { useTokenManager } from "@/hooks/useTokenManager";
 import { MEGAETH_CHAIN_ID } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
@@ -27,8 +25,6 @@ export default function Page() {
     status
   } = useAccount();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
-  const { data: walletClient } = useWalletClient();
-  const { walletProvider, walletSigner } = useWalletProvider(walletClient);
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
   const walletAccount = isWalletConnected
@@ -144,8 +140,6 @@ export default function Page() {
         wrappedNativeAddress={deployment?.wmegaeth}
         readProvider={readProvider}
         walletAccount={walletAccount}
-        walletProvider={walletProvider}
-        walletSigner={walletSigner}
         chainId={chainId}
         hasMounted={hasMounted}
         isWalletConnected={isWalletConnected}

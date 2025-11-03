@@ -126,6 +126,25 @@
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.positionBadge {
+  color: var(--accent);
+  font-size: 0.6rem;
+  line-height: 1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .poolAddress {

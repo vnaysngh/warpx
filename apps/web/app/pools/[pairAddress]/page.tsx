@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
-import { useAccount, useSwitchChain, useWalletClient } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import styles from "../page.module.css";
 import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
@@ -11,7 +11,6 @@ import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
-import { useWalletProvider } from "@/hooks/useWalletProvider";
 import { useTokenManager } from "@/hooks/useTokenManager";
 import { megaethTestnet } from "@/lib/chains";
 import {
@@ -65,8 +64,6 @@ export default function PoolLiquidityPage() {
     status
   } = useAccount();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
-  const { data: walletClient } = useWalletClient();
-  const { walletProvider, walletSigner } = useWalletProvider(walletClient);
 
   const { toasts, removeToast, showLoading, showSuccess, showError } =
     useToasts();
@@ -401,8 +398,6 @@ export default function PoolLiquidityPage() {
             pairToken1={pairTokenAddresses.token1}
             readProvider={readProvider}
             walletAccount={walletAccount}
-            walletProvider={walletProvider}
-            walletSigner={walletSigner}
             chainId={chainId}
             hasMounted={hasMounted}
             isWalletConnected={isWalletConnected}

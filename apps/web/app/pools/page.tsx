@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
 import {
   useAccount,
-  useSwitchChain,
-  useWalletClient
+  useSwitchChain
 } from "wagmi";
 import pageStyles from "../page.module.css";
 import styles from "./page.module.css";
@@ -15,7 +14,6 @@ import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { PoolsTable, type PoolsTableRow } from "@/components/pools/PoolsTable";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
-import { useWalletProvider } from "@/hooks/useWalletProvider";
 import { megaethTestnet } from "@/lib/chains";
 import {
   DEFAULT_TOKEN_DECIMALS,
@@ -57,8 +55,6 @@ export default function PoolsPage() {
   } = useAccount();
   const router = useRouter();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
-  const { data: walletClient } = useWalletClient();
-  const { walletProvider, walletSigner } = useWalletProvider(walletClient);
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
   const walletAccount = isWalletConnected
@@ -246,20 +242,15 @@ export default function PoolsPage() {
               factoryAddress
             );
 
+            // Only skip if pair doesn't exist at all
             if (!sdkPair) {
               return null;
             }
 
             if (cancelled) return null;
 
-            const totalSupplyWei = sdkPair.liquidityTokenTotalSupply ?? null;
-            if (
-              totalSupplyWei !== null &&
-              typeof totalSupplyWei === "bigint" &&
-              totalSupplyWei <= MINIMUM_LIQUIDITY
-            ) {
-              return null;
-            }
+            // Show all initialized pools, including those with only MINIMUM_LIQUIDITY
+            // This allows new users to discover pools they can add liquidity to
 
             const token0Descriptor =
               descriptorMap.get(sdkPair.token0.address.toLowerCase()) ??

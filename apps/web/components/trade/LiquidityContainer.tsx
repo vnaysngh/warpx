@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BrowserProvider, JsonRpcProvider, JsonRpcSigner } from "ethers";
-import { formatUnits, parseUnits } from "ethers";
+import type { JsonRpcProvider } from "ethers";
+import { formatUnits, parseUnits, MaxUint256 } from "ethers";
 import { pairAbi } from "@/lib/abis/pair";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
@@ -42,8 +42,6 @@ type LiquidityContainerProps = {
   wrappedNativeAddress?: string;
   readProvider: JsonRpcProvider;
   walletAccount: string | null;
-  walletProvider: BrowserProvider | null;
-  walletSigner: JsonRpcSigner | null;
   chainId: number | null | undefined;
   hasMounted: boolean;
   isWalletConnected: boolean;
@@ -79,8 +77,6 @@ export function LiquidityContainer({
   wrappedNativeAddress,
   readProvider,
   walletAccount,
-  walletProvider,
-  walletSigner,
   chainId,
   hasMounted,
   isWalletConnected,
@@ -239,7 +235,7 @@ export function LiquidityContainer({
   }, [tokenAIsAddress, tokenBIsAddress, refetchBalanceA, refetchBalanceB]);
 
   const ensureWallet = useCallback(
-    (options?: { requireSigner?: boolean }) => {
+    () => {
       if (!walletAccount) {
         showError("Connect your wallet to continue.");
         return null;
@@ -248,18 +244,11 @@ export function LiquidityContainer({
         showError("Switch to the MegaETH Testnet to interact with the contracts.");
         return null;
       }
-      if (options?.requireSigner && (!walletProvider || !walletSigner)) {
-        showError("Unlock your wallet to sign this transaction and try again.");
-        return null;
-      }
       return {
-        account: walletAccount,
-        provider: readProvider,
-        walletProvider,
-        signer: walletSigner
+        account: walletAccount
       };
     },
-    [walletAccount, ready, walletProvider, walletSigner, readProvider, showError]
+    [walletAccount, ready, showError]
   );
 
   useEffect(() => {
@@ -405,7 +394,7 @@ export function LiquidityContainer({
         if (!cancelled) {
           setCheckingLiquidityAllowances(true);
         }
-        const provider = walletProvider ?? readProvider;
+        const provider = readProvider;
 
         const decimalsA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
         const decimalsB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
@@ -458,8 +447,8 @@ export function LiquidityContainer({
   }, [
     liquidityMode,
     walletAccount,
-    walletProvider,
     routerAddress,
+    readProvider,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
     liquidityForm.amountA,
@@ -797,7 +786,7 @@ export function LiquidityContainer({
             address: ercTokenAddress as `0x${string}`,
             abi: erc20Abi,
             functionName: "approve",
-            args: [routerAddress as `0x${string}`, ercAmountWei],
+            args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
@@ -855,7 +844,7 @@ export function LiquidityContainer({
             address: tokenA as `0x${string}`,
             abi: erc20Abi,
             functionName: "approve",
-            args: [routerAddress as `0x${string}`, amountAWei],
+            args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
@@ -871,7 +860,7 @@ export function LiquidityContainer({
             address: tokenB as `0x${string}`,
             abi: erc20Abi,
             functionName: "approve",
-            args: [routerAddress as `0x${string}`, amountBWei],
+            args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
@@ -1009,7 +998,7 @@ export function LiquidityContainer({
           address: pairAddress as `0x${string}`,
           abi: erc20Abi,
           functionName: "approve",
-          args: [routerAddress as `0x${string}`, liquidityToRemove],
+          args: [routerAddress as `0x${string}`, MaxUint256],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n

@@ -21,7 +21,7 @@ type TokenManifest = {
   tokens: TokenManifestEntry[];
 };
 
-const TOKEN_A_SYMBOL = process.env.LIQUIDITY_TOKEN_A ?? "WARPX";
+const TOKEN_A_SYMBOL = process.env.LIQUIDITY_TOKEN_A ?? "MEGA";
 const TOKEN_B_SYMBOL = process.env.LIQUIDITY_TOKEN_B ?? "ETH";
 const TOKEN_A_AMOUNT = process.env.LIQUIDITY_TOKEN_A_AMOUNT ?? "27.5";
 const TOKEN_B_AMOUNT = process.env.LIQUIDITY_TOKEN_B_AMOUNT ?? "0.005";
@@ -84,23 +84,25 @@ async function main() {
   );
 
   // Handle native token (ETH) - it won't be in tokens.json
-  const tokenAData = TOKEN_A_SYMBOL.toUpperCase() === NATIVE_SYMBOL
-    ? {
-        name: "Ethereum",
-        symbol: NATIVE_SYMBOL,
-        address: deploymentManifest.wmegaeth,
-        decimals: 18
-      }
-    : findToken(tokenManifest, TOKEN_A_SYMBOL);
+  const tokenAData =
+    TOKEN_A_SYMBOL.toUpperCase() === NATIVE_SYMBOL
+      ? {
+          name: "Ethereum",
+          symbol: NATIVE_SYMBOL,
+          address: deploymentManifest.wmegaeth,
+          decimals: 18
+        }
+      : findToken(tokenManifest, TOKEN_A_SYMBOL);
 
-  const tokenBData = TOKEN_B_SYMBOL.toUpperCase() === NATIVE_SYMBOL
-    ? {
-        name: "Ethereum",
-        symbol: NATIVE_SYMBOL,
-        address: deploymentManifest.wmegaeth,
-        decimals: 18
-      }
-    : findToken(tokenManifest, TOKEN_B_SYMBOL);
+  const tokenBData =
+    TOKEN_B_SYMBOL.toUpperCase() === NATIVE_SYMBOL
+      ? {
+          name: "Ethereum",
+          symbol: NATIVE_SYMBOL,
+          address: deploymentManifest.wmegaeth,
+          decimals: 18
+        }
+      : findToken(tokenManifest, TOKEN_B_SYMBOL);
 
   const [deployer] = await ethers.getSigners();
   const deployerAddress = await deployer.getAddress();

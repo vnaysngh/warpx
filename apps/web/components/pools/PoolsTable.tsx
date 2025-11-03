@@ -115,6 +115,11 @@ export function PoolsTable({
                     <div className={styles.poolMeta}>
                       <div className={styles.poolLabel}>
                         {pool.token0.symbol}/{pool.token1.symbol}
+                        {pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n && (
+                          <span className={styles.positionBadge} title="You have a position in this pool">
+                            ●
+                          </span>
+                        )}
                       </div>
                       <div className={styles.poolAddress}>
                         {pool.pairAddress.slice(0, 6)}…
@@ -134,8 +139,7 @@ export function PoolsTable({
           {!showSkeleton && showEmpty && (
             <tr>
               <td colSpan={5} className={styles.stateCell}>
-                No liquidity pools found. Check back soon or create one to get
-                started!
+                No liquidity pools available yet. Pools will appear here once they are initialized on the protocol.
               </td>
             </tr>
           )}
