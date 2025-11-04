@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono as jetBrainsMono } from "next/font/google";
 import "@warpx/theme/globals.css";
-import { Providers } from "./providers";
-import { ClientLayout } from "@/components/layout/ClientLayout";
 
 const terminal = jetBrainsMono({
   subsets: ["latin"],
@@ -12,8 +10,9 @@ const terminal = jetBrainsMono({
 });
 
 export const metadata: Metadata = {
-  title: "WarpX",
-  description: "MegaETH v2 AMM desk for swaps and liquidity."
+  title: "WarpX — MegaETH v2 AMM",
+  description:
+    "Discover WarpX, the MegaETH-native AMM for swaps and liquidity. Learn how to provide liquidity and launch the dApp."
 };
 
 export default function RootLayout({
@@ -23,11 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={terminal.variable}>
-      <body>
-        <Providers>
-          <ClientLayout>{children}</ClientLayout>
-        </Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

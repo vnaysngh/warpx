@@ -9,7 +9,18 @@
   --accent-muted: rgba(10, 255, 157, 0.12);
   --border: rgba(255, 255, 255, 0.08);
   --radius: 16px;
-  font-family: var(--font-terminal, "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-family: var(
+    --font-terminal,
+    "JetBrains Mono",
+    "Fira Code",
+    "SFMono-Regular",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
 }
 
 *,
@@ -32,7 +43,16 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-image: radial-gradient(circle at top left, rgba(10, 255, 157, 0.08), transparent 40%), radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.06), transparent 45%);
+  background-image: radial-gradient(
+      circle at top left,
+      rgba(10, 255, 157, 0.08),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(255, 255, 255, 0.06),
+      transparent 45%
+    );
 }
 
 a {

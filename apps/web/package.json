@@ -16,6 +16,7 @@
     "@megaeth/warp-v2-sdk": "*",
     "@reown/appkit": "^1.8.12",
     "@reown/appkit-adapter-wagmi": "^1.8.12",
+    "@warpx/theme": "*",
     "@tanstack/query-sync-storage-persister": "^5.90.8",
     "@tanstack/react-query": "^5.62.15",
     "@tanstack/react-query-persist-client": "^5.62.15",

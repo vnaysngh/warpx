@@ -1,0 +1,12 @@
+{
+  "name": "@warpx/theme",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./globals.css": "./globals.css"
+  },
+  "sideEffects": [
+    "./globals.css"
+  ]
+}
