@@ -183,9 +183,26 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
     const [sdkToken0, sdkToken1] = token0.sortsBefore(token1)
       ? [token0, token1]
       : [token1, token0];
-    const [displayToken0, displayToken1] = token0.sortsBefore(token1)
-      ? [token0Descriptor, token1Descriptor]
-      : [token1Descriptor, token0Descriptor];
+
+    // For display, always show ETH as the quote (second) token: TOKEN/ETH format
+    const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
+    const token0IsEth = wethLower && token0Descriptor.address.toLowerCase() === wethLower;
+    const token1IsEth = wethLower && token1Descriptor.address.toLowerCase() === wethLower;
+
+    let displayToken0: TokenDescriptor;
+    let displayToken1: TokenDescriptor;
+
+    // ETH should always be the quote (second) token in the pair display
+    if (token0IsEth && !token1IsEth) {
+      // Swap: make ETH the quote token (second position)
+      displayToken0 = token1Descriptor;
+      displayToken1 = token0Descriptor;
+    } else {
+      // Either token1 is ETH (correct order), or neither is ETH (use sortsBefore)
+      [displayToken0, displayToken1] = token0.sortsBefore(token1)
+        ? [token0Descriptor, token1Descriptor]
+        : [token1Descriptor, token0Descriptor];
+    }
 
     // Create pair instance
     const pair = new Pair(
@@ -202,7 +219,7 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
     let totalLiquidityValue = 0;
     const token0Lower = sdkToken0.address.toLowerCase();
     const token1Lower = sdkToken1.address.toLowerCase();
-    const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
+    // wethLower already declared above for display ordering
 
     if (wethLower && token0Lower === wethLower) {
       totalLiquidityValue = reserve0Value * 2;
