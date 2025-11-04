@@ -319,13 +319,60 @@ export function SwapContainer({
           outputAddress as `0x${string}`
         ];
 
-        const amounts = (await readContract(wagmiConfig, {
-          address: routerAddress as `0x${string}`,
-          abi: warpRouterAbi,
-          functionName: "getAmountsOut",
-          args: [amountInWei, path],
-          chainId: Number(MEGAETH_CHAIN_ID)
-        })) as readonly bigint[];
+        // Run quote and reserve fetching in PARALLEL for performance
+        const [amounts, reserveData] = await Promise.all([
+          // Get quote
+          readContract(wagmiConfig, {
+            address: routerAddress as `0x${string}`,
+            abi: warpRouterAbi,
+            functionName: "getAmountsOut",
+            args: [amountInWei, path],
+            chainId: Number(MEGAETH_CHAIN_ID)
+          }) as Promise<readonly bigint[]>,
+
+          // Get reserves for price impact calculation (in parallel)
+          (async () => {
+            try {
+              const factoryAddress = (await readContract(wagmiConfig, {
+                address: routerAddress as `0x${string}`,
+                abi: warpRouterAbi,
+                functionName: "factory",
+                chainId: Number(MEGAETH_CHAIN_ID)
+              })) as string;
+
+              const pairAddress = (await readContract(wagmiConfig, {
+                address: factoryAddress as `0x${string}`,
+                abi: [{"type":"function","name":"getPair","inputs":[{"type":"address"},{"type":"address"}],"outputs":[{"type":"address"}],"stateMutability":"view"}],
+                functionName: "getPair",
+                args: [inputAddress as `0x${string}`, outputAddress as `0x${string}`],
+                chainId: Number(MEGAETH_CHAIN_ID)
+              })) as string;
+
+              if (!pairAddress || pairAddress === "0x0000000000000000000000000000000000000000") {
+                return null;
+              }
+
+              const [reserves, token0] = await Promise.all([
+                readContract(wagmiConfig, {
+                  address: pairAddress as `0x${string}`,
+                  abi: pairAbi,
+                  functionName: "getReserves",
+                  chainId: Number(MEGAETH_CHAIN_ID)
+                }) as Promise<readonly [bigint, bigint, number]>,
+                readContract(wagmiConfig, {
+                  address: pairAddress as `0x${string}`,
+                  abi: pairAbi,
+                  functionName: "token0",
+                  chainId: Number(MEGAETH_CHAIN_ID)
+                }) as Promise<string>
+              ]);
+
+              return { reserves, token0 };
+            } catch {
+              return null;
+            }
+          })()
+        ]);
 
         const amountOutWei = amounts[amounts.length - 1];
 
@@ -342,63 +389,21 @@ export function SwapContainer({
         setSwapHasLiquidity(true);
 
         // Calculate price impact using reserves
-        try {
-          const factoryAddress = (await readContract(wagmiConfig, {
-            address: routerAddress as `0x${string}`,
-            abi: warpRouterAbi,
-            functionName: "factory",
-            chainId: Number(MEGAETH_CHAIN_ID)
-          })) as string;
+        if (reserveData) {
+          const inputIsToken0 = reserveData.token0.toLowerCase() === inputAddress.toLowerCase();
+          const reserveIn = inputIsToken0 ? reserveData.reserves[0] : reserveData.reserves[1];
+          const reserveOut = inputIsToken0 ? reserveData.reserves[1] : reserveData.reserves[0];
 
-          const pairAddress = (await readContract(wagmiConfig, {
-            address: factoryAddress as `0x${string}`,
-            abi: [{"type":"function","name":"getPair","inputs":[{"type":"address"},{"type":"address"}],"outputs":[{"type":"address"}],"stateMutability":"view"}],
-            functionName: "getPair",
-            args: [inputAddress as `0x${string}`, outputAddress as `0x${string}`],
-            chainId: Number(MEGAETH_CHAIN_ID)
-          })) as string;
+          // Calculate price impact
+          // Mid price = reserveOut / reserveIn
+          // Execution price = amountOut / amountIn
+          // Price impact = (mid_price - execution_price) / mid_price
+          const midPrice = Number(formatUnits(reserveOut, decimalsOut)) / Number(formatUnits(reserveIn, decimalsIn));
+          const executionPrice = Number(formatUnits(amountOutWei, decimalsOut)) / Number(formatUnits(amountInWei, decimalsIn));
+          const impact = ((midPrice - executionPrice) / midPrice) * 100;
 
-          if (pairAddress && pairAddress !== "0x0000000000000000000000000000000000000000") {
-            const [reserves, token0] = await Promise.all([
-              readContract(wagmiConfig, {
-                address: pairAddress as `0x${string}`,
-                abi: pairAbi,
-                functionName: "getReserves",
-                chainId: Number(MEGAETH_CHAIN_ID)
-              }) as Promise<readonly [bigint, bigint, number]>,
-              readContract(wagmiConfig, {
-                address: pairAddress as `0x${string}`,
-                abi: pairAbi,
-                functionName: "token0",
-                chainId: Number(MEGAETH_CHAIN_ID)
-              }) as Promise<string>
-            ]);
-
-            const inputIsToken0 = token0.toLowerCase() === inputAddress.toLowerCase();
-            const reserveIn = inputIsToken0 ? reserves[0] : reserves[1];
-            const reserveOut = inputIsToken0 ? reserves[1] : reserves[0];
-
-            // Calculate price impact following Uniswap V2 formula
-            // Price impact = 1 - (actual_output / expected_output_with_no_slippage)
-            // expected_output = (amountIn * reserveOut) / reserveIn (without fees)
-            // actual_output = amountOut (with fees applied)
-            // Simplified: price_impact ≈ amountIn / (reserveIn + amountIn)
-
-            // More accurate calculation:
-            // Mid price = reserveOut / reserveIn
-            // Execution price = amountOut / amountIn
-            // Price impact = (mid_price - execution_price) / mid_price
-
-            const midPrice = Number(formatUnits(reserveOut, decimalsOut)) / Number(formatUnits(reserveIn, decimalsIn));
-            const executionPrice = Number(formatUnits(amountOutWei, decimalsOut)) / Number(formatUnits(amountInWei, decimalsIn));
-            const impact = ((midPrice - executionPrice) / midPrice) * 100; // percentage
-
-            setPriceImpact(impact > 0 ? impact : 0);
-          } else {
-            setPriceImpact(null);
-          }
-        } catch (err) {
-          // If we can't calculate price impact, just continue without it
+          setPriceImpact(impact > 0 ? impact : 0);
+        } else {
           setPriceImpact(null);
         }
 
@@ -643,6 +648,8 @@ export function SwapContainer({
       ...prev,
       amountIn: value
     }));
+    // Reset price impact immediately when amount changes
+    setPriceImpact(null);
   }, []);
 
   const handleSwapMinOutChange = useCallback((value: string) => {
