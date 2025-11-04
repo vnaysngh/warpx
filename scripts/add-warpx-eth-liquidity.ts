@@ -28,7 +28,7 @@ type TokenManifest = {
 };
 
 // Configuration - adjust these values as needed
-const WARPX_AMOUNT = process.env.WARPX_AMOUNT ?? "1000"; // Amount of WARPX tokens to add
+const WARPX_AMOUNT = process.env.WARPX_AMOUNT ?? "50"; // Amount of WARPX tokens to add
 const ETH_AMOUNT = process.env.ETH_AMOUNT ?? "0.001"; // Amount of ETH to add
 const DEADLINE_MINUTES = Number(process.env.LIQUIDITY_DEADLINE_MINUTES ?? "10");
 const SLIPPAGE_PERCENT = Number(process.env.SLIPPAGE_PERCENT ?? "1"); // 1% slippage tolerance

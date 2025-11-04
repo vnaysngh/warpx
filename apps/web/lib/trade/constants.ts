@@ -37,7 +37,7 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
   {
     symbol: "WARPX",
     name: "WarpX",
-    address: "0x018da37993d6D0A45c6100d0382fa77567C492E8",
+    address: "0x049b3043961836C75A9FB74baB4bA2C6915CA7d1",
     decimals: 18,
     logo: "/logos/warpx.jpeg"
   },

@@ -355,10 +355,24 @@ export function SwapContainer({
         setIsCalculatingQuote(false);
       } catch (err) {
         console.error("[swap] quote calculation failed", err);
+
+        // Check if this is a liquidity error by examining the error message
+        let isLiquidityError = false;
+        if (err && typeof err === "object") {
+          const errorStr = JSON.stringify(err).toLowerCase();
+          isLiquidityError =
+            errorStr.includes("insufficient") ||
+            errorStr.includes("liquidity") ||
+            errorStr.includes("reserves") ||
+            errorStr.includes("k") ||
+            errorStr.includes("execution reverted");
+        }
+
         setIsCalculatingQuote(false);
         setSwapQuote(null);
         setSwapForm((prev) => ({ ...prev, minOut: "" }));
-        setSwapHasLiquidity(false);
+        // Only set to false if we're sure it's a liquidity error, otherwise leave as null
+        setSwapHasLiquidity(isLiquidityError ? false : null);
       }
     }, 500);
 

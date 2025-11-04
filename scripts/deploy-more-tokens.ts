@@ -17,38 +17,6 @@ const TOKENS: TokenConfig[] = [
     initialSupply: ethers.parseUnits("1000000000", 18)
   }
 ];
-// const TOKENS: TokenConfig[] = [
-//   {
-//     name: 'MegaETH Token C',
-//     symbol: 'MEGC',
-//     decimals: 18,
-//     initialSupply: ethers.parseUnits('1000000', 18)
-//   },
-//   {
-//     name: 'MegaETH Token D',
-//     symbol: 'MEGD',
-//     decimals: 18,
-//     initialSupply: ethers.parseUnits('1000000', 18)
-//   },
-//   {
-//     name: 'MegaETH Token E',
-//     symbol: 'MEGE',
-//     decimals: 18,
-//     initialSupply: ethers.parseUnits('1000000', 18)
-//   },
-//   {
-//     name: 'MegaETH Token F',
-//     symbol: 'MEGF',
-//     decimals: 18,
-//     initialSupply: ethers.parseUnits('1000000', 18)
-//   },
-//   {
-//     name: 'MegaETH Token G',
-//     symbol: 'MEGG',
-//     decimals: 18,
-//     initialSupply: ethers.parseUnits('1000000', 18)
-//   }
-// ]
 
 async function main() {
   const [deployer] = await ethers.getSigners();
