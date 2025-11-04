@@ -74,7 +74,7 @@
 }
 
 .heroHeadline {
-  font-size: clamp(32px, 4.5vw, 48px);
+  font-size: clamp(28px, 3.4vw, 36px);
   line-height: 1.15;
   color: var(--fg);
   margin: 0;
@@ -270,9 +270,21 @@
     grid-template-columns: 1fr;
   }
 
+  .heroHeadline {
+    font-size: clamp(26px, 8vw, 34px);
+  }
+
+  .heroCopy {
+    font-size: 15px;
+  }
+
   .heroGraphic {
     width: clamp(220px, 60vw, 300px);
     margin-top: 8px;
+  }
+
+  .ctaPrimary {
+    display: none;
   }
 
   .footerContent {
@@ -282,6 +294,7 @@
 
   .footerText {
     width: 100%;
+    display: none;
   }
 }
 
