@@ -10,6 +10,7 @@ import {
 } from "wagmi/actions";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { warpRouterAbi } from "@/lib/abis/router";
+import { pairAbi } from "@/lib/abis/pair";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
@@ -113,6 +114,7 @@ export function SwapContainer({
   const [swapQuote, setSwapQuote] = useState<Quote | null>(null);
   const [reverseQuote, setReverseQuote] = useState<ReverseQuote | null>(null);
   const [swapHasLiquidity, setSwapHasLiquidity] = useState<boolean | null>(null);
+  const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [needsApproval, setNeedsApproval] = useState(false);
   const [checkingAllowance, setCheckingAllowance] = useState(false);
   const [allowanceNonce, setAllowanceNonce] = useState(0);
@@ -335,7 +337,70 @@ export function SwapContainer({
           return;
         }
 
+        // Following Uniswap's approach: Always show the quote if it's valid
+        // Price impact warnings are shown in the UI, but swaps are never blocked
         setSwapHasLiquidity(true);
+
+        // Calculate price impact using reserves
+        try {
+          const factoryAddress = (await readContract(wagmiConfig, {
+            address: routerAddress as `0x${string}`,
+            abi: warpRouterAbi,
+            functionName: "factory",
+            chainId: Number(MEGAETH_CHAIN_ID)
+          })) as string;
+
+          const pairAddress = (await readContract(wagmiConfig, {
+            address: factoryAddress as `0x${string}`,
+            abi: [{"type":"function","name":"getPair","inputs":[{"type":"address"},{"type":"address"}],"outputs":[{"type":"address"}],"stateMutability":"view"}],
+            functionName: "getPair",
+            args: [inputAddress as `0x${string}`, outputAddress as `0x${string}`],
+            chainId: Number(MEGAETH_CHAIN_ID)
+          })) as string;
+
+          if (pairAddress && pairAddress !== "0x0000000000000000000000000000000000000000") {
+            const [reserves, token0] = await Promise.all([
+              readContract(wagmiConfig, {
+                address: pairAddress as `0x${string}`,
+                abi: pairAbi,
+                functionName: "getReserves",
+                chainId: Number(MEGAETH_CHAIN_ID)
+              }) as Promise<readonly [bigint, bigint, number]>,
+              readContract(wagmiConfig, {
+                address: pairAddress as `0x${string}`,
+                abi: pairAbi,
+                functionName: "token0",
+                chainId: Number(MEGAETH_CHAIN_ID)
+              }) as Promise<string>
+            ]);
+
+            const inputIsToken0 = token0.toLowerCase() === inputAddress.toLowerCase();
+            const reserveIn = inputIsToken0 ? reserves[0] : reserves[1];
+            const reserveOut = inputIsToken0 ? reserves[1] : reserves[0];
+
+            // Calculate price impact following Uniswap V2 formula
+            // Price impact = 1 - (actual_output / expected_output_with_no_slippage)
+            // expected_output = (amountIn * reserveOut) / reserveIn (without fees)
+            // actual_output = amountOut (with fees applied)
+            // Simplified: price_impact ≈ amountIn / (reserveIn + amountIn)
+
+            // More accurate calculation:
+            // Mid price = reserveOut / reserveIn
+            // Execution price = amountOut / amountIn
+            // Price impact = (mid_price - execution_price) / mid_price
+
+            const midPrice = Number(formatUnits(reserveOut, decimalsOut)) / Number(formatUnits(reserveIn, decimalsIn));
+            const executionPrice = Number(formatUnits(amountOutWei, decimalsOut)) / Number(formatUnits(amountInWei, decimalsIn));
+            const impact = ((midPrice - executionPrice) / midPrice) * 100; // percentage
+
+            setPriceImpact(impact > 0 ? impact : 0);
+          } else {
+            setPriceImpact(null);
+          }
+        } catch (err) {
+          // If we can't calculate price impact, just continue without it
+          setPriceImpact(null);
+        }
 
         const outputExact = formatUnits(amountOutWei, decimalsOut);
         const limitedOut = formatNumber(outputExact, Math.min(6, decimalsOut));
@@ -354,25 +419,14 @@ export function SwapContainer({
         }));
         setIsCalculatingQuote(false);
       } catch (err) {
-        console.error("[swap] quote calculation failed", err);
-
-        // Check if this is a liquidity error by examining the error message
-        let isLiquidityError = false;
-        if (err && typeof err === "object") {
-          const errorStr = JSON.stringify(err).toLowerCase();
-          isLiquidityError =
-            errorStr.includes("insufficient") ||
-            errorStr.includes("liquidity") ||
-            errorStr.includes("reserves") ||
-            errorStr.includes("k") ||
-            errorStr.includes("execution reverted");
-        }
-
+        // Any error from getAmountsOut is treated as insufficient liquidity
+        // This includes: no pair exists, insufficient reserves, invalid tokens, etc.
+        // This is an expected state, not an error, so we don't log it
         setIsCalculatingQuote(false);
         setSwapQuote(null);
         setSwapForm((prev) => ({ ...prev, minOut: "" }));
-        // Only set to false if we're sure it's a liquidity error, otherwise leave as null
-        setSwapHasLiquidity(isLiquidityError ? false : null);
+        setSwapHasLiquidity(false);
+        setPriceImpact(null);
       }
     }, 500);
 
@@ -488,10 +542,10 @@ export function SwapContainer({
         }
         setIsCalculatingQuote(false);
       } catch (err) {
-        console.error("[reverse quote] calculation error", err);
+        // Any error from getAmountsIn is treated as insufficient liquidity
+        // This is an expected state, not an error, so we silently handle it
         setReverseQuote(null);
         setIsCalculatingQuote(false);
-        showError("Unable to calculate reverse quote.");
       }
     }, 500);
 
@@ -977,6 +1031,7 @@ export function SwapContainer({
       receiveValue={receiveAmountValue}
       minReceived={minReceivedDisplay}
       summaryMessage={swapSummaryMessage}
+      priceImpact={priceImpact}
       buttonLabel={swapButtonLabel}
       buttonDisabled={swapButtonDisabled}
       onButtonClick={swapButtonAction}

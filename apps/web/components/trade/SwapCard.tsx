@@ -24,6 +24,7 @@ type SwapCardProps = {
   receiveValue: string;
   minReceived: string | null;
   summaryMessage: string | null;
+  priceImpact: number | null;
   buttonLabel: string;
   buttonDisabled: boolean;
   onButtonClick: (() => void) | null;
@@ -46,6 +47,7 @@ export function SwapCard({
   receiveValue,
   minReceived,
   summaryMessage,
+  priceImpact,
   buttonLabel,
   buttonDisabled,
   onButtonClick
@@ -209,6 +211,18 @@ export function SwapCard({
         </button>
         {summaryMessage && (
           <div className={styles.exchangeRate}>{summaryMessage}</div>
+        )}
+        {priceImpact !== null && priceImpact > 0.01 && (
+          <div
+            className={styles.exchangeRate}
+            style={{
+              color: priceImpact >= 5 ? '#ff4d4d' : priceImpact >= 3 ? '#ff9500' : '#888',
+              fontWeight: priceImpact >= 3 ? '500' : '400'
+            }}
+          >
+            Price impact: {priceImpact.toFixed(2)}%
+            {priceImpact >= 5 && ' ⚠️'}
+          </div>
         )}
       </div>
     </section>
