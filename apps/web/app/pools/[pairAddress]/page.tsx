@@ -12,13 +12,13 @@ import { TokenDialog } from "@/components/trade/TokenDialog";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
+import { usePoolDetails } from "@/hooks/usePoolDetails";
 import { megaethTestnet } from "@/lib/chains";
 import {
   MEGAETH_CHAIN_ID,
   DEFAULT_TOKEN_DECIMALS
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
-import { getPair } from "@/lib/contracts";
 import type { TokenDescriptor } from "@/lib/trade/types";
 
 const NATIVE_SYMBOL = (
@@ -123,39 +123,51 @@ export default function PoolLiquidityPage() {
   });
 
   const [hasMounted, setHasMounted] = useState(false);
-  const [networkError, setNetworkError] = useState<string | null>(null);
-  const [pairResolutionError, setPairResolutionError] = useState<string | null>(
-    null
-  );
-  const [resolvingPair, setResolvingPair] = useState(false);
 
   const readProvider = useMemo(() => {
     const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
     return new JsonRpcProvider(rpcUrl);
   }, []);
 
+  // Use optimized multicall hook to fetch pool details
+  const {
+    data: poolDetails,
+    isLoading: poolDetailsLoading,
+    error: poolDetailsError
+  } = usePoolDetails({
+    pairAddress,
+    account: walletAccount,
+    provider: readProvider,
+    enabled: !!pairAddress && tokenList.length > 0
+  });
+
+  // Derive network error from chain state
+  const networkError = useMemo(() => {
+    if (!chain) return null;
+    if (chain.id !== Number(MEGAETH_CHAIN_ID)) {
+      return `Switch to MegaETH Testnet (chain id ${Number(MEGAETH_CHAIN_ID)})`;
+    }
+    return null;
+  }, [chain]);
+
+  // Derive pair resolution error
+  const pairResolutionError = useMemo(() => {
+    if (!pairAddress) return "Pool address missing from URL.";
+    if (poolDetailsError) return "Unable to load pool data. Verify the pool address.";
+    return null;
+  }, [pairAddress, poolDetailsError]);
+
   const ready = useMemo(() => {
     const onMegaEth = chain && chain.id === Number(MEGAETH_CHAIN_ID);
     return Boolean(walletAccount && deployment && onMegaEth);
   }, [chain, walletAccount, deployment]);
 
+  // Track mount state for hydration
   useEffect(() => {
+    // This effect only runs once on mount, which is its intended purpose
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (!chain) {
-      setNetworkError(null);
-      return;
-    }
-    if (chain.id !== Number(MEGAETH_CHAIN_ID)) {
-      setNetworkError(
-        `Switch to MegaETH Testnet (chain id ${Number(MEGAETH_CHAIN_ID)})`
-      );
-    } else {
-      setNetworkError(null);
-    }
-  }, [chain]);
 
   useEffect(() => {
     if (!tokenDialogOpen) return;
@@ -192,33 +204,25 @@ export default function PoolLiquidityPage() {
     }
   }, [switchChainAsync, showError, showLoading, showSuccess]);
 
+  // Use poolDetails to set tokens when data is available
   useEffect(() => {
-    if (!pairAddress) {
-      setPairResolutionError("Pool address missing from URL.");
-      return;
-    }
-    setPairResolutionError(null);
-  }, [pairAddress]);
-
-  useEffect(() => {
-    if (!pairAddress || !readProvider) return;
-    if (!tokenList.length) return;
+    if (!poolDetails || !tokenList.length) return;
 
     const target = pairTargetRef.current;
+    const token0Lower = poolDetails.token0Address.toLowerCase();
+    const token1Lower = poolDetails.token1Address.toLowerCase();
+
+    // Skip if already set
     if (
-      target.token0 &&
-      target.token1 &&
-      liquidityTokenA?.address.toLowerCase() === target.token0 &&
-      liquidityTokenB?.address.toLowerCase() === target.token1
+      target.token0 === token0Lower &&
+      target.token1 === token1Lower &&
+      liquidityTokenA?.address.toLowerCase() === token0Lower &&
+      liquidityTokenB?.address.toLowerCase() === token1Lower
     ) {
       return;
     }
 
-    let cancelled = false;
-
-    const ensureDescriptor = async (
-      address: string
-    ): Promise<TokenDescriptor | null> => {
+    const ensureDescriptor = (address: string): TokenDescriptor => {
       const lower = address.toLowerCase();
       const fromList = tokenListMap.get(lower);
       if (fromList) return fromList;
@@ -232,14 +236,12 @@ export default function PoolLiquidityPage() {
           isNative: true,
           wrappedAddress: wrappedNativeAddress!
         };
-        if (!cancelled) {
-          setTokenList((prev) => {
-            if (prev.some((token) => token.address.toLowerCase() === lower)) {
-              return prev;
-            }
-            return [...prev, nativeDescriptor];
-          });
-        }
+        setTokenList((prev) => {
+          if (prev.some((token) => token.address.toLowerCase() === lower)) {
+            return prev;
+          }
+          return [...prev, nativeDescriptor];
+        });
         return nativeDescriptor;
       }
 
@@ -252,95 +254,50 @@ export default function PoolLiquidityPage() {
         isNative: false
       };
 
-      if (!cancelled) {
-        setTokenList((prev) => {
-          if (prev.some((token) => token.address.toLowerCase() === lower)) {
-            return prev;
-          }
-          return [...prev, fallback];
-        });
-      }
+      setTokenList((prev) => {
+        if (prev.some((token) => token.address.toLowerCase() === lower)) {
+          return prev;
+        }
+        return [...prev, fallback];
+      });
 
       return fallback;
     };
 
-    const resolvePairTokens = async () => {
-      setResolvingPair(true);
-      setPairResolutionError(null);
-      try {
-        const pairContract = getPair(pairAddress, readProvider);
-        let token0Address: string;
-        let token1Address: string;
-        try {
-          [token0Address, token1Address] = await Promise.all([
-            pairContract.token0(),
-            pairContract.token1()
-          ]);
-        } catch (contractError) {
-          console.error("[pool] failed to read pair tokens", contractError);
-          if (!cancelled) {
-            setPairResolutionError(
-              "Unable to load pool tokens. Verify the pool address."
-            );
-          }
-          return;
-        }
+    const descriptor0 = ensureDescriptor(poolDetails.token0Address);
+    const descriptor1 = ensureDescriptor(poolDetails.token1Address);
 
-        if (cancelled) return;
-
-        const [descriptor0, descriptor1] = await Promise.all([
-          ensureDescriptor(token0Address),
-          ensureDescriptor(token1Address)
-        ]);
-
-        if (cancelled) return;
-
-        const token0Lower = token0Address.toLowerCase();
-        const token1Lower = token1Address.toLowerCase();
-
-        pairTargetRef.current = {
-          token0: token0Lower,
-          token1: token1Lower
-        };
-        setPairTokenAddresses({ token0: token0Lower, token1: token1Lower });
-
-        if (descriptor0) {
-          setLiquidityTokenA(descriptor0);
-        }
-        if (descriptor1) {
-          setLiquidityTokenB(descriptor1);
-        }
-      } catch (resolveError) {
-        console.error("[pool] failed to resolve pair tokens", resolveError);
-        if (!cancelled) {
-          setPairResolutionError(
-            "Unable to load pool tokens. Verify the pool address."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setResolvingPair(false);
-        }
-      }
+    // Batch state updates
+    pairTargetRef.current = {
+      token0: token0Lower,
+      token1: token1Lower
     };
 
-    resolvePairTokens();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Use a microtask to batch setState calls
+    Promise.resolve().then(() => {
+      setPairTokenAddresses({ token0: token0Lower, token1: token1Lower });
+      setLiquidityTokenA(descriptor0);
+      setLiquidityTokenB(descriptor1);
+    });
   }, [
-    pairAddress,
-    tokenList,
-    readProvider,
+    poolDetails,
+    tokenList.length,
     tokenListMap,
     wrappedNativeLower,
     wrappedNativeAddress,
+    liquidityTokenA,
+    liquidityTokenB,
     setLiquidityTokenA,
     setLiquidityTokenB,
     setTokenList
   ]);
+
+  // Log poolDetails errors
+  useEffect(() => {
+    if (poolDetailsError) {
+      console.error("[pool] failed to load pool details", poolDetailsError);
+    }
+  }, [poolDetailsError]);
 
   useEffect(() => {
     if (!pairAddress || !pathname) return;
@@ -364,7 +321,7 @@ export default function PoolLiquidityPage() {
       <NetworkBanner
         error={networkError ?? pairResolutionError}
         onSwitch={switchToMegaEth}
-        isSwitching={isSwitchingChain || resolvingPair}
+        isSwitching={isSwitchingChain || poolDetailsLoading}
       />
 
       <section className={styles.pageShell}>
@@ -409,6 +366,7 @@ export default function PoolLiquidityPage() {
             showLoading={showLoading}
             onSwapRefresh={handleSwapRefresh}
             allowTokenSelection={false}
+            poolDetails={poolDetails}
           />
         </div>
       </section>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JsonRpcProvider } from "ethers";
 import { formatUnits, parseUnits, MaxUint256 } from "ethers";
+import { useDebounce } from "@/hooks/useDebounce";
 import { pairAbi } from "@/lib/abis/pair";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
@@ -29,6 +30,7 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay } from "@/lib/trade/format";
+import type { PoolDetailsData } from "@/hooks/usePoolDetails";
 
 
 type LiquidityContainerProps = {
@@ -52,6 +54,7 @@ type LiquidityContainerProps = {
   showLoading: (message: string) => void;
   onSwapRefresh: () => void;
   allowTokenSelection?: boolean;
+  poolDetails?: PoolDetailsData | null;
 };
 
 const nowPlusMinutes = (minutes: number) =>
@@ -86,7 +89,8 @@ export function LiquidityContainer({
   showSuccess,
   showLoading,
   onSwapRefresh,
-  allowTokenSelection = true
+  allowTokenSelection = true,
+  poolDetails
 }: LiquidityContainerProps) {
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [liquidityForm, setLiquidityForm] =
@@ -132,6 +136,10 @@ export function LiquidityContainer({
   const liquidityTokenBAddress = liquidityTokenB?.address ?? "";
   const liquidityTokenAIsNative = Boolean(liquidityTokenA?.isNative);
   const liquidityTokenBIsNative = Boolean(liquidityTokenB?.isNative);
+
+  // Debounce amounts to avoid excessive allowance checks while typing
+  const debouncedAmountA = useDebounce(liquidityForm.amountA, 500);
+  const debouncedAmountB = useDebounce(liquidityForm.amountB, 500);
 
   const handleOpenTokenDialog = useCallback(
     (slot: TokenDialogSlot) => {
@@ -293,6 +301,43 @@ export function LiquidityContainer({
         return;
       }
 
+      const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
+      const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
+
+      const tokenALower = liquidityTokenAAddress.toLowerCase();
+      const tokenBLower = liquidityTokenBAddress.toLowerCase();
+      const pairToken0Lower = pairToken0?.toLowerCase() ?? null;
+      const pairToken1Lower = pairToken1?.toLowerCase() ?? null;
+
+      if (!pairToken0Lower || !pairToken1Lower) {
+        if (active) setLiquidityPairReserves(null);
+        return;
+      }
+
+      // Use poolDetails if available (from multicall)
+      if (poolDetails && liquidityReservesRefreshNonce === 0) {
+        const { reserves, totalSupply } = poolDetails;
+
+        const reserveAWei =
+          pairToken0Lower === tokenALower ? reserves.reserve0 : reserves.reserve1;
+        const reserveBWei =
+          pairToken0Lower === tokenBLower ? reserves.reserve0 : reserves.reserve1;
+
+        if (active) {
+          setLiquidityPairReserves({
+            reserveA: formatUnits(reserveAWei, decimalsA),
+            reserveB: formatUnits(reserveBWei, decimalsB),
+            pairAddress,
+            totalSupply: formatUnits(totalSupply, 18),
+            reserveAWei,
+            reserveBWei,
+            totalSupplyWei: totalSupply
+          });
+        }
+        return;
+      }
+
+      // Fallback: fetch from contract if poolDetails not available or refreshing
       try {
         const [reservesData, totalSupplyData] = await Promise.all([
           readContract(wagmiConfig, {
@@ -310,19 +355,6 @@ export function LiquidityContainer({
         if (!active) return;
 
         const [reserve0, reserve1] = reservesData as readonly [bigint, bigint, number];
-        const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
-        const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
-
-        const tokenALower = liquidityTokenAAddress.toLowerCase();
-        const tokenBLower = liquidityTokenBAddress.toLowerCase();
-        const pairToken0Lower = pairToken0?.toLowerCase() ?? null;
-        const pairToken1Lower = pairToken1?.toLowerCase() ?? null;
-
-        if (!pairToken0Lower || !pairToken1Lower) {
-          if (active) setLiquidityPairReserves(null);
-          return;
-        }
-
         const reserveAWei =
           pairToken0Lower === tokenALower ? reserve0 : reserve1;
         const reserveBWei =
@@ -361,7 +393,8 @@ export function LiquidityContainer({
     liquidityTokenBAddress,
     liquidityTokenA,
     liquidityTokenB,
-    liquidityReservesRefreshNonce
+    liquidityReservesRefreshNonce,
+    poolDetails
   ]);
 
   useEffect(() => {
@@ -380,8 +413,8 @@ export function LiquidityContainer({
         !routerAddress ||
         !liquidityTokenAAddress ||
         !liquidityTokenBAddress ||
-        !liquidityForm.amountA ||
-        !liquidityForm.amountB
+        !debouncedAmountA ||
+        !debouncedAmountB
       ) {
         if (!cancelled) {
           setNeedsApprovalA(false);
@@ -400,8 +433,8 @@ export function LiquidityContainer({
         const decimalsA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
         const decimalsB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
-        const desiredA = parseUnits(liquidityForm.amountA, decimalsA);
-        const desiredB = parseUnits(liquidityForm.amountB, decimalsB);
+        const desiredA = parseUnits(debouncedAmountA, decimalsA);
+        const desiredB = parseUnits(debouncedAmountB, decimalsB);
 
         const allowanceAPromise = liquidityTokenAIsNative
           ? Promise.resolve(desiredA)
@@ -452,8 +485,8 @@ export function LiquidityContainer({
     readProvider,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
-    liquidityForm.amountA,
-    liquidityForm.amountB,
+    debouncedAmountA,
+    debouncedAmountB,
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
     liquidityAllowanceNonce,

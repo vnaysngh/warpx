@@ -3,78 +3,42 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
-import {
-  useAccount,
-  useSwitchChain
-} from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import pageStyles from "../page.module.css";
 import styles from "./page.module.css";
 import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { PoolsTable, type PoolsTableRow } from "@/components/pools/PoolsTable";
 import { useToasts } from "@/hooks/useToasts";
+import { usePools } from "@/hooks/usePools";
+import { usePoolBalances } from "@/hooks/usePoolBalances";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { megaethTestnet } from "@/lib/chains";
 import {
   DEFAULT_TOKEN_DECIMALS,
-  MINIMUM_LIQUIDITY,
   MEGAETH_CHAIN_ID,
-  TOKEN_CATALOG
+  TOKEN_CATALOG,
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
-import { formatNumber } from "@/lib/trade/math";
-import { fetchPair, toSdkToken } from "@/lib/trade/warp";
-import { getToken } from "@/lib/contracts";
-
-const NATIVE_SYMBOL = (process.env.NEXT_PUBLIC_NATIVE_SYMBOL ?? "ETH").toUpperCase();
-
-const isNativeToken = (token?: TokenDescriptor | null) =>
-  Boolean(token?.isNative) || token?.symbol?.toUpperCase() === NATIVE_SYMBOL;
-
-const orderTokensForDisplay = <T extends TokenDescriptor>(
-  tokenA: T,
-  tokenB: T
-): [T, T] => {
-  const aNative = isNativeToken(tokenA);
-  const bNative = isNativeToken(tokenB);
-  if (aNative && !bNative) {
-    return [tokenB, tokenA];
-  }
-  if (bNative && !aNative) {
-    return [tokenA, tokenB];
-  }
-  return [tokenA, tokenB];
-};
 
 export default function PoolsPage() {
-  const {
-    address,
-    chain,
-    status
-  } = useAccount();
+  const { address, chain, status } = useAccount();
   const router = useRouter();
   const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
+  const queryClient = useQueryClient();
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
-  const walletAccount = isWalletConnected
-    ? (address?.toLowerCase() ?? null)
-    : null;
+  const walletAccount = isWalletConnected ? (address?.toLowerCase() ?? null) : null;
 
-  const { toasts, removeToast, showError, showLoading, showSuccess } =
-    useToasts();
+  const { toasts, removeToast, showError, showSuccess } = useToasts();
   const { deployment } = useDeploymentManifest();
   const wrappedNativeAddress = deployment?.wmegaeth ?? null;
 
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [showMyPositionsOnly, setShowMyPositionsOnly] = useState(false);
-
   const [tokenList, setTokenList] = useState<TokenDescriptor[]>(TOKEN_CATALOG);
-  const [pools, setPools] = useState<PoolsTableRow[]>([]);
-  const [poolsLoading, setPoolsLoading] = useState(false);
-  const [poolsError, setPoolsError] = useState<string | null>(null);
-  const [poolsRefreshNonce, setPoolsRefreshNonce] = useState(0);
-  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
   const readProvider = useMemo(() => {
@@ -100,6 +64,7 @@ export default function PoolsPage() {
     }
   }, [chain]);
 
+  // Load token manifest
   useEffect(() => {
     const network = deployment?.network;
     if (!network) return;
@@ -110,7 +75,7 @@ export default function PoolsPage() {
         const manifestPaths = [
           `/deployments/${network}.tokens.json`,
           `/deployments/${network.toLowerCase()}.tokens.json`,
-          `/deployments/${network}.json`
+          `/deployments/${network}.json`,
         ];
 
         let manifest: TokenManifest | null = null;
@@ -140,7 +105,7 @@ export default function PoolsPage() {
           decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
           isNative: Boolean(token.isNative),
           wrappedAddress: token.isNative ? deployment?.wmegaeth : undefined,
-          logo: token.logo
+          logo: token.logo,
         }));
 
         setTokenList((prev) => {
@@ -151,7 +116,7 @@ export default function PoolsPage() {
             if (!merged.has(key)) {
               merged.set(key, {
                 ...token,
-                decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
+                decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
               });
             }
           };
@@ -168,217 +133,54 @@ export default function PoolsPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployment?.network]);
+  }, [deployment?.network, deployment?.wmegaeth]);
 
-  useEffect(() => {
-    const factoryAddress = deployment?.factory;
-    if (!factoryAddress || tokenList.length < 2) return;
+  // Fetch pools using optimized hook with multicall and caching
+  const {
+    data: poolsData,
+    isLoading: poolsLoading,
+    error: poolsQueryError,
+    refetch: refetchPools,
+  } = usePools({
+    tokenList,
+    factoryAddress: deployment?.factory ?? null,
+    wrappedNativeAddress,
+    provider: readProvider,
+  });
 
-    let cancelled = false;
+  // Fetch user balances in background (doesn't block pool list)
+  const pairAddresses = useMemo(
+    () => (poolsData || []).map((pool) => pool.pairAddress),
+    [poolsData]
+  );
 
-    const fetchPools = async () => {
-      setPoolsLoading(true);
-      setPoolsError(null);
+  const { data: balancesData } = usePoolBalances({
+    pairAddresses,
+    account: walletAccount,
+    provider: readProvider,
+  });
 
-      try {
-        const descriptorMap = new Map<string, TokenDescriptor>();
-        tokenList.forEach((token) =>
-          descriptorMap.set(token.address.toLowerCase(), token)
-        );
-        const sdkTokenCache = new Map<string, ReturnType<typeof toSdkToken>>();
-        const ensureSdkToken = (descriptor: TokenDescriptor) => {
-          const key = descriptor.address.toLowerCase();
-          const cached = sdkTokenCache.get(key);
-          if (cached) return cached;
-          const sdkToken = toSdkToken(descriptor);
-          sdkTokenCache.set(key, sdkToken);
-          return sdkToken;
-        };
-        const fallbackDescriptor = (token: ReturnType<typeof toSdkToken>): TokenDescriptor => {
-          const suffix = token.address.slice(2, 6).toUpperCase();
-          const symbol = token.symbol ?? `TOK${suffix}`;
-          const isNative = symbol.toUpperCase() === NATIVE_SYMBOL;
-          return {
-            address: isNative && wrappedNativeAddress ? wrappedNativeAddress : token.address,
-            symbol,
-            name: token.name ?? `Token ${suffix}`,
-            decimals: token.decimals,
-            isNative,
-            wrappedAddress: isNative ? wrappedNativeAddress ?? token.address : undefined
-          };
-        };
+  // Merge pools with balance data
+  const pools: PoolsTableRow[] = useMemo(() => {
+    if (!poolsData) return [];
 
-        const pairsToCheck: Array<{
-          tokenA: TokenDescriptor;
-          tokenB: TokenDescriptor;
-        }> = [];
+    return poolsData.map((pool) => {
+      const balance = balancesData?.get(pool.pairAddress.toLowerCase());
+      return {
+        ...pool,
+        userLpBalance: balance && balance > 0n ? balance.toString() : undefined,
+        userLpBalanceRaw: balance && balance > 0n ? balance : undefined,
+        reserves: pool.reserves,
+        totalSupply: pool.totalSupply,
+      };
+    });
+  }, [poolsData, balancesData]);
 
-        for (let i = 0; i < tokenList.length; i++) {
-          for (let j = i + 1; j < tokenList.length; j++) {
-            const [tokenA, tokenB] = orderTokensForDisplay(
-              tokenList[i],
-              tokenList[j]
-            );
-            if (!tokenA?.address || !tokenB?.address) continue;
-            pairsToCheck.push({ tokenA, tokenB });
-          }
-        }
-
-        const poolResults: Array<Omit<PoolsTableRow, "id">> = [];
-        const CONCURRENCY = 5;
-
-        const processPair = async (
-          pair: (typeof pairsToCheck)[number]
-        ): Promise<Omit<PoolsTableRow, "id"> | null> => {
-          if (cancelled) return null;
-
-          try {
-            const tokenA = ensureSdkToken(pair.tokenA);
-            const tokenB = ensureSdkToken(pair.tokenB);
-            const sdkPair = await fetchPair(
-              tokenA,
-              tokenB,
-              readProvider,
-              factoryAddress
-            );
-
-            // Only skip if pair doesn't exist at all
-            if (!sdkPair) {
-              return null;
-            }
-
-            if (cancelled) return null;
-
-            // Show all initialized pools, including those with only MINIMUM_LIQUIDITY
-            // This allows new users to discover pools they can add liquidity to
-
-            const token0Descriptor =
-              descriptorMap.get(sdkPair.token0.address.toLowerCase()) ??
-              fallbackDescriptor(sdkPair.token0);
-            const token1Descriptor =
-              descriptorMap.get(sdkPair.token1.address.toLowerCase()) ??
-              fallbackDescriptor(sdkPair.token1);
-
-            const [displayToken0, displayToken1] = orderTokensForDisplay(
-              token0Descriptor,
-              token1Descriptor
-            );
-
-            const reserve0Value = Number(sdkPair.reserve0.toExact(6));
-            const reserve1Value = Number(sdkPair.reserve1.toExact(6));
-
-            // Calculate TVL in ETH
-            // Check which token is ETH/WETH
-            const token0Lower = sdkPair.token0.address.toLowerCase();
-            const token1Lower = sdkPair.token1.address.toLowerCase();
-            const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
-
-            let totalLiquidityValue = 0;
-
-            if (wethLower && token0Lower === wethLower) {
-              // Token0 is WETH, so TVL = reserve0 * 2
-              totalLiquidityValue = (Number.isFinite(reserve0Value) ? reserve0Value : 0) * 2;
-            } else if (wethLower && token1Lower === wethLower) {
-              // Token1 is WETH, so TVL = reserve1 * 2
-              totalLiquidityValue = (Number.isFinite(reserve1Value) ? reserve1Value : 0) * 2;
-            } else {
-              // No ETH in pair, sum both reserves as fallback
-              totalLiquidityValue =
-                (Number.isFinite(reserve0Value) ? reserve0Value : 0) +
-                (Number.isFinite(reserve1Value) ? reserve1Value : 0);
-            }
-
-            // Fetch user LP balance if wallet is connected
-            let userLpBalance: string | undefined;
-            let userLpBalanceRaw: bigint | undefined;
-
-            if (walletAccount) {
-              try {
-                const lpToken = getToken(sdkPair.address, readProvider);
-                const balance = await lpToken.balanceOf(walletAccount);
-                userLpBalanceRaw = balance;
-                userLpBalance = balance > 0n ? balance.toString() : undefined;
-              } catch (balanceError) {
-                console.warn(
-                  "[pools] failed to fetch LP balance",
-                  sdkPair.address,
-                  balanceError
-                );
-              }
-            }
-
-            return {
-              pairAddress: sdkPair.address,
-              token0: displayToken0,
-              token1: displayToken1,
-              totalLiquidityFormatted: formatNumber(
-                totalLiquidityValue,
-                totalLiquidityValue < 1 ? 6 : 2
-              ),
-              totalLiquidityValue,
-              userLpBalance,
-              userLpBalanceRaw
-            };
-          } catch (pairDataError) {
-            console.warn(
-              "[pools] failed to load pair data",
-              `${pair.tokenA.symbol}/${pair.tokenB.symbol}`,
-              pairDataError
-            );
-            return null;
-          }
-        };
-
-        for (
-          let i = 0;
-          i < pairsToCheck.length && !cancelled;
-          i += CONCURRENCY
-        ) {
-          const batch = pairsToCheck.slice(i, i + CONCURRENCY);
-          const batchResults = await Promise.all(
-            batch.map((pair) => processPair(pair))
-          );
-
-          batchResults.forEach((result) => {
-            if (result) {
-              poolResults.push(result);
-            }
-          });
-        }
-
-        if (cancelled) return;
-
-        const ranked = poolResults
-          .sort((a, b) => b.totalLiquidityValue - a.totalLiquidityValue)
-          .map((pool, index) => ({
-            ...pool,
-            id: index + 1
-          }));
-
-        setPools(ranked);
-        setLastUpdated(Date.now());
-      } catch (error) {
-        if (cancelled) return;
-        console.error("[pools] failed to fetch pools", error);
-        setPools([]);
-        setPoolsError(
-          error instanceof Error ? error.message : "Failed to load pools."
-        );
-      } finally {
-        if (!cancelled) {
-          setPoolsLoading(false);
-        }
-      }
-    };
-
-    fetchPools();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployment?.factory, tokenList, readProvider, poolsRefreshNonce, walletAccount]);
+  const poolsError = poolsQueryError
+    ? poolsQueryError instanceof Error
+      ? poolsQueryError.message
+      : "Failed to load pools."
+    : null;
 
   const switchToMegaEth = useCallback(async () => {
     if (!switchChainAsync) {
@@ -386,25 +188,36 @@ export default function PoolsPage() {
       return;
     }
     try {
-      showLoading("Switching network...");
       await switchChainAsync({ chainId: Number(MEGAETH_CHAIN_ID) });
       showSuccess("Network switched successfully.");
     } catch (switchError) {
       console.error("[network] switch failed", switchError);
       showError(parseErrorMessage(switchError));
     }
-  }, [switchChainAsync, showError, showLoading, showSuccess]);
+  }, [switchChainAsync, showError, showSuccess]);
 
   const handleRefreshPools = useCallback(() => {
-    setPoolsError(null);
-    setPoolsRefreshNonce((nonce) => nonce + 1);
-  }, []);
+    refetchPools();
+  }, [refetchPools]);
 
   const handlePoolSelect = useCallback(
     (pool: PoolsTableRow) => {
+      // Cache pool data for instant details page load
+      if (pool.reserves && pool.totalSupply) {
+        queryClient.setQueryData(
+          ["pool-details", pool.pairAddress.toLowerCase(), walletAccount],
+          {
+            token0Address: pool.token0.address,
+            token1Address: pool.token1.address,
+            reserves: pool.reserves,
+            totalSupply: pool.totalSupply,
+            userLpBalance: pool.userLpBalanceRaw || null
+          }
+        );
+      }
       router.push(`/pools/${pool.pairAddress.toLowerCase()}`);
     },
-    [router]
+    [router, queryClient, walletAccount]
   );
 
   // Filter pools based on toggle state
@@ -434,7 +247,7 @@ export default function PoolsPage() {
         </div>
 
         {hasMounted && isWalletConnected && (
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
             <div className={pageStyles.segmented}>
               <button
                 type="button"

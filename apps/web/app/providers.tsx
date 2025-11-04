@@ -1,16 +1,14 @@
 "use client";
 
-import { PropsWithChildren, useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PropsWithChildren } from "react";
 import { WagmiProvider } from "wagmi";
 import { wagmiConfig } from "@/lib/wagmi";
+import { QueryProvider } from "@/components/QueryProvider";
 
 export function Providers({ children }: PropsWithChildren) {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
     <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryProvider>{children}</QueryProvider>
     </WagmiProvider>
   );
 }

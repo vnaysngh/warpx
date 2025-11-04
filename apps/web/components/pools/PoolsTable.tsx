@@ -12,6 +12,12 @@ export type PoolsTableRow = {
   totalLiquidityValue: number;
   userLpBalance?: string;
   userLpBalanceRaw?: bigint;
+  reserves?: {
+    reserve0: bigint;
+    reserve1: bigint;
+    blockTimestampLast: number;
+  };
+  totalSupply?: bigint;
 };
 
 type PoolsTableProps = {

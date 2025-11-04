@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import styles from "@/app/page.module.css";
 
 const DISCLAIMER_KEY = "warpx-disclaimer-accepted";
 
 export function DisclaimerModal() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
+  // Lazy initialize state from localStorage to avoid effect
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
     const hasAccepted = localStorage.getItem(DISCLAIMER_KEY);
-    if (!hasAccepted) {
-      setIsOpen(true);
-    }
-  }, []);
+    return !hasAccepted;
+  });
 
   const handleAccept = () => {
     localStorage.setItem(DISCLAIMER_KEY, "true");
