@@ -54,12 +54,12 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     address: "0x10a6be7d23989d00d528e68cf8051d095f741145",
     decimals: 18,
     logo: "/logos/mega.png"
-  },
-  {
+  }
+  /*   {
     symbol: "USD",
     name: "USD",
     address: "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
     decimals: 18,
     logo: "/logos/usd.png"
-  }
+  } */
 ];
