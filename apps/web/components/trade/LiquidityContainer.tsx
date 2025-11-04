@@ -55,6 +55,7 @@ type LiquidityContainerProps = {
   onSwapRefresh: () => void;
   allowTokenSelection?: boolean;
   poolDetails?: PoolDetailsData | null;
+  onConnect?: () => void;
 };
 
 const nowPlusMinutes = (minutes: number) =>
@@ -90,7 +91,8 @@ export function LiquidityContainer({
   showLoading,
   onSwapRefresh,
   allowTokenSelection = true,
-  poolDetails
+  poolDetails,
+  onConnect
 }: LiquidityContainerProps) {
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [liquidityForm, setLiquidityForm] =
@@ -1311,6 +1313,12 @@ export function LiquidityContainer({
   );
 
   const handleLiquidityAction = useCallback(() => {
+    // Handle wallet connection
+    if (!isWalletConnected && onConnect) {
+      onConnect();
+      return;
+    }
+
     if (liquidityMode === "add") {
       if (needsApprovalA) {
         handleApproveToken(liquidityTokenAAddress, liquidityForm.amountA || "0");
@@ -1323,6 +1331,8 @@ export function LiquidityContainer({
     }
     handleRemoveLiquidity();
   }, [
+    isWalletConnected,
+    onConnect,
     handleApproveToken,
     handleLiquidityPrimary,
     handleRemoveLiquidity,

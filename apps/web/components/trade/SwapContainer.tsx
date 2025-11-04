@@ -56,6 +56,7 @@ type SwapContainerProps = {
   showLoading: (message: string) => void;
   refreshNonce: number;
   onRequestRefresh: () => void;
+  onConnect?: () => void;
 };
 
 const nowPlusMinutes = (minutes: number) =>
@@ -99,7 +100,8 @@ export function SwapContainer({
   showSuccess,
   showLoading,
   refreshNonce,
-  onRequestRefresh
+  onRequestRefresh,
+  onConnect
 }: SwapContainerProps) {
   const [swapForm, setSwapForm] = useState<SwapFormState>({
     tokenIn: selectedIn?.address ?? "",
@@ -863,10 +865,10 @@ export function SwapContainer({
   if (!hasMounted) {
     swapButtonLabel = "Connect Wallet";
     swapButtonDisabled = false;
-    swapButtonAction = null;
+    swapButtonAction = onConnect ?? null;
   } else if (!isWalletConnected) {
     swapButtonLabel = isAccountConnecting ? "Connecting..." : "Connect Wallet";
-    swapButtonAction = null;
+    swapButtonAction = onConnect ?? null;
     swapButtonDisabled = isAccountConnecting;
   } else if (!chainId || chainId !== Number(MEGAETH_CHAIN_ID)) {
     swapButtonLabel = "Wrong Network";

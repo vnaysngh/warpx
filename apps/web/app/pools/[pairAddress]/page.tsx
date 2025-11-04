@@ -20,6 +20,7 @@ import {
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type { TokenDescriptor } from "@/lib/trade/types";
+import { appKit } from "@/lib/wagmi";
 
 const NATIVE_SYMBOL = (
   process.env.NEXT_PUBLIC_NATIVE_SYMBOL ?? "ETH"
@@ -316,6 +317,10 @@ export default function PoolLiquidityPage() {
     router.push("/pools");
   }, [router]);
 
+  const handleConnectWallet = useCallback(() => {
+    appKit.open();
+  }, []);
+
   return (
     <>
       <NetworkBanner
@@ -367,6 +372,7 @@ export default function PoolLiquidityPage() {
             onSwapRefresh={handleSwapRefresh}
             allowTokenSelection={false}
             poolDetails={poolDetails}
+            onConnect={handleConnectWallet}
           />
         </div>
       </section>

@@ -16,6 +16,7 @@ import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
 import { MEGAETH_CHAIN_ID } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
+import { appKit } from "@/lib/wagmi";
 
 export default function Page() {
   const {
@@ -120,6 +121,10 @@ export default function Page() {
     []
   );
 
+  const handleConnectWallet = useCallback(() => {
+    appKit.open();
+  }, []);
+
   return (
     <>
       <NetworkBanner
@@ -148,6 +153,7 @@ export default function Page() {
         showLoading={showLoading}
         refreshNonce={swapRefreshNonce}
         onRequestRefresh={bumpSwapRefresh}
+        onConnect={handleConnectWallet}
       />
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
