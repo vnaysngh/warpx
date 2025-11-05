@@ -184,19 +184,22 @@
 
 .heroCore {
   position: absolute;
-  inset: 42%;
+  inset: 40%;
   border-radius: 16px;
   background: rgba(15, 15, 15, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
+  gap: 4px;
+  font-size: 0.6rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-subtle);
   box-shadow: 0 0 24px rgba(10, 255, 157, 0.22);
+  white-space: nowrap;
+  padding: 2px 4px;
 }
 
 .heroPairDivider {

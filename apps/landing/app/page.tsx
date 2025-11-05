@@ -48,7 +48,7 @@ export default function LandingPage() {
             <div className={styles.heroCore}>
               <span>WARP</span>
               <span className={styles.heroPairDivider}>×</span>
-              <span>MEGA</span>
+              <span>MegaETH</span>
             </div>
           </div>
         </section>
