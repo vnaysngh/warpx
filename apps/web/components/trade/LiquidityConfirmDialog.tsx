@@ -50,12 +50,21 @@ export function LiquidityConfirmDialog({
     liquidityTokenB?.decimals
       ? (() => {
           try {
+            const amountAInput =
+              liquidityForm.amountAExact && liquidityForm.amountAExact.length > 0
+                ? liquidityForm.amountAExact
+                : liquidityForm.amountA || "0";
+            const amountBInput =
+              liquidityForm.amountBExact && liquidityForm.amountBExact.length > 0
+                ? liquidityForm.amountBExact
+                : liquidityForm.amountB || "0";
+
             const amountAWei = parseUnits(
-              liquidityForm.amountA || "0",
+              amountAInput,
               liquidityTokenA.decimals
             );
             const amountBWei = parseUnits(
-              liquidityForm.amountB || "0",
+              amountBInput,
               liquidityTokenB.decimals
             );
 

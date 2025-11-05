@@ -18,7 +18,8 @@ import { SwapCard } from "./SwapCard";
 import {
   DEFAULT_SLIPPAGE_BPS,
   DEFAULT_TOKEN_DECIMALS,
-  MEGAETH_CHAIN_ID
+  MEGAETH_CHAIN_ID,
+  SWAP_DEFAULT
 } from "@/lib/trade/constants";
 import { formatNumber } from "@/lib/trade/math";
 import { parseErrorMessage } from "@/lib/trade/errors";
@@ -105,11 +106,9 @@ export function SwapContainer({
   onConnect
 }: SwapContainerProps) {
   const [swapForm, setSwapForm] = useState<SwapFormState>({
+    ...SWAP_DEFAULT,
     tokenIn: selectedIn?.address ?? "",
-    tokenOut: selectedOut?.address ?? "",
-    amountIn: "",
-    minOut: "",
-    maxInput: ""
+    tokenOut: selectedOut?.address ?? ""
   });
   const [swapQuote, setSwapQuote] = useState<Quote | null>(null);
   const [reverseQuote, setReverseQuote] = useState<ReverseQuote | null>(null);
@@ -182,13 +181,14 @@ export function SwapContainer({
   const swapInDecimals = swapInDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
   const parsedSwapAmountWei = useMemo(() => {
-    if (!swapForm.amountIn) return null;
+    const source = swapForm.amountInExact ?? swapForm.amountIn;
+    if (!source) return null;
     try {
-      return parseUnits(swapForm.amountIn, swapInDecimals);
+      return parseUnits(source, swapInDecimals);
     } catch (error) {
       return null;
     }
-  }, [swapForm.amountIn, swapInDecimals]);
+  }, [swapForm.amountIn, swapForm.amountInExact, swapInDecimals]);
 
   const insufficientSwapBalance = useMemo(() => {
     if (!parsedSwapAmountWei || swapInBalanceValue === null) return false;
@@ -245,6 +245,7 @@ export function SwapContainer({
     setSwapForm((prev) => ({
       ...prev,
       amountIn: "",
+      amountInExact: null,
       minOut: "",
       maxInput: ""
     }));
@@ -265,7 +266,9 @@ export function SwapContainer({
       return;
     }
 
-    if (!swapForm.amountIn || swapForm.amountIn.trim() === "") {
+    const amountInForQuote = swapForm.amountInExact ?? swapForm.amountIn;
+
+    if (!amountInForQuote || amountInForQuote.trim() === "") {
       setSwapHasLiquidity(null);
       setSwapQuote(null);
       setSwapForm((prev) => ({ ...prev, minOut: "" }));
@@ -276,7 +279,7 @@ export function SwapContainer({
     quoteDebounceTimerRef.current = setTimeout(async () => {
       setIsCalculatingQuote(true);
 
-      if (!swapForm.amountIn || Number(swapForm.amountIn) <= 0) {
+      if (!amountInForQuote || Number(amountInForQuote) <= 0) {
         setIsCalculatingQuote(false);
         return;
       }
@@ -286,7 +289,7 @@ export function SwapContainer({
       const symbolOut = selectedOut?.symbol ?? "TOKEN";
 
       try {
-        const amountInWei = parseUnits(swapForm.amountIn, decimalsIn);
+        const amountInWei = parseUnits(amountInForQuote, decimalsIn);
         if (amountInWei <= 0n) {
           setIsCalculatingQuote(false);
           return;
@@ -443,6 +446,7 @@ export function SwapContainer({
   }, [
     routerAddress,
     swapForm.amountIn,
+    swapForm.amountInExact,
     selectedIn,
     selectedOut,
     swapInIsNative,
@@ -522,7 +526,7 @@ export function SwapContainer({
         if (amountNeededWei <= 0n) {
           setIsCalculatingQuote(false);
           setReverseQuote(null);
-          setSwapForm((prev) => ({ ...prev, amountIn: "" }));
+          setSwapForm((prev) => ({ ...prev, amountIn: "", amountInExact: null }));
           return;
         }
 
@@ -542,6 +546,7 @@ export function SwapContainer({
           setSwapForm((prev) => ({
             ...prev,
             amountIn: limitedIn,
+            amountInExact: null,
             maxInput: limitedMaxInput
           }));
         }
@@ -577,12 +582,14 @@ export function SwapContainer({
     }
 
     // Reset immediately if conditions aren't met
+    const amountInForAllowance = swapForm.amountInExact ?? swapForm.amountIn;
+
     if (
       !walletAccount ||
       !routerAddress ||
       !isAddress(swapForm.tokenIn) ||
-      !swapForm.amountIn ||
-      Number(swapForm.amountIn) <= 0 ||
+      !amountInForAllowance ||
+      Number(amountInForAllowance) <= 0 ||
       swapInIsNative
     ) {
       setNeedsApproval(false);
@@ -598,7 +605,7 @@ export function SwapContainer({
         setCheckingAllowance(true);
         // Use descriptor decimals instead of fetching from contract
         const decimals = swapInDecimals;
-        const desired = parseUnits(swapForm.amountIn, decimals);
+        const desired = parseUnits(amountInForAllowance, decimals);
 
         if (desired <= 0n) {
           if (!cancelled) setNeedsApproval(false);
@@ -627,6 +634,7 @@ export function SwapContainer({
     routerAddress,
     swapForm.tokenIn,
     swapForm.amountIn,
+    swapForm.amountInExact,
     allowanceNonce,
     readProvider,
     swapInIsNative,
@@ -637,7 +645,8 @@ export function SwapContainer({
     if (!swapInBalanceFormatted) return;
     setSwapForm((prev) => ({
       ...prev,
-      amountIn: swapInBalanceFormatted
+      amountIn: formatBalanceDisplay(swapInBalanceFormatted),
+      amountInExact: swapInBalanceFormatted
     }));
     swapEditingFieldRef.current = "amountIn";
   }, [swapInBalanceFormatted]);
@@ -646,7 +655,8 @@ export function SwapContainer({
     swapEditingFieldRef.current = "amountIn";
     setSwapForm((prev) => ({
       ...prev,
-      amountIn: value
+      amountIn: value,
+      amountInExact: null
     }));
     // Reset price impact immediately when amount changes
     setPriceImpact(null);
@@ -748,7 +758,8 @@ export function SwapContainer({
       const decimalsIn = swapInDescriptor.decimals ?? DEFAULT_TOKEN_DECIMALS;
       const decimalsOut = swapOutDescriptor.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
-      const amountInWei = parseUnits(amountIn, decimalsIn);
+      const amountInputForTx = swapForm.amountInExact ?? amountIn;
+      const amountInWei = parseUnits(amountInputForTx, decimalsIn);
       if (amountInWei <= 0n) {
         showError("Enter a valid swap amount.");
         setIsSubmitting(false);
@@ -764,7 +775,9 @@ export function SwapContainer({
 
       const deadline = BigInt(nowPlusMinutes(10));
       const isExactInput = swapEditingFieldRef.current === "amountIn";
-      const maxAmountInputWei = parseUnits(maxInput || amountIn, decimalsIn);
+      const maxInputSource =
+        maxInput && maxInput.length > 0 ? maxInput : amountInputForTx;
+      const maxAmountInputWei = parseUnits(maxInputSource, decimalsIn);
       const amountToApprove = isExactInput ? amountInWei : maxAmountInputWei;
 
       const wrappedNative =
@@ -883,6 +896,7 @@ export function SwapContainer({
       setSwapForm((prev) => ({
         ...prev,
         amountIn: "",
+        amountInExact: null,
         minOut: "",
         maxInput: ""
       }));
@@ -982,7 +996,7 @@ export function SwapContainer({
     }
 
     try {
-      const amountInNum = Number(swapForm.amountIn);
+      const amountInNum = Number(swapForm.amountInExact ?? swapForm.amountIn);
       const amountOutNum = Number(swapQuote.amount);
 
       if (amountInNum <= 0 || amountOutNum <= 0) {
@@ -1012,7 +1026,7 @@ export function SwapContainer({
     } catch (err) {
       return null;
     }
-  }, [swapQuote, swapForm.amountIn, selectedIn, selectedOut]);
+  }, [swapQuote, swapForm.amountIn, swapForm.amountInExact, selectedIn, selectedOut]);
 
   const receiveAmountValue =
     swapEditingFieldRef.current === "minOut"

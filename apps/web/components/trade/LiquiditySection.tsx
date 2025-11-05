@@ -30,6 +30,8 @@ type LiquidityAddProps = {
   tokenBBalanceFormatted: string | null;
   tokenASymbol: string | null;
   tokenBSymbol: string | null;
+  onSetMaxAmountA: () => void;
+  onSetMaxAmountB: () => void;
   onPrimary: () => void;
   buttonLabel: string;
   buttonDisabled: boolean;
@@ -113,6 +115,8 @@ function LiquidityAddForm({
   tokenBBalanceFormatted,
   tokenASymbol,
   tokenBSymbol,
+  onSetMaxAmountA,
+  onSetMaxAmountB,
   onPrimary,
   buttonLabel,
   buttonDisabled,
@@ -161,10 +165,25 @@ function LiquidityAddForm({
               onChange={(event) => onAmountAChange(event.target.value)}
             />
           </div>
-          <span className={styles.helper}>
-            Balance:{" "}
-            {liquidityTokenA ? `${formatBalance(tokenABalanceFormatted)}` : "—"}
-          </span>
+          <div className={styles.assetBalance}>
+            <span className={styles.helper}>
+              Balance:{" "}
+              {liquidityTokenA
+                ? `${formatBalance(tokenABalanceFormatted)}${
+                    tokenASymbol ? ` ${tokenASymbol}` : ""
+                  }`
+                : "—"}
+            </span>
+            {liquidityTokenA && tokenABalanceFormatted && (
+              <button
+                type="button"
+                className={styles.maxButton}
+                onClick={onSetMaxAmountA}
+              >
+                MAX
+              </button>
+            )}
+          </div>
         </div>
 
         <div className={styles.assetCard}>
@@ -207,10 +226,25 @@ function LiquidityAddForm({
               onChange={(event) => onAmountBChange(event.target.value)}
             />
           </div>
-          <span className={styles.helper}>
-            Balance:{" "}
-            {liquidityTokenB ? `${formatBalance(tokenBBalanceFormatted)}` : "—"}
-          </span>
+          <div className={styles.assetBalance}>
+            <span className={styles.helper}>
+              Balance:{" "}
+              {liquidityTokenB
+                ? `${formatBalance(tokenBBalanceFormatted)}${
+                    tokenBSymbol ? ` ${tokenBSymbol}` : ""
+                  }`
+                : "—"}
+            </span>
+            {liquidityTokenB && tokenBBalanceFormatted && (
+              <button
+                type="button"
+                className={styles.maxButton}
+                onClick={onSetMaxAmountB}
+              >
+                MAX
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

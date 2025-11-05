@@ -140,8 +140,14 @@ export function LiquidityContainer({
   const liquidityTokenBIsNative = Boolean(liquidityTokenB?.isNative);
 
   // Debounce amounts to avoid excessive allowance checks while typing
-  const debouncedAmountA = useDebounce(liquidityForm.amountA, 500);
-  const debouncedAmountB = useDebounce(liquidityForm.amountB, 500);
+  const debouncedAmountA = useDebounce(
+    liquidityForm.amountAExact ?? liquidityForm.amountA,
+    500
+  );
+  const debouncedAmountB = useDebounce(
+    liquidityForm.amountBExact ?? liquidityForm.amountB,
+    500
+  );
 
   const handleOpenTokenDialog = useCallback(
     (slot: TokenDialogSlot) => {
@@ -202,22 +208,24 @@ export function LiquidityContainer({
   const decimalsLiquidityB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
   const parsedLiquidityAmountA = useMemo(() => {
-    if (!liquidityForm.amountA) return null;
+    const source = liquidityForm.amountAExact ?? liquidityForm.amountA;
+    if (!source) return null;
     try {
-      return parseUnits(liquidityForm.amountA, decimalsLiquidityA);
+      return parseUnits(source, decimalsLiquidityA);
     } catch (error) {
       return null;
     }
-  }, [liquidityForm.amountA, decimalsLiquidityA]);
+  }, [liquidityForm.amountA, liquidityForm.amountAExact, decimalsLiquidityA]);
 
   const parsedLiquidityAmountB = useMemo(() => {
-    if (!liquidityForm.amountB) return null;
+    const source = liquidityForm.amountBExact ?? liquidityForm.amountB;
+    if (!source) return null;
     try {
-      return parseUnits(liquidityForm.amountB, decimalsLiquidityB);
+      return parseUnits(source, decimalsLiquidityB);
     } catch (error) {
       return null;
     }
-  }, [liquidityForm.amountB, decimalsLiquidityB]);
+  }, [liquidityForm.amountB, liquidityForm.amountBExact, decimalsLiquidityB]);
 
   const insufficientLiquidityA = useMemo(() => {
     if (!parsedLiquidityAmountA || balanceAWei === null) return false;
@@ -646,8 +654,8 @@ export function LiquidityContainer({
   const liquidityAmountsReady =
     !!liquidityForm.amountA && !!liquidityForm.amountB;
 
-  const handleLiquidityAmountAChange = useCallback(
-    (value: string) => {
+  const applyLiquidityAmountA = useCallback(
+    (value: string, exactValue?: string | null) => {
       liquidityEditingFieldRef.current = "A";
 
       setLiquidityForm((prev) => {
@@ -655,23 +663,32 @@ export function LiquidityContainer({
           return prev;
         }
 
-        const updated = { ...prev, amountA: value };
+        const updated: LiquidityFormState = {
+          ...prev,
+          amountA: value,
+          amountAExact: exactValue ?? null
+        };
 
         if (!value || value.trim() === "") {
           updated.amountB = "";
+          updated.amountBExact = null;
           liquidityEditingFieldRef.current = null;
           return updated;
         }
 
-        if (
-          liquidityPairReserves &&
-          liquidityTokenA?.decimals &&
-          liquidityTokenB?.decimals
-        ) {
+        const parseSource = (exactValue ?? value).trim();
+        if (!parseSource) {
+          return updated;
+        }
+
+        if (liquidityPairReserves && liquidityTokenA && liquidityTokenB) {
           try {
-            const amountAWei = parseUnits(value, liquidityTokenA.decimals);
+            const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
+            const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
+            const amountAWei = parseUnits(parseSource, decimalsA);
             if (amountAWei <= 0n) {
               updated.amountB = "";
+              updated.amountBExact = null;
               return updated;
             }
 
@@ -679,18 +696,17 @@ export function LiquidityContainer({
               const amountBWei =
                 (amountAWei * liquidityPairReserves.reserveBWei) /
                 liquidityPairReserves.reserveAWei;
-              const amountBFormatted = formatUnits(
-                amountBWei,
-                liquidityTokenB.decimals
-              );
+              const amountBRaw = formatUnits(amountBWei, decimalsB);
               updated.amountB = formatNumber(
-                amountBFormatted,
-                Math.min(6, liquidityTokenB.decimals)
+                amountBRaw,
+                Math.min(6, decimalsB)
               );
+              updated.amountBExact = amountBRaw;
             }
           } catch (err) {
             console.warn("[liquidity] amountA calculation failed", err);
             updated.amountB = "";
+            updated.amountBExact = null;
           }
         }
 
@@ -700,8 +716,8 @@ export function LiquidityContainer({
     [liquidityPairReserves, liquidityTokenA, liquidityTokenB]
   );
 
-  const handleLiquidityAmountBChange = useCallback(
-    (value: string) => {
+  const applyLiquidityAmountB = useCallback(
+    (value: string, exactValue?: string | null) => {
       liquidityEditingFieldRef.current = "B";
 
       setLiquidityForm((prev) => {
@@ -709,23 +725,32 @@ export function LiquidityContainer({
           return prev;
         }
 
-        const updated = { ...prev, amountB: value };
+        const updated: LiquidityFormState = {
+          ...prev,
+          amountB: value,
+          amountBExact: exactValue ?? null
+        };
 
         if (!value || value.trim() === "") {
           updated.amountA = "";
+          updated.amountAExact = null;
           liquidityEditingFieldRef.current = null;
           return updated;
         }
 
-        if (
-          liquidityPairReserves &&
-          liquidityTokenA?.decimals &&
-          liquidityTokenB?.decimals
-        ) {
+        const parseSource = (exactValue ?? value).trim();
+        if (!parseSource) {
+          return updated;
+        }
+
+        if (liquidityPairReserves && liquidityTokenA && liquidityTokenB) {
           try {
-            const amountBWei = parseUnits(value, liquidityTokenB.decimals);
+            const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
+            const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
+            const amountBWei = parseUnits(parseSource, decimalsB);
             if (amountBWei <= 0n) {
               updated.amountA = "";
+              updated.amountAExact = null;
               return updated;
             }
 
@@ -733,18 +758,17 @@ export function LiquidityContainer({
               const amountAWei =
                 (amountBWei * liquidityPairReserves.reserveAWei) /
                 liquidityPairReserves.reserveBWei;
-              const amountAFormatted = formatUnits(
-                amountAWei,
-                liquidityTokenA.decimals
-              );
+              const amountARaw = formatUnits(amountAWei, decimalsA);
               updated.amountA = formatNumber(
-                amountAFormatted,
-                Math.min(6, liquidityTokenA.decimals)
+                amountARaw,
+                Math.min(6, decimalsA)
               );
+              updated.amountAExact = amountARaw;
             }
           } catch (err) {
             console.warn("[liquidity] amountB calculation failed", err);
             updated.amountA = "";
+            updated.amountAExact = null;
           }
         }
 
@@ -753,6 +777,32 @@ export function LiquidityContainer({
     },
     [liquidityPairReserves, liquidityTokenA, liquidityTokenB]
   );
+
+  const handleLiquidityAmountAChange = useCallback(
+    (value: string) => {
+      applyLiquidityAmountA(value);
+    },
+    [applyLiquidityAmountA]
+  );
+
+  const handleLiquidityAmountBChange = useCallback(
+    (value: string) => {
+      applyLiquidityAmountB(value);
+    },
+    [applyLiquidityAmountB]
+  );
+
+  const handleSetMaxLiquidityAmountA = useCallback(() => {
+    if (!tokenABalanceFormatted) return;
+    const displayValue = formatBalanceDisplay(tokenABalanceFormatted);
+    applyLiquidityAmountA(displayValue, tokenABalanceFormatted);
+  }, [tokenABalanceFormatted, applyLiquidityAmountA]);
+
+  const handleSetMaxLiquidityAmountB = useCallback(() => {
+    if (!tokenBBalanceFormatted) return;
+    const displayValue = formatBalanceDisplay(tokenBBalanceFormatted);
+    applyLiquidityAmountB(displayValue, tokenBBalanceFormatted);
+  }, [tokenBBalanceFormatted, applyLiquidityAmountB]);
 
   const handleAddLiquidity = useCallback(async () => {
     const ctx = ensureWallet();
@@ -772,6 +822,12 @@ export function LiquidityContainer({
       showError("Provide both token amounts for liquidity.");
       return;
     }
+    const amountAInput = liquidityForm.amountAExact ?? amountA;
+    const amountBInput = liquidityForm.amountBExact ?? amountB;
+    if (!amountAInput || !amountBInput) {
+      showError("Provide both token amounts for liquidity.");
+      return;
+    }
     if (liquidityTokenAIsNative && liquidityTokenBIsNative) {
       showError("Native ETH must be paired with an ERC-20 token.");
       return;
@@ -783,8 +839,8 @@ export function LiquidityContainer({
       const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
       const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
-      const amountAWei = parseUnits(amountA, decimalsA);
-      const amountBWei = parseUnits(amountB, decimalsB);
+      const amountAWei = parseUnits(amountAInput, decimalsA);
+      const amountBWei = parseUnits(amountBInput, decimalsB);
 
       if (amountAWei <= 0n || amountBWei <= 0n) {
         showError("Enter valid liquidity amounts.");
@@ -1321,9 +1377,17 @@ export function LiquidityContainer({
 
     if (liquidityMode === "add") {
       if (needsApprovalA) {
-        handleApproveToken(liquidityTokenAAddress, liquidityForm.amountA || "0");
+        const approvalAmountA =
+          liquidityForm.amountAExact && liquidityForm.amountAExact.length > 0
+            ? liquidityForm.amountAExact
+            : liquidityForm.amountA || "0";
+        handleApproveToken(liquidityTokenAAddress, approvalAmountA);
       } else if (needsApprovalB) {
-        handleApproveToken(liquidityTokenBAddress, liquidityForm.amountB || "0");
+        const approvalAmountB =
+          liquidityForm.amountBExact && liquidityForm.amountBExact.length > 0
+            ? liquidityForm.amountBExact
+            : liquidityForm.amountB || "0";
+        handleApproveToken(liquidityTokenBAddress, approvalAmountB);
       } else {
         handleLiquidityPrimary();
       }
@@ -1338,6 +1402,8 @@ export function LiquidityContainer({
     handleRemoveLiquidity,
     liquidityForm.amountA,
     liquidityForm.amountB,
+    liquidityForm.amountAExact,
+    liquidityForm.amountBExact,
     liquidityMode,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
@@ -1362,6 +1428,8 @@ export function LiquidityContainer({
           tokenBBalanceFormatted,
           tokenASymbol,
           tokenBSymbol,
+          onSetMaxAmountA: handleSetMaxLiquidityAmountA,
+          onSetMaxAmountB: handleSetMaxLiquidityAmountB,
           onPrimary: handleLiquidityAction,
           buttonLabel: liquidityButtonLabel,
           buttonDisabled: liquidityButtonDisabled

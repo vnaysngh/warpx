@@ -23,6 +23,7 @@ export type SwapFormState = {
   tokenIn: string;
   tokenOut: string;
   amountIn: string;
+  amountInExact: string | null;
   minOut: string;
   maxInput: string;
 };
@@ -30,6 +31,8 @@ export type SwapFormState = {
 export type LiquidityFormState = {
   amountA: string;
   amountB: string;
+  amountAExact: string | null;
+  amountBExact: string | null;
 };
 
 export type Quote = { amount: string; symbol: string };

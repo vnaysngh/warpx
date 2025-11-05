@@ -16,13 +16,16 @@ export const SWAP_DEFAULT: SwapFormState = {
   tokenIn: "",
   tokenOut: "",
   amountIn: "",
+  amountInExact: null,
   minOut: "",
   maxInput: "" // For exact output swaps with slippage
 };
 
 export const LIQUIDITY_DEFAULT: LiquidityFormState = {
   amountA: "",
-  amountB: ""
+  amountB: "",
+  amountAExact: null,
+  amountBExact: null
 };
 export const TOKEN_CATALOG: TokenDescriptor[] = [
   {
