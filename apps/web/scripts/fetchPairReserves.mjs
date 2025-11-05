@@ -123,14 +123,6 @@ async function fetchPairReserves() {
     const tokenA = resolveToken(TOKEN_A_SYMBOL, rawTokenA);
     const tokenB = resolveToken(TOKEN_B_SYMBOL, rawTokenB);
 
-    console.log(
-      `Fetching reserves for pair: ${tokenA.symbol} / ${tokenB.symbol}`
-    );
-    console.log(`TokenA: ${tokenA.address}`);
-    console.log(`TokenB: ${tokenB.address}`);
-    console.log(`Factory: ${factory}`);
-    console.log("");
-
     // Create public client
     const client = createPublicClient({
       transport: http(MEGAETH_TESTNET_RPC)
@@ -151,9 +143,6 @@ async function fetchPairReserves() {
     if (pairAddress === "0x0000000000000000000000000000000000000000") {
       throw new Error("Pair does not exist in factory");
     }
-
-    console.log(`Pair address: ${pairAddress}`);
-    console.log("");
 
     // Get reserves from pair
     const pairContract = getContract({
@@ -197,29 +186,9 @@ async function fetchPairReserves() {
       );
     };
 
-    console.log("=== PAIR RESERVES ===");
-    console.log(
-      `${tokenA.symbol} Reserve: ${formatReserve(reserveAFormatted)} (raw: ${reserveA})`
-    );
-    console.log(
-      `${tokenB.symbol} Reserve: ${formatReserve(reserveBFormatted)} (raw: ${reserveB})`
-    );
-    console.log(
-      `Block Timestamp Last: ${blockTimestamp} (${new Date(Number(blockTimestamp) * 1000).toLocaleString()})`
-    );
-    console.log("");
-
     // Calculate price
     const priceAInB = reserveBFormatted / reserveAFormatted;
     const priceBInA = reserveAFormatted / reserveBFormatted;
-
-    console.log("=== PRICES ===");
-    console.log(
-      `1 ${tokenA.symbol} = ${formatReserve(priceAInB)} ${tokenB.symbol}`
-    );
-    console.log(
-      `1 ${tokenB.symbol} = ${formatReserve(priceBInA)} ${tokenA.symbol}`
-    );
 
     return {
       pair: `${tokenA.symbol}/${tokenB.symbol}`,

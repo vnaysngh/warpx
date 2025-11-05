@@ -59,24 +59,6 @@ export function LiquidityConfirmDialog({
               liquidityTokenB.decimals
             );
 
-            console.log("[liquidity] LP calculation inputs:", {
-              amountA: liquidityForm.amountA,
-              amountB: liquidityForm.amountB,
-              reserveA: formatUnits(
-                liquidityPairReserves.reserveAWei,
-                liquidityTokenA.decimals
-              ),
-              reserveB: formatUnits(
-                liquidityPairReserves.reserveBWei,
-                liquidityTokenB.decimals
-              ),
-              totalSupply: formatUnits(
-                liquidityPairReserves.totalSupplyWei,
-                18
-              ),
-              isNewPair: liquidityPairReserves.totalSupplyWei === 0n
-            });
-
             const lpTokensWei = getLiquidityMinted(
               amountAWei,
               amountBWei,
@@ -84,11 +66,6 @@ export function LiquidityConfirmDialog({
               liquidityPairReserves.reserveBWei,
               liquidityPairReserves.totalSupplyWei
             );
-
-            console.log("[liquidity] LP tokens calculated:", {
-              lpTokensWei: lpTokensWei.toString(),
-              lpTokensFormatted: formatUnits(lpTokensWei, 18)
-            });
 
             const lpTokensFormatted = formatUnits(lpTokensWei, 18);
             return lpTokensWei > 0n

@@ -187,6 +187,5 @@ export function quickValidate(
     return false;
   }
 
-  console.log('✅ Amounts match perfectly!');
   return true;
 }

@@ -43,11 +43,6 @@ export function MatchPriceExample() {
         price: amounts.priceInfo.priceAPerB
       });
 
-      console.log('✅ Perfect match calculated!');
-      console.log(`Add ${formatUnits(amounts.amountA, 18)} BNB`);
-      console.log(`Add ${formatUnits(amounts.amountB, 18)} ETH`);
-      console.log(`Price: 1 BNB = ${amounts.priceInfo.priceAPerB} ETH`);
-
       // Now you can call router.addLiquidity with these exact amounts
       // await router.addLiquidity(
       //   BNB_ADDRESS,
