@@ -203,12 +203,13 @@ export default function PoolsPage() {
   const handlePoolSelect = useCallback(
     (pool: PoolsTableRow) => {
       // Cache pool data for instant details page load
-      if (pool.reserves && pool.totalSupply) {
+      // Use contractToken0Address and contractToken1Address for correct reserve mapping
+      if (pool.reserves && pool.totalSupply && pool.contractToken0Address && pool.contractToken1Address) {
         queryClient.setQueryData(
           ["pool-details", pool.pairAddress.toLowerCase(), walletAccount],
           {
-            token0Address: pool.token0.address,
-            token1Address: pool.token1.address,
+            token0Address: pool.contractToken0Address,
+            token1Address: pool.contractToken1Address,
             reserves: pool.reserves,
             totalSupply: pool.totalSupply,
             userLpBalance: pool.userLpBalanceRaw || null

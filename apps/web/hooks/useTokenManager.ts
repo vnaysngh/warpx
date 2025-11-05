@@ -274,23 +274,11 @@ export function useTokenManager(deployment?: DeploymentMetadata) {
     const nextTokenA = findByAddress(lastAddrs.liquidityA) ?? null;
     const nextTokenB = findByAddress(lastAddrs.liquidityB) ?? null;
 
-    const normalizePair = (
-      tokenA: TokenDescriptor | null,
-      tokenB: TokenDescriptor | null
-    ) => {
-      if (tokenA?.isNative && tokenB && !tokenB.isNative) {
-        return [tokenB, tokenA] as const;
-      }
-      return [tokenA, tokenB] as const;
-    };
-
-    const [normalizedA, normalizedB] = normalizePair(nextTokenA, nextTokenB);
-
     // Only update if addresses actually changed to prevent circular dependencies
     const nextInAddr = nextSelectedIn?.address?.toLowerCase() ?? null;
     const nextOutAddr = nextSelectedOut?.address?.toLowerCase() ?? null;
-    const nextAAddr = normalizedA?.address?.toLowerCase() ?? null;
-    const nextBAddr = normalizedB?.address?.toLowerCase() ?? null;
+    const nextAAddr = nextTokenA?.address?.toLowerCase() ?? null;
+    const nextBAddr = nextTokenB?.address?.toLowerCase() ?? null;
 
     // Sync selected tokens when token list changes - intentional state updates
     if (lastAddrs.selectedIn !== nextInAddr) {
@@ -302,12 +290,13 @@ export function useTokenManager(deployment?: DeploymentMetadata) {
       setSelectedOut(nextSelectedOut);
       lastSetAddresses.current.selectedOut = nextOutAddr;
     }
-    if (lastAddrs.liquidityA !== nextAAddr && normalizedA) {
-      setLiquidityTokenA(normalizedA);
+    // Don't reorder liquidity tokens - let the pool page handle ordering
+    if (lastAddrs.liquidityA !== nextAAddr && nextTokenA) {
+      setLiquidityTokenA(nextTokenA);
       lastSetAddresses.current.liquidityA = nextAAddr;
     }
-    if (lastAddrs.liquidityB !== nextBAddr && normalizedB) {
-      setLiquidityTokenB(normalizedB);
+    if (lastAddrs.liquidityB !== nextBAddr && nextTokenB) {
+      setLiquidityTokenB(nextTokenB);
       lastSetAddresses.current.liquidityB = nextBAddr;
     }
   }, [tokenList]);

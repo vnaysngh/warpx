@@ -8,6 +8,9 @@ export type PoolsTableRow = {
   pairAddress: string;
   token0: TokenDescriptor;
   token1: TokenDescriptor;
+  // Contract token addresses (for correct reserve mapping)
+  contractToken0Address?: string;
+  contractToken1Address?: string;
   totalLiquidityFormatted: string;
   totalLiquidityValue: number;
   userLpBalance?: string;

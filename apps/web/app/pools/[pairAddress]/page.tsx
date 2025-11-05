@@ -213,14 +213,28 @@ export default function PoolLiquidityPage() {
     const token0Lower = poolDetails.token0Address.toLowerCase();
     const token1Lower = poolDetails.token1Address.toLowerCase();
 
-    // Skip if already set
+    // Skip only if both tokens AND pairTokenAddresses are correctly set
     if (
       target.token0 === token0Lower &&
       target.token1 === token1Lower &&
-      liquidityTokenA?.address.toLowerCase() === token0Lower &&
-      liquidityTokenB?.address.toLowerCase() === token1Lower
+      pairTokenAddresses.token0 === token0Lower &&
+      pairTokenAddresses.token1 === token1Lower &&
+      liquidityTokenA?.address.toLowerCase() &&
+      liquidityTokenB?.address.toLowerCase()
     ) {
-      return;
+      // Check if display tokens match (regardless of order)
+      const currentAddresses = new Set([
+        liquidityTokenA.address.toLowerCase(),
+        liquidityTokenB.address.toLowerCase()
+      ]);
+      const targetAddresses = new Set([token0Lower, token1Lower]);
+
+      if (
+        currentAddresses.size === targetAddresses.size &&
+        [...currentAddresses].every(addr => targetAddresses.has(addr))
+      ) {
+        return;
+      }
     }
 
     const ensureDescriptor = (address: string): TokenDescriptor => {
@@ -268,6 +282,9 @@ export default function PoolLiquidityPage() {
     const descriptor0 = ensureDescriptor(poolDetails.token0Address);
     const descriptor1 = ensureDescriptor(poolDetails.token1Address);
 
+    // Apply display ordering (non-native tokens first)
+    const [orderedTokenA, orderedTokenB] = orderTokensForDisplay(descriptor0, descriptor1);
+
     // Batch state updates
     pairTargetRef.current = {
       token0: token0Lower,
@@ -276,9 +293,11 @@ export default function PoolLiquidityPage() {
 
     // Use a microtask to batch setState calls
     Promise.resolve().then(() => {
+      // pairTokenAddresses keeps the POOL's actual token0/token1 order (for reserve mapping)
       setPairTokenAddresses({ token0: token0Lower, token1: token1Lower });
-      setLiquidityTokenA(descriptor0);
-      setLiquidityTokenB(descriptor1);
+      // liquidityTokenA/B use the DISPLAY order (non-native first)
+      setLiquidityTokenA(orderedTokenA);
+      setLiquidityTokenB(orderedTokenB);
     });
   }, [
     poolDetails,

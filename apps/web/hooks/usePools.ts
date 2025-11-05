@@ -24,6 +24,9 @@ export interface PoolData {
   pairAddress: string;
   token0: TokenDescriptor;
   token1: TokenDescriptor;
+  // Contract token addresses (for correct reserve mapping)
+  contractToken0Address: string;
+  contractToken1Address: string;
   totalLiquidityFormatted: string;
   totalLiquidityValue: number;
   // Raw data for caching
@@ -234,6 +237,8 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
       pairAddress,
       token0: displayToken0,
       token1: displayToken1,
+      contractToken0Address: sdkToken0.address,
+      contractToken1Address: sdkToken1.address,
       totalLiquidityFormatted: formatNumber(totalLiquidityValue),
       totalLiquidityValue,
       reserves,
