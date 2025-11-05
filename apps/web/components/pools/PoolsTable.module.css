@@ -27,6 +27,38 @@
   font-weight: 600;
 }
 
+.tvlHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  white-space: nowrap;
+}
+
+.tvlHeader > span:first-child {
+  opacity: 0.75;
+}
+
+.totalTvlChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(82, 211, 255, 0.12);
+  border: 1px solid rgba(82, 211, 255, 0.32);
+  color: rgba(229, 245, 255, 0.85);
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.totalTvlChip > span[aria-hidden="true"] {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
 .table tbody tr {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   transition: background 0.2s ease;
@@ -166,7 +198,7 @@
 
 .tvlCell {
   width: 140px;
-  /* text-align: right; */
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 

@@ -18,9 +18,10 @@ import { megaethTestnet } from "@/lib/chains";
 import {
   DEFAULT_TOKEN_DECIMALS,
   MEGAETH_CHAIN_ID,
-  TOKEN_CATALOG,
+  TOKEN_CATALOG
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
+import { formatNumber } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 
 export default function PoolsPage() {
@@ -229,6 +230,20 @@ export default function PoolsPage() {
     return pools.filter((pool) => pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n);
   }, [pools, showMyPositionsOnly]);
 
+  const totalTvlDisplay = useMemo(() => {
+    if (poolsLoading || poolsError || filteredPools.length === 0) {
+      return null;
+    }
+    const totalValue = filteredPools.reduce(
+      (acc, pool) => acc + (pool.totalLiquidityValue ?? 0),
+      0
+    );
+    if (totalValue <= 0) {
+      return null;
+    }
+    return `${formatNumber(totalValue, 4)} ETH`;
+  }, [filteredPools, poolsLoading, poolsError]);
+
   return (
     <>
       <NetworkBanner
@@ -279,6 +294,7 @@ export default function PoolsPage() {
             error={poolsError}
             onRetry={handleRefreshPools}
             onSelectPool={handlePoolSelect}
+            totalTvl={totalTvlDisplay}
           />
         </div>
       </section>

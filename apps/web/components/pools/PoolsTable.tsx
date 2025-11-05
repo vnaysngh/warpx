@@ -29,6 +29,7 @@ type PoolsTableProps = {
   error: string | null;
   onRetry: () => void;
   onSelectPool?: (pool: PoolsTableRow) => void;
+  totalTvl?: string | null;
 };
 
 export function PoolsTable({
@@ -36,7 +37,8 @@ export function PoolsTable({
   loading,
   error,
   onRetry,
-  onSelectPool
+  onSelectPool,
+  totalTvl
 }: PoolsTableProps) {
   const showSkeleton = loading && pools.length === 0 && !error;
   const showEmpty = !loading && pools.length === 0 && !error;
@@ -54,7 +56,15 @@ export function PoolsTable({
             <th>Pool</th>
             <th>Protocol</th>
             <th>Fee tier</th>
-            <th>TVL in ETH</th>
+            <th className={styles.tvlHeader}>
+              <span>TVL in ETH</span>
+              {totalTvl ? (
+                <span className={styles.totalTvlChip}>
+                  <span aria-hidden="true">Σ</span>
+                  {totalTvl}
+                </span>
+              ) : null}
+            </th>
           </tr>
         </thead>
         <tbody>
