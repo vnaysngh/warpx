@@ -14,6 +14,7 @@ import { useToasts } from "@/hooks/useToasts";
 import { usePools } from "@/hooks/usePools";
 import { usePoolBalances } from "@/hooks/usePoolBalances";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { megaethTestnet } from "@/lib/chains";
 import {
   DEFAULT_TOKEN_DECIMALS,
@@ -21,7 +22,7 @@ import {
   TOKEN_CATALOG
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
-import { formatNumber } from "@/lib/trade/math";
+import { formatNumberWithGrouping } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 
 export default function PoolsPage() {
@@ -173,6 +174,11 @@ export default function PoolsPage() {
         userLpBalanceRaw: balance && balance > 0n ? balance : undefined,
         reserves: pool.reserves,
         totalSupply: pool.totalSupply,
+        reserve0Exact: pool.reserve0Exact,
+        reserve1Exact: pool.reserve1Exact,
+        totalLiquidityValue: null,
+        totalLiquidityFormatted: null,
+        isTvlLoading: true
       };
     });
   }, [poolsData, balancesData]);
@@ -222,27 +228,190 @@ export default function PoolsPage() {
     [router, queryClient, walletAccount]
   );
 
-  // Filter pools based on toggle state
+  const tokenPriceAddresses = useMemo(() => {
+    if (!poolsData?.length) return [];
+    const addresses = new Set<string>();
+
+    poolsData.forEach((pool) => {
+      if (pool.contractToken0Address) {
+        addresses.add(pool.contractToken0Address.toLowerCase());
+      }
+      if (pool.contractToken1Address) {
+        addresses.add(pool.contractToken1Address.toLowerCase());
+      }
+    });
+
+    if (wrappedNativeAddress) {
+      addresses.add(wrappedNativeAddress.toLowerCase());
+    }
+
+    return Array.from(addresses);
+  }, [poolsData, wrappedNativeAddress]);
+
+  const {
+    data: usdPriceMapData,
+    isPending: tokenPricesPending,
+    isFetching: tokenPricesFetching
+  } = useTokenPrices(tokenPriceAddresses);
+
+  const usdPriceMap = useMemo(() => {
+    if (!usdPriceMapData) return new Map<string, number>();
+    return new Map<string, number>(Object.entries(usdPriceMapData));
+  }, [usdPriceMapData]);
+  const hasTokenPriceQuery = tokenPriceAddresses.length > 0;
+  const tvlLoading =
+    hasTokenPriceQuery &&
+    (tokenPricesPending || (tokenPricesFetching && usdPriceMap.size === 0));
+
+  const derivedPriceMap = useMemo(() => {
+    if (!pools.length) return usdPriceMap;
+
+    const priceMap = new Map(usdPriceMap);
+    let updated = true;
+    let iterations = 0;
+    const maxIterations = pools.length * 2;
+
+    while (updated && iterations < maxIterations) {
+      updated = false;
+      iterations += 1;
+
+      for (const pool of pools) {
+        const token0Lower = pool.contractToken0Address?.toLowerCase();
+        const token1Lower = pool.contractToken1Address?.toLowerCase();
+        const reserve0 = pool.reserve0Exact ?? 0;
+        const reserve1 = pool.reserve1Exact ?? 0;
+
+        if (!token0Lower || !token1Lower || reserve0 <= 0 || reserve1 <= 0) {
+          continue;
+        }
+
+        const price0 = priceMap.get(token0Lower);
+        const price1 = priceMap.get(token1Lower);
+
+        if (
+          (price0 === undefined || price0 === null || price0 <= 0) &&
+          price1 !== undefined &&
+          price1 !== null &&
+          price1 > 0
+        ) {
+          const derivedPrice0 = (price1 * reserve1) / reserve0;
+          if (Number.isFinite(derivedPrice0) && derivedPrice0 > 0) {
+            priceMap.set(token0Lower, derivedPrice0);
+            updated = true;
+          }
+        } else if (
+          (price1 === undefined || price1 === null || price1 <= 0) &&
+          price0 !== undefined &&
+          price0 !== null &&
+          price0 > 0
+        ) {
+          const derivedPrice1 = (price0 * reserve0) / reserve1;
+          if (Number.isFinite(derivedPrice1) && derivedPrice1 > 0) {
+            priceMap.set(token1Lower, derivedPrice1);
+            updated = true;
+          }
+        }
+      }
+    }
+
+    return priceMap;
+  }, [pools, usdPriceMap]);
+
+  const poolsWithUsd: PoolsTableRow[] = useMemo(() => {
+    if (!pools.length) return [];
+    const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
+
+    const enriched = pools.map((pool) => {
+      const token0Lower = pool.contractToken0Address?.toLowerCase() ?? "";
+      const token1Lower = pool.contractToken1Address?.toLowerCase() ?? "";
+      const price0 = token0Lower ? derivedPriceMap.get(token0Lower) ?? null : null;
+      const price1 = token1Lower ? derivedPriceMap.get(token1Lower) ?? null : null;
+
+      let totalUsd = 0;
+
+      if (price0 !== null && Number.isFinite(price0)) {
+        totalUsd += (pool.reserve0Exact ?? 0) * price0;
+      }
+      if (price1 !== null && Number.isFinite(price1)) {
+        totalUsd += (pool.reserve1Exact ?? 0) * price1;
+      }
+
+      if (totalUsd <= 0 && wethLower) {
+        const ethPrice = derivedPriceMap.get(wethLower);
+        if (ethPrice && Number.isFinite(ethPrice)) {
+          const token0IsWeth = token0Lower === wethLower;
+          const token1IsWeth = token1Lower === wethLower;
+
+          if (token0IsWeth) {
+            totalUsd = (pool.reserve0Exact ?? 0) * ethPrice * 2;
+          } else if (token1IsWeth) {
+            totalUsd = (pool.reserve1Exact ?? 0) * ethPrice * 2;
+          }
+        }
+      }
+
+      const hasUsdValue = totalUsd > 0;
+      const formatted = hasUsdValue ? formatNumberWithGrouping(totalUsd, 2) : null;
+
+      return {
+        ...pool,
+        totalLiquidityValue: hasUsdValue ? totalUsd : null,
+        totalLiquidityFormatted: formatted,
+        isTvlLoading: !hasUsdValue && tvlLoading
+      };
+    });
+
+    const sorted = [...enriched].sort((a, b) => {
+      const tvlA = a.totalLiquidityValue ?? 0;
+      const tvlB = b.totalLiquidityValue ?? 0;
+      if (tvlA === tvlB) {
+        return a.id - b.id;
+      }
+      return tvlB - tvlA;
+    });
+
+    return sorted.map((pool, index) => ({
+      ...pool,
+      id: index + 1
+    }));
+  }, [pools, derivedPriceMap, tvlLoading, wrappedNativeAddress]);
+
   const filteredPools = useMemo(() => {
     if (!showMyPositionsOnly) {
-      return pools;
+      return poolsWithUsd;
     }
-    return pools.filter((pool) => pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n);
-  }, [pools, showMyPositionsOnly]);
+    return poolsWithUsd.filter(
+      (pool) => pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n
+    );
+  }, [poolsWithUsd, showMyPositionsOnly]);
 
-  const totalTvlDisplay = useMemo(() => {
+  const totalTvlSummary = useMemo(() => {
     if (poolsLoading || poolsError || filteredPools.length === 0) {
-      return null;
+      return { value: null as string | null, loading: false };
     }
+
+    const allHaveValues = filteredPools.every(
+      (pool) => typeof pool.totalLiquidityValue === "number" && pool.totalLiquidityValue > 0
+    );
+
+    if (!allHaveValues) {
+      return { value: null, loading: tvlLoading };
+    }
+
     const totalValue = filteredPools.reduce(
       (acc, pool) => acc + (pool.totalLiquidityValue ?? 0),
       0
     );
+
     if (totalValue <= 0) {
-      return null;
+      return { value: null, loading: false };
     }
-    return `${formatNumber(totalValue, 4)} ETH`;
-  }, [filteredPools, poolsLoading, poolsError]);
+
+    return {
+      value: `$${formatNumberWithGrouping(totalValue, 2)}`,
+      loading: false
+    };
+  }, [filteredPools, poolsLoading, poolsError, tvlLoading]);
 
   return (
     <>
@@ -294,7 +463,8 @@ export default function PoolsPage() {
             error={poolsError}
             onRetry={handleRefreshPools}
             onSelectPool={handlePoolSelect}
-            totalTvl={totalTvlDisplay}
+            totalTvl={totalTvlSummary.value}
+            totalTvlLoading={totalTvlSummary.loading}
           />
         </div>
       </section>

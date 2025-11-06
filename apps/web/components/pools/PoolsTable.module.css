@@ -54,6 +54,51 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
+.totalTvlChipLoading {
+  min-width: 52px;
+  justify-content: center;
+}
+
+.dots,
+.loaderDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(229, 245, 255, 0.85);
+}
+
+.dots span,
+.loaderDots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dots span:nth-child(1),
+.loaderDots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dots span:nth-child(2),
+.loaderDots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
 .totalTvlChip > span[aria-hidden="true"] {
   font-size: 0.7rem;
   opacity: 0.85;

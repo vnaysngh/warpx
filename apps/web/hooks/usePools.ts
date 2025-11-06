@@ -13,7 +13,6 @@ import {
 } from "@/lib/contracts/multicall";
 import type { TokenDescriptor } from "@/lib/trade/types";
 import { toSdkToken } from "@/lib/trade/warp";
-import { formatNumber } from "@/lib/trade/math";
 
 const FACTORY_ABI = [
   "function getPair(address tokenA, address tokenB) external view returns (address pair)"
@@ -27,8 +26,10 @@ export interface PoolData {
   // Contract token addresses (for correct reserve mapping)
   contractToken0Address: string;
   contractToken1Address: string;
-  totalLiquidityFormatted: string;
-  totalLiquidityValue: number;
+  totalLiquidityFormatted: string | null;
+  totalLiquidityValue: number | null;
+  reserve0Exact: number;
+  reserve1Exact: number;
   // Raw data for caching
   reserves?: {
     reserve0: bigint;
@@ -149,9 +150,25 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
   ]);
 
   // Step 3: Process results
-  const pools: PoolData[] = [];
+  const pendingPools: Array<{
+    id: number;
+    pairAddress: string;
+    displayToken0: TokenDescriptor;
+    displayToken1: TokenDescriptor;
+    contractToken0Address: string;
+    contractToken1Address: string;
+    reserve0Exact: number;
+    reserve1Exact: number;
+    reserves?: {
+      reserve0: bigint;
+      reserve1: bigint;
+      blockTimestampLast: number;
+    };
+    totalSupply?: bigint;
+  }> = [];
   const tokenMap = new Map(tokenList.map((t) => [t.address.toLowerCase(), t]));
 
+  const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
   let poolId = 1;
   for (const [key, pairAddress] of poolAddresses.entries()) {
     const index = pairAddressList.indexOf(pairAddress);
@@ -188,7 +205,6 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
       : [token1, token0];
 
     // For display, always show ETH as the quote (second) token: TOKEN/ETH format
-    const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
     const token0IsEth = wethLower && token0Descriptor.address.toLowerCase() === wethLower;
     const token1IsEth = wethLower && token1Descriptor.address.toLowerCase() === wethLower;
 
@@ -219,35 +235,60 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
     const reserve0Value = Number(pair.reserve0.toExact());
     const reserve1Value = Number(pair.reserve1.toExact());
 
-    let totalLiquidityValue = 0;
-    const token0Lower = sdkToken0.address.toLowerCase();
-    const token1Lower = sdkToken1.address.toLowerCase();
-    // wethLower already declared above for display ordering
-
-    if (wethLower && token0Lower === wethLower) {
-      totalLiquidityValue = reserve0Value * 2;
-    } else if (wethLower && token1Lower === wethLower) {
-      totalLiquidityValue = reserve1Value * 2;
-    } else {
-      totalLiquidityValue = reserve0Value + reserve1Value;
-    }
-
-    pools.push({
+    pendingPools.push({
       id: poolId++,
       pairAddress,
-      token0: displayToken0,
-      token1: displayToken1,
+      displayToken0,
+      displayToken1,
       contractToken0Address: sdkToken0.address,
       contractToken1Address: sdkToken1.address,
-      totalLiquidityFormatted: formatNumber(totalLiquidityValue),
-      totalLiquidityValue,
+      reserve0Exact: reserve0Value,
+      reserve1Exact: reserve1Value,
       reserves,
       totalSupply
     });
   }
 
+  const uniqueTokenAddresses = Array.from(
+    new Set(
+      pendingPools.flatMap((pool) => [
+        pool.contractToken0Address.toLowerCase(),
+        pool.contractToken1Address.toLowerCase()
+      ])
+    )
+  );
+
+  let priceMap: Record<string, number> = {};
+  if (uniqueTokenAddresses.length > 0) {
+    try {
+      priceMap = await fetchTokenUsdPrices(uniqueTokenAddresses);
+    } catch (error) {
+      console.warn("[usePools] failed to fetch token USD prices", error);
+    }
+  }
+
+  const pools: PoolData[] = pendingPools.map((pool) => {
+    return {
+      id: pool.id,
+      pairAddress: pool.pairAddress,
+      token0: pool.displayToken0,
+      token1: pool.displayToken1,
+      contractToken0Address: pool.contractToken0Address,
+      contractToken1Address: pool.contractToken1Address,
+      totalLiquidityFormatted: null,
+      totalLiquidityValue: null,
+      reserve0Exact: pool.reserve0Exact,
+      reserve1Exact: pool.reserve1Exact,
+      reserves: pool.reserves,
+      totalSupply: pool.totalSupply
+    };
+  });
+
   // Sort by liquidity descending
-  pools.sort((a, b) => b.totalLiquidityValue - a.totalLiquidityValue);
+  pools.sort(
+    (a, b) =>
+      (b.totalLiquidityValue ?? 0) - (a.totalLiquidityValue ?? 0)
+  );
 
   // Reassign IDs after sorting
   pools.forEach((pool, index) => {
@@ -275,4 +316,39 @@ export function usePools(params: UsePoolsParams) {
       params.tokenList.length >= 2,
     staleTime: 15 * 1000 // 15 seconds
   });
+}
+
+async function fetchTokenUsdPrices(addresses: string[]): Promise<Record<string, number>> {
+  if (addresses.length === 0) return {};
+  if (typeof window === "undefined") return {};
+
+  const params = new URLSearchParams({
+    addresses: addresses.join(",")
+  });
+
+  const response = await fetch(`/api/token-prices?${params.toString()}`, {
+    method: "GET",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch token prices: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    prices?: Record<string, string | number | null>;
+  };
+
+  const parsed: Record<string, number> = {};
+  if (payload?.prices) {
+    Object.entries(payload.prices).forEach(([address, value]) => {
+      const numericValue =
+        typeof value === "string" ? Number(value) : typeof value === "number" ? value : null;
+      if (numericValue !== null && Number.isFinite(numericValue)) {
+        parsed[address.toLowerCase()] = numericValue;
+      }
+    });
+  }
+
+  return parsed;
 }

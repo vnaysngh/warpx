@@ -33,6 +33,20 @@ export const formatNumber = (
   return num.toFixed(maxDecimals).replace(/\.?0+$/, "");
 };
 
+export const formatNumberWithGrouping = (
+  value: string | number,
+  maxDecimals: number = 2
+): string => {
+  const raw = formatNumber(value, maxDecimals);
+  if (raw.includes("e") || raw.includes("E")) {
+    return raw;
+  }
+
+  const [integerPart, fractionalPart] = raw.split(".");
+  const grouped = Number(integerPart).toLocaleString("en-US");
+  return fractionalPart ? `${grouped}.${fractionalPart}` : grouped;
+};
+
 /**
  * Format percentage values (0-100)
  */

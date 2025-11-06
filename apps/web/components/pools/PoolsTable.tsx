@@ -16,8 +16,8 @@ export type PoolsTableRow = {
   // Contract token addresses (for correct reserve mapping)
   contractToken0Address?: string;
   contractToken1Address?: string;
-  totalLiquidityFormatted: string;
-  totalLiquidityValue: number;
+  totalLiquidityFormatted: string | null;
+  totalLiquidityValue: number | null;
   userLpBalance?: string;
   userLpBalanceRaw?: bigint;
   reserves?: {
@@ -26,6 +26,9 @@ export type PoolsTableRow = {
     blockTimestampLast: number;
   };
   totalSupply?: bigint;
+  reserve0Exact?: number;
+  reserve1Exact?: number;
+  isTvlLoading?: boolean;
 };
 
 type PoolsTableProps = {
@@ -35,6 +38,7 @@ type PoolsTableProps = {
   onRetry: () => void;
   onSelectPool?: (pool: PoolsTableRow) => void;
   totalTvl?: string | null;
+  totalTvlLoading?: boolean;
 };
 
 export function PoolsTable({
@@ -43,7 +47,8 @@ export function PoolsTable({
   error,
   onRetry,
   onSelectPool,
-  totalTvl
+  totalTvl,
+  totalTvlLoading
 }: PoolsTableProps) {
   const showSkeleton = loading && pools.length === 0 && !error;
   const showEmpty = !loading && pools.length === 0 && !error;
@@ -62,11 +67,19 @@ export function PoolsTable({
             <th>Protocol</th>
             <th>Fee tier</th>
             <th className={styles.tvlHeader}>
-              <span>TVL in ETH</span>
+              <span>TVL (USD)</span>
               {totalTvl ? (
                 <span className={styles.totalTvlChip}>
                   <span aria-hidden="true">Σ</span>
                   {totalTvl}
+                </span>
+              ) : totalTvlLoading ? (
+                <span className={`${styles.totalTvlChip} ${styles.totalTvlChipLoading}`}>
+                  <span className={styles.dots}>
+                    <span />
+                    <span />
+                    <span />
+                  </span>
                 </span>
               ) : null}
             </th>
@@ -165,8 +178,18 @@ export function PoolsTable({
                 <td className={styles.feeCell} data-label="Fee tier">
                   {DEFAULT_FEE_PERCENT_DISPLAY}%
                 </td>
-                <td className={styles.tvlCell} data-label="TVL in ETH">
-                  {pool.totalLiquidityFormatted} ETH
+                <td className={styles.tvlCell} data-label="TVL (USD)">
+                  {pool.isTvlLoading ? (
+                    <span className={styles.loaderDots}>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  ) : pool.totalLiquidityFormatted ? (
+                    `$${pool.totalLiquidityFormatted}`
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}
