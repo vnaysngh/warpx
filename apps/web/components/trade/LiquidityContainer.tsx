@@ -199,8 +199,20 @@ export function LiquidityContainer({
 
   const tokenABalanceFormatted = balanceAData?.formatted ?? null;
   const tokenBBalanceFormatted = balanceBData?.formatted ?? null;
-  const tokenASymbol = balanceAData?.symbol ?? liquidityTokenA?.symbol ?? null;
-  const tokenBSymbol = balanceBData?.symbol ?? liquidityTokenB?.symbol ?? null;
+
+  const resolveDisplaySymbol = (
+    token: TokenDescriptor | null,
+    fetchedSymbol: string | undefined
+  ) => {
+    if (!token) return fetchedSymbol ?? null;
+    if (token.isNative) {
+      return token.symbol ?? fetchedSymbol ?? null;
+    }
+    return fetchedSymbol ?? token.symbol ?? null;
+  };
+
+  const tokenASymbol = resolveDisplaySymbol(liquidityTokenA, balanceAData?.symbol);
+  const tokenBSymbol = resolveDisplaySymbol(liquidityTokenB, balanceBData?.symbol);
 
   const balanceAWei = balanceAData?.value ?? null;
   const balanceBWei = balanceBData?.value ?? null;
