@@ -169,7 +169,7 @@ export function TradeHeader({
 
                   {address && (
                     <a
-                      href={`https://www.mtrkr.xyz/wallet/${address}`}
+                      href={`https://megaeth-testnet.blockscout.com/address/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.walletDropdownItem}
@@ -286,7 +286,7 @@ export function TradeHeader({
 
                   {address && (
                     <a
-                      href={`https://www.mtrkr.xyz/wallet/${address}`}
+                      href={`https://megaeth-testnet.blockscout.com/address/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.mobileWalletActionLink}

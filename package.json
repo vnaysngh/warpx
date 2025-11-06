@@ -13,6 +13,9 @@
     "add-warpx-eth-liquidity": "hardhat run scripts/add-warpx-eth-liquidity.ts --network megaethTestnet",
     "validate-warpx-liquidity": "hardhat run scripts/validate-warpx-eth-liquidity.ts --network megaethTestnet",
     "check-gte-price": "hardhat run scripts/check-gte-price.ts --network megaethTestnet",
+    "test:core:factory": "hardhat test packages/core/test/WarpFactory.spec.ts",
+    "test:core:pair": "hardhat test packages/core/test/WarpPair.spec.ts",
+    "test:core:erc20": "hardhat test packages/core/test/WarpERC20.spec.ts",
     "dev:landing": "turbo run dev --filter=landing"
   },
   "devDependencies": {

@@ -1,26 +1,19 @@
-import { Contract } from 'ethers'
-import { Web3Provider } from 'ethers/providers'
-import {
-  BigNumber,
-  bigNumberify,
-  getAddress,
-  keccak256,
-  defaultAbiCoder,
-  toUtf8Bytes,
-  solidityPack
-} from 'ethers/utils'
+import { AbiCoder, getAddress, keccak256, parseUnits, solidityPacked, toUtf8Bytes } from 'ethers'
+import { mine, time } from '@nomicfoundation/hardhat-network-helpers'
+
+const abiCoder = AbiCoder.defaultAbiCoder()
 
 const PERMIT_TYPEHASH = keccak256(
   toUtf8Bytes('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)')
 )
 
-export function expandTo18Decimals(n: number): BigNumber {
-  return bigNumberify(n).mul(bigNumberify(10).pow(18))
+export function expandTo18Decimals(n: number): bigint {
+  return parseUnits(String(n), 18)
 }
 
 function getDomainSeparator(name: string, tokenAddress: string) {
   return keccak256(
-    defaultAbiCoder.encode(
+    abiCoder.encode(
       ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
       [
         keccak256(toUtf8Bytes('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')),
@@ -38,38 +31,39 @@ export function getCreate2Address(
   [tokenA, tokenB]: [string, string],
   bytecode: string
 ): string {
-  const [token0, token1] = tokenA < tokenB ? [tokenA, tokenB] : [tokenB, tokenA]
+  const [token0, token1] = tokenA.toLowerCase() < tokenB.toLowerCase() ? [tokenA, tokenB] : [tokenB, tokenA]
   const create2Inputs = [
     '0xff',
     factoryAddress,
-    keccak256(solidityPack(['address', 'address'], [token0, token1])),
+    keccak256(solidityPacked(['address', 'address'], [token0, token1])),
     keccak256(bytecode)
   ]
-  const sanitizedInputs = `0x${create2Inputs.map(i => i.slice(2)).join('')}`
+  const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join('')}`
   return getAddress(`0x${keccak256(sanitizedInputs).slice(-40)}`)
 }
 
 export async function getApprovalDigest(
-  token: Contract,
+  token: any,
   approve: {
     owner: string
     spender: string
-    value: BigNumber
+    value: bigint
   },
-  nonce: BigNumber,
-  deadline: BigNumber
+  nonce: bigint,
+  deadline: bigint
 ): Promise<string> {
   const name = await token.name()
-  const DOMAIN_SEPARATOR = getDomainSeparator(name, token.address)
+  const tokenAddress = await token.getAddress()
+  const DOMAIN_SEPARATOR = getDomainSeparator(name, tokenAddress)
   return keccak256(
-    solidityPack(
+    solidityPacked(
       ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
       [
         '0x19',
         '0x01',
         DOMAIN_SEPARATOR,
         keccak256(
-          defaultAbiCoder.encode(
+          abiCoder.encode(
             ['bytes32', 'address', 'address', 'uint256', 'uint256', 'uint256'],
             [PERMIT_TYPEHASH, approve.owner, approve.spender, approve.value, nonce, deadline]
           )
@@ -79,21 +73,13 @@ export async function getApprovalDigest(
   )
 }
 
-export async function mineBlock(provider: Web3Provider, timestamp: number): Promise<void> {
-  await new Promise(async (resolve, reject) => {
-    ;(provider._web3Provider.sendAsync as any)(
-      { jsonrpc: '2.0', method: 'evm_mine', params: [timestamp] },
-      (error: any, result: any): void => {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(result)
-        }
-      }
-    )
-  })
+export async function mineBlock(timestamp: number): Promise<void> {
+  await time.setNextBlockTimestamp(timestamp)
+  await mine()
 }
 
-export function encodePrice(reserve0: BigNumber, reserve1: BigNumber) {
-  return [reserve1.mul(bigNumberify(2).pow(112)).div(reserve0), reserve0.mul(bigNumberify(2).pow(112)).div(reserve1)]
+const Q112 = 1n << 112n
+
+export function encodePrice(reserve0: bigint, reserve1: bigint) {
+  return [reserve1 * Q112 / reserve0, reserve0 * Q112 / reserve1]
 }

@@ -1,45 +1,49 @@
-import { Contract, Wallet } from 'ethers'
-import { Web3Provider } from 'ethers/providers'
-import { deployContract } from 'ethereum-waffle'
+import { Contract } from 'ethers'
+import { ethers } from 'hardhat'
 
 import { expandTo18Decimals } from './utilities'
 
-import ERC20 from '../../build/ERC20.json'
-import WarpFactory from '../../build/WarpFactory.json'
-import WarpPair from '../../build/WarpPair.json'
-
-interface FactoryFixture {
+type FactoryFixtureResult = {
   factory: Contract
+  wallet: Awaited<ReturnType<typeof ethers.getSigners>>[number]
+  other: Awaited<ReturnType<typeof ethers.getSigners>>[number]
 }
 
-const overrides = {
-  gasLimit: 9999999
+export async function factoryFixture(): Promise<FactoryFixtureResult> {
+  const [wallet, other] = await ethers.getSigners()
+  const factoryContract = await ethers.getContractFactory('packages/core/contracts/WarpFactory.sol:WarpFactory', wallet)
+  const factory = await factoryContract.deploy(wallet.address)
+  await factory.waitForDeployment()
+  return { factory, wallet, other }
 }
 
-export async function factoryFixture(_: Web3Provider, [wallet]: Wallet[]): Promise<FactoryFixture> {
-  const factory = await deployContract(wallet, WarpFactory, [wallet.address], overrides)
-  return { factory }
-}
-
-interface PairFixture extends FactoryFixture {
+type PairFixtureResult = FactoryFixtureResult & {
   token0: Contract
   token1: Contract
   pair: Contract
 }
 
-export async function pairFixture(provider: Web3Provider, [wallet]: Wallet[]): Promise<PairFixture> {
-  const { factory } = await factoryFixture(provider, [wallet])
+export async function pairFixture(): Promise<PairFixtureResult> {
+  const { factory, wallet, other } = await factoryFixture()
 
-  const tokenA = await deployContract(wallet, ERC20, [expandTo18Decimals(10000)], overrides)
-  const tokenB = await deployContract(wallet, ERC20, [expandTo18Decimals(10000)], overrides)
+  const erc20Factory = await ethers.getContractFactory('packages/core/contracts/test/ERC20.sol:ERC20', wallet)
+  const tokenA = await erc20Factory.deploy(expandTo18Decimals(10000))
+  const tokenB = await erc20Factory.deploy(expandTo18Decimals(10000))
+  await tokenA.waitForDeployment()
+  await tokenB.waitForDeployment()
 
-  await factory.createPair(tokenA.address, tokenB.address, overrides)
-  const pairAddress = await factory.getPair(tokenA.address, tokenB.address)
-  const pair = new Contract(pairAddress, JSON.stringify(WarpPair.abi), provider).connect(wallet)
+  const tokenAAddress = await tokenA.getAddress()
+  const tokenBAddress = await tokenB.getAddress()
 
-  const token0Address = (await pair.token0()).address
-  const token0 = tokenA.address === token0Address ? tokenA : tokenB
-  const token1 = tokenA.address === token0Address ? tokenB : tokenA
+  const createPairTx = await factory.createPair(tokenAAddress, tokenBAddress)
+  await createPairTx.wait()
+  const pairAddress = await factory.getPair(tokenAAddress, tokenBAddress)
 
-  return { factory, token0, token1, pair }
+  const pair = await ethers.getContractAt('packages/core/contracts/WarpPair.sol:WarpPair', pairAddress, wallet)
+
+  const token0Address = await pair.token0()
+  const token0 = tokenAAddress.toLowerCase() === token0Address.toLowerCase() ? tokenA : tokenB
+  const token1 = tokenAAddress.toLowerCase() === token0Address.toLowerCase() ? tokenB : tokenA
+
+  return { factory, wallet, other, token0, token1, pair }
 }
