@@ -10,6 +10,10 @@ export interface Toast {
   message: string;
   type: ToastType;
   duration?: number;
+  link?: {
+    href: string;
+    label?: string;
+  };
 }
 
 interface ToastProps {
@@ -51,7 +55,19 @@ export function ToastItem({ toast, onClose }: ToastProps) {
   return (
     <div className={`${styles.toast} ${styles[toast.type]}`}>
       <span className={styles.icon}>{getIcon()}</span>
-      <span className={styles.message}>{toast.message}</span>
+      <span className={styles.message}>
+        {toast.message}
+        {toast.link && (
+          <a
+            className={styles.link}
+            href={toast.link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {toast.link.label ?? "View on explorer"}
+          </a>
+        )}
+      </span>
       {toast.type !== "loading" && (
         <button
           className={styles.close}

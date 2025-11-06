@@ -54,6 +54,20 @@
   line-height: 1.5;
 }
 
+.link {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.link:hover {
+  opacity: 0.85;
+}
+
 .close {
   background: none;
   border: none;

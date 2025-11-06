@@ -1,3 +1,5 @@
+import { MEGAETH_EXPLORER_BASE_URL } from "./constants";
+
 export const formatBalanceDisplay = (value: string | null): string => {
   if (value === null) return "—";
   const numeric = Number(value);
@@ -8,3 +10,6 @@ export const formatBalanceDisplay = (value: string | null): string => {
   }
   return numeric.toPrecision(4);
 };
+
+export const buildExplorerTxUrl = (hash: string | `0x${string}`) =>
+  `${MEGAETH_EXPLORER_BASE_URL}/tx/${hash}`;

@@ -30,7 +30,8 @@ import type {
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import { formatBalanceDisplay } from "@/lib/trade/format";
+import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
+import type { ToastOptions } from "@/hooks/useToasts";
 type EnsureWalletContext = {
   walletAccount: string | null;
   ready: boolean;
@@ -53,9 +54,9 @@ type SwapContainerProps = {
   isWalletConnected: boolean;
   isAccountConnecting: boolean;
   ready: boolean;
-  showError: (message: string) => void;
-  showSuccess: (message: string) => void;
-  showLoading: (message: string) => void;
+  showError: (message: string, options?: ToastOptions) => void;
+  showSuccess: (message: string, options?: ToastOptions) => void;
+  showLoading: (message: string, options?: ToastOptions) => string;
   refreshNonce: number;
   onRequestRefresh: () => void;
   onConnect?: () => void;
@@ -703,7 +704,9 @@ export function SwapContainer({
 
       setNeedsApproval(false);
       setAllowanceNonce((n) => n + 1);
-      showSuccess("Token approved successfully.");
+      showSuccess("Token approved successfully.", {
+        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
+      });
     } catch (err) {
       console.error("[swap] approval failed", err);
       showError(parseErrorMessage(err));
@@ -911,7 +914,9 @@ export function SwapContainer({
       }
       setNeedsApproval(false);
       setCheckingAllowance(false);
-      showSuccess("Swap executed successfully.");
+      showSuccess("Swap executed successfully.", {
+        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
+      });
     } catch (err) {
       console.error("[swap] failed", err);
       showError(parseErrorMessage(err));

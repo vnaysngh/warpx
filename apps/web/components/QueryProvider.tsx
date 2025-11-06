@@ -26,6 +26,9 @@ export function QueryProvider({ children }: PropsWithChildren) {
       dehydrateOptions: {
         // Don't persist queries that might contain sensitive data
         shouldDehydrateQuery: (query: any) => {
+          if (query.state?.status === 'pending' || query.state?.fetchStatus !== 'idle') {
+            return false;
+          }
           // Don't persist user-specific queries
           const queryKey = query.queryKey;
           if (Array.isArray(queryKey) && queryKey.includes('user-lp-balance')) {

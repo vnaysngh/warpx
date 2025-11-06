@@ -1,14 +1,22 @@
 import { useCallback, useRef, useState } from "react";
 import type { Toast } from "@/components/Toast";
 
+export type ToastOptions = Pick<Toast, "duration" | "link">;
+
 export function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const loadingToastRef = useRef<string | null>(null);
 
   const addToast = useCallback(
-    (message: string, type: Toast["type"], duration?: number) => {
+    (message: string, type: Toast["type"], options: ToastOptions = {}) => {
       const id = `${Date.now()}-${Math.random()}`;
-      const newToast: Toast = { id, message, type, duration };
+      const newToast: Toast = {
+        id,
+        message,
+        type,
+        duration: options.duration,
+        link: options.link
+      };
       setToasts((prev) => [...prev, newToast]);
       return id;
     },
@@ -20,11 +28,11 @@ export function useToasts() {
   }, []);
 
   const showLoading = useCallback(
-    (message: string) => {
+    (message: string, options?: ToastOptions) => {
       if (loadingToastRef.current) {
         removeToast(loadingToastRef.current);
       }
-      const id = addToast(message, "loading");
+      const id = addToast(message, "loading", options);
       loadingToastRef.current = id;
       return id;
     },
@@ -39,17 +47,17 @@ export function useToasts() {
   }, [removeToast]);
 
   const showSuccess = useCallback(
-    (message: string) => {
+    (message: string, options?: ToastOptions) => {
       hideLoading();
-      addToast(message, "success");
+      addToast(message, "success", options);
     },
     [addToast, hideLoading]
   );
 
   const showError = useCallback(
-    (message: string) => {
+    (message: string, options?: ToastOptions) => {
       hideLoading();
-      addToast(message, "error");
+      addToast(message, "error", options);
     },
     [addToast, hideLoading]
   );

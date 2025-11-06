@@ -29,8 +29,9 @@ import type {
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import { formatBalanceDisplay } from "@/lib/trade/format";
+import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
 import type { PoolDetailsData } from "@/hooks/usePoolDetails";
+import type { ToastOptions } from "@/hooks/useToasts";
 
 
 type LiquidityContainerProps = {
@@ -49,9 +50,9 @@ type LiquidityContainerProps = {
   isWalletConnected: boolean;
   isAccountConnecting: boolean;
   ready: boolean;
-  showError: (message: string) => void;
-  showSuccess: (message: string) => void;
-  showLoading: (message: string) => void;
+  showError: (message: string, options?: ToastOptions) => void;
+  showSuccess: (message: string, options?: ToastOptions) => void;
+  showLoading: (message: string, options?: ToastOptions) => string;
   onSwapRefresh: () => void;
   allowTokenSelection?: boolean;
   poolDetails?: PoolDetailsData | null;
@@ -846,6 +847,7 @@ export function LiquidityContainer({
     }
 
     try {
+      let submittedTxHash: `0x${string}` | null = null;
       setIsSubmitting(true);
 
       const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
@@ -924,6 +926,7 @@ export function LiquidityContainer({
         });
         showLoading("Adding liquidity...");
         await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+        submittedTxHash = txHash;
       } else {
         const [allowanceA, allowanceB] = await Promise.all([
           readContract(wagmiConfig, {
@@ -995,6 +998,7 @@ export function LiquidityContainer({
         });
         showLoading("Adding liquidity...");
         await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+        submittedTxHash = txHash;
       }
 
       await refreshBalances();
@@ -1010,7 +1014,12 @@ export function LiquidityContainer({
       setNeedsApprovalA(false);
       setNeedsApprovalB(false);
       setLiquidityAllowanceNonce((n) => n + 1);
-      showSuccess("Liquidity added successfully.");
+      showSuccess(
+        "Liquidity added successfully.",
+        submittedTxHash
+          ? { link: { href: buildExplorerTxUrl(submittedTxHash), label: "View on explorer" } }
+          : undefined
+      );
     } catch (err) {
       console.error("[liquidity] add failed", err);
       showError(parseErrorMessage(err));
@@ -1168,9 +1177,9 @@ export function LiquidityContainer({
       setNeedsApprovalB(false);
       setLiquidityAllowanceNonce((n) => n + 1);
       onSwapRefresh();
-      showSuccess(
-        `Liquidity removed successfully. Removed ${removeLiquidityPercent}% of your position.`
-      );
+      showSuccess("Liquidity removed successfully.", {
+        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
+      });
       setRemoveLiquidityPercent("25");
     } catch (err) {
       console.error("[liquidity] remove failed", err);
@@ -1361,7 +1370,9 @@ export function LiquidityContainer({
           setNeedsApprovalB(false);
         }
         setLiquidityAllowanceNonce((n) => n + 1);
-        showSuccess("Token approved successfully.");
+        showSuccess("Token approved successfully.", {
+          link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
+        });
       } catch (err) {
         console.error("[liquidity] approval failed", err);
         showError(parseErrorMessage(err));
