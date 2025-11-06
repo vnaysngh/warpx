@@ -1,7 +1,0 @@
-{
-  "network": "megaethTestnet",
-  "factory": "0xd08224e052983843607337C3C5765F6D1039dC4f",
-  "router": "0x24a2265ECa0C132f58C779e092C84B484b9b3932",
-  "wmegaeth": "0x6DB2F1a062bBc4cbb78261B5f61EAd74D3dB2854",
-  "feeToSetter": "0x0B95ec21579aee6Ef7b712976bD86689D68b5A08"
-}

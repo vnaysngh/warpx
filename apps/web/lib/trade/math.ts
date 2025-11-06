@@ -58,8 +58,9 @@ export const formatPercent = (
 
 /**
  * Calculate output amount for a swap using Warp V2 constant product formula
- * Formula: outputAmount = (inputAmount * 998 * reserveOut) / (1000 * reserveIn + inputAmount * 998)
- * This accounts for the 0.2% Warp fee applied to input
+ * Formula: outputAmount = (inputAmount * FEES_NUMERATOR * reserveOut) /
+ *          (FEES_DENOMINATOR * reserveIn + inputAmount * FEES_NUMERATOR)
+ * This accounts for the 0.3% Warp fee applied to input
  */
 export const getSwapOutputAmount = (
   inputAmountWei: bigint,
@@ -79,7 +80,8 @@ export const getSwapOutputAmount = (
 
 /**
  * Calculate input amount needed to get desired output (reverse calculation)
- * Formula: inputAmount = (1000 * reserveIn * outputAmount) / (998 * (reserveOut - outputAmount)) + 1
+ * Formula: inputAmount = (FEES_DENOMINATOR * reserveIn * outputAmount) /
+ *          (FEES_NUMERATOR * (reserveOut - outputAmount)) + 1
  * The +1 ensures slippage protection by rounding up
  */
 export const getSwapInputAmount = (

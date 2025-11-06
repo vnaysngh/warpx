@@ -85,7 +85,7 @@ async function main() {
     console.log(`Deployment manifest written to ${filePath}`)
 
     if (process.env.MEGAETH_SYNC_FRONTEND !== 'false') {
-      const frontendDir = path.resolve(__dirname, '../../..', 'apps/frontend/public/deployments')
+      const frontendDir = path.resolve(__dirname, '../../..', 'apps/web/public/deployments')
       try {
         fs.mkdirSync(frontendDir, { recursive: true })
         const frontendPath = path.join(frontendDir, `${network}.json`)

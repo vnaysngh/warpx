@@ -48,28 +48,18 @@ async function main() {
     return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
   };
 
-  const existingDeploymentPath = resolveExistingFile(deploymentsDir);
-
-  let existingDeployments: any = { tokens: [] };
-  if (existingDeploymentPath) {
-    try {
-      existingDeployments = JSON.parse(
-        fs.readFileSync(existingDeploymentPath, "utf-8")
-      );
-      console.log(`Loaded existing deployments from ${existingDeploymentPath}`);
-    } catch (error) {
-      console.warn("Could not load existing deployments, starting fresh");
-    }
-  }
-
-  // Also try to load from apps/web frontend directory
+  // Prefer loading from frontend directory as it has complete token info (logos, etc.)
   const frontendDir = path.resolve(
     __dirname,
     "..",
     "apps/web/public/deployments"
   );
   const existingFrontendPath = resolveExistingFile(frontendDir);
-  if (existingFrontendPath && existingDeployments.tokens.length === 0) {
+
+  let existingDeployments: any = { tokens: [] };
+
+  // Try frontend first (has more complete data with logos, isNative, etc.)
+  if (existingFrontendPath) {
     try {
       existingDeployments = JSON.parse(
         fs.readFileSync(existingFrontendPath, "utf-8")
@@ -77,6 +67,21 @@ async function main() {
       console.log(`Loaded existing deployments from ${existingFrontendPath}`);
     } catch (error) {
       console.warn("Could not load frontend deployments");
+    }
+  }
+
+  // Fallback to root deployments if frontend has no tokens
+  if (existingDeployments.tokens.length === 0) {
+    const existingDeploymentPath = resolveExistingFile(deploymentsDir);
+    if (existingDeploymentPath) {
+      try {
+        existingDeployments = JSON.parse(
+          fs.readFileSync(existingDeploymentPath, "utf-8")
+        );
+        console.log(`Loaded existing deployments from ${existingDeploymentPath}`);
+      } catch (error) {
+        console.warn("Could not load existing deployments, starting fresh");
+      }
     }
   }
 
@@ -106,36 +111,34 @@ async function main() {
     );
   });
 
-  // Merge with existing tokens
-  const mergedTokens = [
-    ...(Array.isArray(existingDeployments.tokens)
-      ? existingDeployments.tokens
-      : []),
-    ...deployments
-  ];
-  const allTokens: {
-    name: string;
-    symbol: string;
-    address: string;
-    decimals: number;
-  }[] = [];
-  const seen = new Set<string>();
+  // Replace token addresses in existing tokens by matching symbol
+  const existingTokens = Array.isArray(existingDeployments.tokens)
+    ? existingDeployments.tokens
+    : [];
 
-  for (const token of mergedTokens) {
-    if (!token?.address) continue;
-    const key = String(token.address).toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    allTokens.push({
-      name: token.name,
-      symbol: token.symbol,
-      address: token.address,
-      decimals: Number(token.decimals ?? 18)
-    });
-  }
+  // Create a map of newly deployed tokens by symbol
+  const deploymentMap = new Map(
+    deployments.map((t) => [t.symbol, t])
+  );
 
-  console.log("\nAll tokens (existing + new):");
-  allTokens.forEach((t) => {
+  // Update addresses for matching tokens
+  const updatedTokens = existingTokens.map((existingToken: any) => {
+    const newDeployment = deploymentMap.get(existingToken.symbol);
+    if (newDeployment) {
+      console.log(
+        `\nUpdating ${existingToken.symbol}: ${existingToken.address} → ${newDeployment.address}`
+      );
+      // Preserve all existing fields, only update the address
+      return {
+        ...existingToken,
+        address: newDeployment.address
+      };
+    }
+    return existingToken;
+  });
+
+  console.log("\nAll tokens after update:");
+  updatedTokens.forEach((t: any) => {
     console.log(
       `- ${t.symbol} (${t.name}) [decimals: ${t.decimals}] → ${t.address}`
     );
@@ -147,7 +150,7 @@ async function main() {
 
   const manifest = {
     network,
-    tokens: allTokens
+    tokens: updatedTokens
   };
 
   // Save to deployments directory using the canonical network filename

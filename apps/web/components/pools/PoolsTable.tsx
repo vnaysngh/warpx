@@ -1,6 +1,11 @@
 "use client";
 
 import type { TokenDescriptor } from "@/lib/trade/types";
+import { FEES_DENOMINATOR, FEES_NUMERATOR } from "@/lib/trade/constants";
+
+const DEFAULT_FEE_PERCENT_DISPLAY = (
+  ((Number(FEES_DENOMINATOR - FEES_NUMERATOR) / Number(FEES_DENOMINATOR)) * 100)
+).toFixed(2);
 import styles from "./PoolsTable.module.css";
 
 export type PoolsTableRow = {
@@ -158,7 +163,7 @@ export function PoolsTable({
                   v2
                 </td>
                 <td className={styles.feeCell} data-label="Fee tier">
-                  0.20%
+                  {DEFAULT_FEE_PERCENT_DISPLAY}%
                 </td>
                 <td className={styles.tvlCell} data-label="TVL in ETH">
                   {pool.totalLiquidityFormatted} ETH

@@ -1,11 +1,11 @@
 import { ethers } from 'ethers';
 
-// WarpX getAmountOut formula (0.2% fee)
+// WarpX getAmountOut formula (0.3% fee)
 function getAmountOut(amountIn, reserveIn, reserveOut) {
   if (amountIn <= 0n) throw new Error('INSUFFICIENT_INPUT_AMOUNT');
   if (reserveIn <= 0n || reserveOut <= 0n) throw new Error('INSUFFICIENT_LIQUIDITY');
 
-  const amountInWithFee = amountIn * 998n; // 0.2% fee (not 0.3%)
+  const amountInWithFee = amountIn * 997n; // apply 0.3% fee
   const numerator = amountInWithFee * reserveOut;
   const denominator = (reserveIn * 1000n) + amountInWithFee;
   const amountOut = numerator / denominator;
