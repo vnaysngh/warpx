@@ -31,16 +31,16 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
   {
     symbol: "ETH",
     name: "Ethereum",
-    address: "0x6DB2F1a062bBc4cbb78261B5f61EAd74D3dB2854",
+    address: "0xBc4b9cA1986b00fF29FFB7B34C40e5C75E1914DB",
     decimals: 18,
     isNative: true,
-    wrappedAddress: "0x6DB2F1a062bBc4cbb78261B5f61EAd74D3dB2854",
+    wrappedAddress: "0xBc4b9cA1986b00fF29FFB7B34C40e5C75E1914DB",
     logo: "/logos/eth.jpeg"
   },
   {
     symbol: "WARPX",
     name: "WarpX",
-    address: "0x049b3043961836C75A9FB74baB4bA2C6915CA7d1",
+    address: "0xA78FAa476Ee5aC877ddF77F7969e3410965B8376",
     decimals: 18,
     logo: "/logos/warpx.jpeg"
   },
