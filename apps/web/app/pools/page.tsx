@@ -322,7 +322,7 @@ export default function PoolsPage() {
       />
 
       <section className={styles.pageShell}>
-        <div className={styles.pageHeader}>
+        {/*  <div className={styles.pageHeader}>
           <div className={styles.headerTop}>
             <h1 className={styles.title}>Pools</h1>
           </div>
@@ -330,7 +330,7 @@ export default function PoolsPage() {
             Provide liquidity to trading pairs and earn fees from every swap.
           </p>
         </div>
-
+ */}
         <div className={styles.toolbarRow}>
           {hasMounted && isWalletConnected ? (
             <div

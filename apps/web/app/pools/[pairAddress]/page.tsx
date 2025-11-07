@@ -359,7 +359,6 @@ export default function PoolLiquidityPage() {
       <section className={styles.pageShell}>
         <div className={styles.pageHeader}>
           <div className={styles.headerTop}>
-            <h1 className={styles.title}>Pools</h1>
             <div className={styles.headerActions}>
               <button
                 type="button"
@@ -370,9 +369,6 @@ export default function PoolLiquidityPage() {
               </button>
             </div>
           </div>
-          <p className={styles.description}>
-            Provide liquidity to trading pairs and earn fees from every swap.
-          </p>
         </div>
 
         <div className={styles.detailSection}>

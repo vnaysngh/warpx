@@ -66,14 +66,18 @@ export default function CreatePoolPage() {
   });
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
-  const walletAccount = isWalletConnected ? (address?.toLowerCase() ?? null) : null;
+  const walletAccount = isWalletConnected
+    ? (address?.toLowerCase() ?? null)
+    : null;
 
   const [hasMounted, setHasMounted] = useState(false);
   const [pairTokenAddresses, setPairTokenAddresses] = useState<PairOrder>({
     token0: null,
     token1: null
   });
-  const [existingPairAddress, setExistingPairAddress] = useState<string | null>(null);
+  const [existingPairAddress, setExistingPairAddress] = useState<string | null>(
+    null
+  );
   const [pairCheckPending, setPairCheckPending] = useState(false);
   const [pairCheckError, setPairCheckError] = useState<string | null>(null);
 
@@ -142,7 +146,11 @@ export default function CreatePoolPage() {
         ? [addressALower, addressBLower]
         : [addressBLower, addressALower];
     setPairTokenAddresses({ token0, token1 });
-  }, [duplicateTokenSelection, liquidityTokenA?.address, liquidityTokenB?.address]);
+  }, [
+    duplicateTokenSelection,
+    liquidityTokenA?.address,
+    liquidityTokenB?.address
+  ]);
 
   useEffect(() => {
     if (
@@ -176,7 +184,9 @@ export default function CreatePoolPage() {
 
         // Check if pair exists (not zero address)
         const zeroAddr = ZeroAddress.toLowerCase();
-        const isZeroAddress = normalized === zeroAddr || normalized === "0x0000000000000000000000000000000000000000";
+        const isZeroAddress =
+          normalized === zeroAddr ||
+          normalized === "0x0000000000000000000000000000000000000000";
 
         if (normalized && !isZeroAddress) {
           setExistingPairAddress(normalized);
@@ -186,7 +196,9 @@ export default function CreatePoolPage() {
       } catch (error) {
         console.error("[liquidity] pair lookup failed", error);
         if (!cancelled) {
-          setPairCheckError("Unable to verify existing pool. You can still attempt to create one.");
+          setPairCheckError(
+            "Unable to verify existing pool. You can still attempt to create one."
+          );
           setExistingPairAddress(null);
         }
       } finally {
@@ -268,7 +280,12 @@ export default function CreatePoolPage() {
       return pairCheckError;
     }
     return null;
-  }, [pairCheckPending, duplicateTokenSelection, existingPairAddress, pairCheckError]);
+  }, [
+    pairCheckPending,
+    duplicateTokenSelection,
+    existingPairAddress,
+    pairCheckError
+  ]);
 
   const pairAddressForContainer = existingPairAddress || "";
 
@@ -287,7 +304,6 @@ export default function CreatePoolPage() {
       <section className={styles.pageShell}>
         <div className={styles.pageHeader}>
           <div className={styles.headerTop}>
-            <h1 className={styles.title}>Create Pool</h1>
             <div className={styles.headerActions}>
               <button
                 type="button"
@@ -298,14 +314,9 @@ export default function CreatePoolPage() {
               </button>
             </div>
           </div>
-          <p className={styles.description}>
-            Choose any two tokens, seed initial liquidity, and let the router spin up a new WarpX V2 pool.
-          </p>
         </div>
 
-        {inlineNotice && (
-          <p className={styles.inlineNotice}>{inlineNotice}</p>
-        )}
+        {inlineNotice && <p className={styles.inlineNotice}>{inlineNotice}</p>}
 
         <div className={styles.detailSection}>
           <LiquidityContainer
