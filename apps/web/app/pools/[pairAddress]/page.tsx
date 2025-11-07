@@ -9,6 +9,7 @@ import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
+import { CopyIcon } from "@/components/icons/CopyIcon";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
@@ -50,6 +51,12 @@ const normalizeParam = (
   if (!value) return null;
   if (Array.isArray(value)) return value[0]?.toLowerCase() ?? null;
   return value.toLowerCase();
+};
+
+const formatAddress = (address?: string | null) => {
+  if (!address) return null;
+  if (address.length <= 10) return address;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 };
 
 export default function PoolLiquidityPage() {
@@ -348,6 +355,55 @@ export default function PoolLiquidityPage() {
     appKit.open();
   }, []);
 
+  const handleCopyValue = useCallback(
+    async (value?: string | null, label = "Address") => {
+      if (!value || typeof navigator === "undefined") return;
+      try {
+        await navigator.clipboard.writeText(value);
+        showSuccess(`${label} copied`);
+      } catch (error) {
+        console.warn("[clipboard] failed to copy value", error);
+        showError("Failed to copy to clipboard.");
+      }
+    },
+    [showError, showSuccess]
+  );
+
+  const breadcrumbPairLabel = useMemo(() => {
+    if (liquidityTokenA && liquidityTokenB) {
+      const [displayA, displayB] = orderTokensForDisplay(
+        liquidityTokenA,
+        liquidityTokenB
+      );
+      return `${displayA.symbol}/${displayB.symbol}`;
+    }
+
+    const token0 =
+      pairTokenAddresses.token0 &&
+      tokenListMap.get(pairTokenAddresses.token0.toLowerCase());
+    const token1 =
+      pairTokenAddresses.token1 &&
+      tokenListMap.get(pairTokenAddresses.token1.toLowerCase());
+
+    if (token0 && token1) {
+      const [displayA, displayB] = orderTokensForDisplay(token0, token1);
+      return `${displayA.symbol}/${displayB.symbol}`;
+    }
+
+    return null;
+  }, [
+    liquidityTokenA,
+    liquidityTokenB,
+    pairTokenAddresses.token0,
+    pairTokenAddresses.token1,
+    tokenListMap
+  ]);
+
+  const breadcrumbAddress = useMemo(
+    () => formatAddress(pairAddress),
+    [pairAddress]
+  );
+
   return (
     <>
       <NetworkBanner
@@ -359,15 +415,29 @@ export default function PoolLiquidityPage() {
       <section className={styles.pageShell}>
         <div className={styles.pageHeader}>
           <div className={styles.headerTop}>
-            <div className={styles.headerActions}>
+            <nav className={styles.breadcrumb} aria-label="Breadcrumb">
               <button
                 type="button"
-                className={`${styles.refreshButton} ${styles.backButton}`}
+                className={styles.breadcrumbLink}
                 onClick={handleBackToPools}
               >
-                ← Back
+                Pools
               </button>
-            </div>
+              <span className={styles.breadcrumbDivider}>›</span>
+              <span className={styles.breadcrumbPair}>
+                {breadcrumbPairLabel ?? "Pool"}
+              </span>
+              {breadcrumbAddress ? (
+                <button
+                  type="button"
+                  className={`${styles.breadcrumbAddress} ${styles.copyTrigger}`}
+                  onClick={() => handleCopyValue(pairAddress, "Pool address")}
+                >
+                  <span>{breadcrumbAddress}</span>
+                  <CopyIcon className={styles.copyIcon} />
+                </button>
+              ) : null}
+            </nav>
           </div>
         </div>
 

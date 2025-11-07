@@ -1190,6 +1190,46 @@
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.45);
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.copyTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.copyTrigger:focus-visible {
+  outline: 2px solid rgba(10, 255, 157, 0.35);
+  outline-offset: 3px;
+}
+
+.copyIcon {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  color: rgba(255, 255, 255, 0.75);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateX(-2px);
+}
+
+.copyIconSuccess {
+  color: rgba(10, 255, 157, 0.9);
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.copyTrigger:hover .copyIcon,
+.copyTrigger:focus-visible .copyIcon {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .dialogEmpty {

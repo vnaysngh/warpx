@@ -110,6 +110,84 @@
   flex-wrap: wrap;
 }
 
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.breadcrumbLink {
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.breadcrumbLink:hover {
+  color: rgba(10, 255, 157, 0.85);
+}
+
+.breadcrumbDivider {
+  opacity: 0.35;
+}
+
+.breadcrumbPair {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.breadcrumbAddress {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+}
+
+.copyTrigger {
+  border: none;
+  background: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  color: inherit;
+  transition: color 0.2s ease;
+}
+
+.copyTrigger:focus-visible {
+  outline: 2px solid rgba(10, 255, 157, 0.35);
+  outline-offset: 3px;
+}
+
+.copyIcon {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  color: rgba(255, 255, 255, 0.75);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateX(-2px);
+}
+
+.copyTrigger:hover .copyIcon,
+.copyTrigger:focus-visible .copyIcon {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.breadcrumbAddress.copyTrigger:hover,
+.breadcrumbAddress.copyTrigger:focus-visible {
+  color: rgba(10, 255, 157, 0.85);
+}
+
 .toolbarRow {
   display: flex;
   align-items: center;
@@ -125,11 +203,6 @@
 
 .createButton {
   align-self: flex-start;
-}
-
-.backButton {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 
 .primaryButton {
@@ -256,6 +329,12 @@
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
+  }
+
+  .breadcrumb {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    row-gap: 0.25rem;
   }
 
   .toolbarSegmented {

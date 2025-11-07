@@ -1,6 +1,8 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import { shortAddress } from "@/lib/utils/format";
 import type { TokenDescriptor, TokenDialogSlot } from "@/lib/trade/types";
 import styles from "@/app/page.module.css";
+import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 
 type TokenDialogProps = {
   open: boolean;
@@ -114,9 +116,10 @@ export function TokenDialog({
                   </div>
                   {/* <span className={styles.dialogAddress}>{token.name}</span> */}
                 </div>
-                <span className={styles.dialogAddress}>
-                  {shortAddress(token.address)}
-                </span>
+                <CopyAddressButton
+                  value={token.address}
+                  displayValue={shortAddress(token.address)}
+                />
               </button>
             ))
           )}
@@ -143,13 +146,82 @@ export function TokenDialog({
                       : "Unknown token"}
                 </span>
               </div>
-              <span className={styles.dialogAddress}>
-                {shortAddress(tokenSearch.trim())}
-              </span>
+              <CopyAddressButton
+                value={tokenSearch.trim()}
+                displayValue={shortAddress(tokenSearch.trim())}
+              />
             </button>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function CopyAddressButton({
+  value,
+  displayValue
+}: {
+  value: string;
+  displayValue: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimer.current) {
+        clearTimeout(resetTimer.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    if (!value || typeof navigator === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      if (resetTimer.current) {
+        clearTimeout(resetTimer.current);
+      }
+      resetTimer.current = setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.warn("[clipboard] failed to copy value", error);
+    }
+  }, [value]);
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      event.stopPropagation();
+      handleCopy();
+    },
+    [handleCopy]
+  );
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLSpanElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleCopy();
+      }
+    },
+    [handleCopy]
+  );
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className={`${styles.dialogAddress} ${styles.copyTrigger}`}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+    >
+      <span>{displayValue}</span>
+      {copied ? (
+        <CopySuccessIcon className={`${styles.copyIcon} ${styles.copyIconSuccess}`} />
+      ) : (
+        <CopyIcon className={styles.copyIcon} />
+      )}
+    </span>
   );
 }
