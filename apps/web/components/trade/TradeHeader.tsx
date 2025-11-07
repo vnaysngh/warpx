@@ -178,6 +178,15 @@ export function TradeHeader({
                     </a>
                   )}
 
+                  <a
+                    href="https://x.com/warpexchange"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.walletDropdownItem}
+                  >
+                    Follow on X
+                  </a>
+
                   <div className={styles.walletDropdownDivider} />
 
                   <button
@@ -294,6 +303,15 @@ export function TradeHeader({
                       View on Explorer
                     </a>
                   )}
+
+                  <a
+                    href="https://x.com/warpexchange"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.mobileWalletActionLink}
+                  >
+                    Follow on X
+                  </a>
 
                   <button
                     type="button"
