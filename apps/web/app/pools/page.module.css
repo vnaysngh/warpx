@@ -118,6 +118,20 @@
   flex-wrap: wrap;
 }
 
+.toolbarSegmented {
+  display: inline-flex;
+  align-self: flex-start;
+}
+
+.createButton {
+  align-self: flex-start;
+}
+
+.backButton {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .primaryButton {
   position: relative;
   overflow: hidden;
@@ -213,17 +227,18 @@
 
 @media (max-width: 900px) {
   .headerTop {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
 
   .headerActions {
-    width: 100%;
-    justify-content: flex-start;
+    width: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .refreshButton {
-    width: 100%;
+    width: auto;
     text-align: center;
   }
 }
@@ -237,20 +252,25 @@
     font-size: 0.85rem;
   }
 
-  .headerActions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.6rem;
-  }
-
   .toolbarRow {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .toolbarSegmented {
+    align-self: center;
   }
 
   .primaryButton {
     width: 100%;
     text-align: center;
+  }
+
+  .createButton {
+    width: auto;
+    min-width: 180px;
+    align-self: center;
   }
 
   .timestamp {

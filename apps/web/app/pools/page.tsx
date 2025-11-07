@@ -31,7 +31,9 @@ export default function PoolsPage() {
   const queryClient = useQueryClient();
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
-  const walletAccount = isWalletConnected ? (address?.toLowerCase() ?? null) : null;
+  const walletAccount = isWalletConnected
+    ? (address?.toLowerCase() ?? null)
+    : null;
 
   const { toasts, removeToast, showError, showSuccess } = useToasts();
   const { deployment } = useDeploymentManifest();
@@ -76,7 +78,7 @@ export default function PoolsPage() {
         const manifestPaths = [
           `/deployments/${network}.tokens.json`,
           `/deployments/${network.toLowerCase()}.tokens.json`,
-          `/deployments/${network}.json`,
+          `/deployments/${network}.json`
         ];
 
         let manifest: TokenManifest | null = null;
@@ -99,15 +101,17 @@ export default function PoolsPage() {
 
         if (cancelled || !manifest?.tokens?.length) return;
 
-        const manifestTokens: TokenDescriptor[] = manifest.tokens.map((token) => ({
-          symbol: token.symbol,
-          name: token.name,
-          address: token.address,
-          decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
-          isNative: Boolean(token.isNative),
-          wrappedAddress: token.isNative ? deployment?.wmegaeth : undefined,
-          logo: token.logo,
-        }));
+        const manifestTokens: TokenDescriptor[] = manifest.tokens.map(
+          (token) => ({
+            symbol: token.symbol,
+            name: token.name,
+            address: token.address,
+            decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
+            isNative: Boolean(token.isNative),
+            wrappedAddress: token.isNative ? deployment?.wmegaeth : undefined,
+            logo: token.logo
+          })
+        );
 
         setTokenList((prev) => {
           const merged = new Map<string, TokenDescriptor>();
@@ -117,7 +121,7 @@ export default function PoolsPage() {
             if (!merged.has(key)) {
               merged.set(key, {
                 ...token,
-                decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS,
+                decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
               });
             }
           };
@@ -141,12 +145,12 @@ export default function PoolsPage() {
     data: poolsData,
     isLoading: poolsLoading,
     error: poolsQueryError,
-    refetch: refetchPools,
+    refetch: refetchPools
   } = usePools({
     tokenList,
     factoryAddress: deployment?.factory ?? null,
     wrappedNativeAddress,
-    provider: readProvider,
+    provider: readProvider
   });
 
   // Fetch user balances in background (doesn't block pool list)
@@ -158,7 +162,7 @@ export default function PoolsPage() {
   const { data: balancesData } = usePoolBalances({
     pairAddresses,
     account: walletAccount,
-    provider: readProvider,
+    provider: readProvider
   });
 
   // Merge pools with balance data
@@ -212,7 +216,12 @@ export default function PoolsPage() {
     (pool: PoolsTableRow) => {
       // Cache pool data for instant details page load
       // Use contractToken0Address and contractToken1Address for correct reserve mapping
-      if (pool.reserves && pool.totalSupply && pool.contractToken0Address && pool.contractToken1Address) {
+      if (
+        pool.reserves &&
+        pool.totalSupply &&
+        pool.contractToken0Address &&
+        pool.contractToken1Address
+      ) {
         queryClient.setQueryData(
           ["pool-details", pool.pairAddress.toLowerCase(), walletAccount],
           {
@@ -324,7 +333,9 @@ export default function PoolsPage() {
 
         <div className={styles.toolbarRow}>
           {hasMounted && isWalletConnected ? (
-            <div className={pageStyles.segmented}>
+            <div
+              className={`${pageStyles.segmented} ${styles.toolbarSegmented}`}
+            >
               <button
                 type="button"
                 className={`${pageStyles.segment} ${
@@ -349,7 +360,7 @@ export default function PoolsPage() {
           )}
           <button
             type="button"
-            className={styles.primaryButton}
+            className={`${styles.primaryButton} ${styles.createButton}`}
             onClick={handleCreatePool}
           >
             Create

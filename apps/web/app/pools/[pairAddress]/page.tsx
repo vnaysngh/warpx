@@ -363,7 +363,7 @@ export default function PoolLiquidityPage() {
             <div className={styles.headerActions}>
               <button
                 type="button"
-                className={styles.refreshButton}
+                className={`${styles.refreshButton} ${styles.backButton}`}
                 onClick={handleBackToPools}
               >
                 ← Back
