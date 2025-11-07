@@ -42,7 +42,8 @@ const normalizeCatalogToken = (
   const upper = token.symbol.toUpperCase();
 
   if (upper === nativeSymbol) {
-    const wrappedAddress = wrappedNative ?? token.wrappedAddress ?? token.address;
+    const wrappedAddress =
+      wrappedNative ?? token.wrappedAddress ?? token.address;
     if (!wrappedAddress || !isAddress(wrappedAddress)) {
       return null;
     }
@@ -79,8 +80,7 @@ const mapNativeToken = (
     };
   }
 
-  const wrappedAddress =
-    wrappedNative ?? token.wrappedAddress ?? token.address;
+  const wrappedAddress = wrappedNative ?? token.wrappedAddress ?? token.address;
 
   if (!wrappedAddress || !isAddress(wrappedAddress)) {
     return null;
@@ -106,7 +106,10 @@ const mapTokenEntry = (
   const upper = symbol.toUpperCase();
 
   if (upper === nativeSymbol || entry.isNative) {
-    const wrappedAddress = wrappedNative ?? ("wrappedAddress" in entry ? entry.wrappedAddress : undefined) ?? entry.address;
+    const wrappedAddress =
+      wrappedNative ??
+      ("wrappedAddress" in entry ? entry.wrappedAddress : undefined) ??
+      entry.address;
     if (!wrappedAddress || !isAddress(wrappedAddress)) {
       return null;
     }
@@ -143,7 +146,8 @@ export function useTokenManager(
   const deploymentNetwork = deployment?.network;
   const wrappedNativeAddress = deployment?.wmegaeth;
   const nativeSymbolValue =
-    (deployment as { nativeSymbol?: string } | null | undefined)?.nativeSymbol ??
+    (deployment as { nativeSymbol?: string } | null | undefined)
+      ?.nativeSymbol ??
     process.env.NEXT_PUBLIC_NATIVE_SYMBOL ??
     NATIVE_SYMBOL_FALLBACK;
   const nativeSymbol = nativeSymbolValue.toUpperCase();
@@ -191,19 +195,18 @@ export function useTokenManager(
     hasInitialLiquidityB
   );
 
-  const [tokenList, setTokenList] = useState<TokenDescriptor[]>(initialTokenList);
+  const [tokenList, setTokenList] =
+    useState<TokenDescriptor[]>(initialTokenList);
   const [selectedIn, setSelectedIn] = useState<TokenDescriptor | null>(
     initialSwapInToken
   );
   const [selectedOut, setSelectedOut] = useState<TokenDescriptor | null>(
     initialSwapOutToken
   );
-  const [liquidityTokenA, setLiquidityTokenA] = useState<TokenDescriptor | null>(
-    initialLiquidityTokenA
-  );
-  const [liquidityTokenB, setLiquidityTokenB] = useState<TokenDescriptor | null>(
-    initialLiquidityTokenB
-  );
+  const [liquidityTokenA, setLiquidityTokenA] =
+    useState<TokenDescriptor | null>(initialLiquidityTokenA);
+  const [liquidityTokenB, setLiquidityTokenB] =
+    useState<TokenDescriptor | null>(initialLiquidityTokenB);
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [tokenDialogSide, setTokenDialogSide] =
     useState<TokenDialogSlot>("swapIn");
@@ -231,10 +234,11 @@ export function useTokenManager(
 
   useEffect(() => {
     // Sync token list when native symbol or wrapped address changes
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTokenList((prev) => {
       const remapped = prev
-        .map((token) => mapNativeToken(token, nativeSymbol, wrappedNativeAddress))
+        .map((token) =>
+          mapNativeToken(token, nativeSymbol, wrappedNativeAddress)
+        )
         .filter((token): token is TokenDescriptor => Boolean(token));
       remapped.sort((a, b) => a.symbol.localeCompare(b.symbol));
       return remapped;
@@ -262,7 +266,11 @@ export function useTokenManager(
               break;
             }
           } catch (innerError) {
-            console.warn("[tokens] manifest fetch failed", manifestPath, innerError);
+            console.warn(
+              "[tokens] manifest fetch failed",
+              manifestPath,
+              innerError
+            );
           }
         }
 
@@ -272,7 +280,11 @@ export function useTokenManager(
           const merged = new Map<string, TokenDescriptor>();
 
           const addToken = (entry: TokenDescriptor | TokenManifestEntry) => {
-            const descriptor = mapTokenEntry(entry, nativeSymbol, wrappedNativeAddress);
+            const descriptor = mapTokenEntry(
+              entry,
+              nativeSymbol,
+              wrappedNativeAddress
+            );
             if (!descriptor) return;
             const key = descriptor.address.toLowerCase();
             if (!merged.has(key)) {
@@ -387,7 +399,8 @@ export function useTokenManager(
 
     // Find tokens in the updated list that match the last set addresses
     const nextSelectedIn = findByAddress(lastAddrs.selectedIn) ?? firstToken;
-    const nextSelectedOut = findByAddress(lastAddrs.selectedOut) ?? secondToken ?? nextSelectedIn;
+    const nextSelectedOut =
+      findByAddress(lastAddrs.selectedOut) ?? secondToken ?? nextSelectedIn;
     const nextTokenA = findByAddress(lastAddrs.liquidityA) ?? null;
     const nextTokenB = findByAddress(lastAddrs.liquidityB) ?? null;
 
@@ -399,7 +412,6 @@ export function useTokenManager(
 
     // Sync selected tokens when token list changes - intentional state updates
     if (lastAddrs.selectedIn !== nextInAddr) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIn(nextSelectedIn);
       lastSetAddresses.current.selectedIn = nextInAddr;
     }
@@ -418,103 +430,121 @@ export function useTokenManager(
     }
   }, [tokenList]);
 
-  const openTokenDialog = (slot: TokenDialogSlot) => {
+  const openTokenDialog = useCallback((slot: TokenDialogSlot) => {
     setTokenDialogSide(slot);
     setTokenSearch("");
     setTokenDialogOpen(true);
-  };
+  }, []);
 
-  const closeTokenDialog = () => {
+  const closeTokenDialog = useCallback(() => {
     setTokenDialogOpen(false);
     setTokenSearch("");
-  };
+  }, []);
 
-  const commitSelection = (token: TokenDescriptor) => {
-    if (!token?.address) {
-      return;
-    }
+  const commitSelection = useCallback(
+    (token: TokenDescriptor) => {
+      if (!token?.address) {
+        return;
+      }
 
-    const tokenAddr = token.address.toLowerCase();
+      const tokenAddr = token.address.toLowerCase();
 
-    switch (tokenDialogSide) {
-      case "swapIn":
-        setSelectedIn(token);
-        lastSetAddresses.current.selectedIn = tokenAddr;
-        if (
-          token.address &&
-          token.address.toLowerCase() === selectedOut?.address?.toLowerCase()
-        ) {
-          setSelectedOut(null);
-          lastSetAddresses.current.selectedOut = null;
-        }
-        break;
-      case "swapOut":
-        setSelectedOut(token);
-        lastSetAddresses.current.selectedOut = tokenAddr;
-        if (
-          token.address &&
-          token.address.toLowerCase() === selectedIn?.address?.toLowerCase()
-        ) {
-          setSelectedOut(null);
-          lastSetAddresses.current.selectedOut = null;
-        }
-        break;
-      case "liquidityA":
-        setLiquidityTokenA(token);
-        lastSetAddresses.current.liquidityA = tokenAddr;
-        break;
-      case "liquidityB":
-        setLiquidityTokenB(token);
-        lastSetAddresses.current.liquidityB = tokenAddr;
-        break;
-    }
-    closeTokenDialog();
-  };
+      switch (tokenDialogSide) {
+        case "swapIn":
+          setSelectedIn(token);
+          lastSetAddresses.current.selectedIn = tokenAddr;
+          if (
+            token.address &&
+            token.address.toLowerCase() === selectedOut?.address?.toLowerCase()
+          ) {
+            setSelectedOut(null);
+            lastSetAddresses.current.selectedOut = null;
+          }
+          break;
+        case "swapOut":
+          setSelectedOut(token);
+          lastSetAddresses.current.selectedOut = tokenAddr;
+          if (
+            token.address &&
+            token.address.toLowerCase() === selectedIn?.address?.toLowerCase()
+          ) {
+            setSelectedOut(null);
+            lastSetAddresses.current.selectedOut = null;
+          }
+          break;
+        case "liquidityA":
+          setLiquidityTokenA(token);
+          lastSetAddresses.current.liquidityA = tokenAddr;
+          break;
+        case "liquidityB":
+          setLiquidityTokenB(token);
+          lastSetAddresses.current.liquidityB = tokenAddr;
+          break;
+      }
+      closeTokenDialog();
+    },
+    [
+      closeTokenDialog,
+      selectedIn,
+      selectedOut,
+      setLiquidityTokenA,
+      setLiquidityTokenB,
+      setSelectedIn,
+      setSelectedOut,
+      tokenDialogSide
+    ]
+  );
 
   const handleSelectToken = (token: TokenDescriptor) => {
     commitSelection(token);
   };
 
-  const handleSelectCustomToken = useCallback((address: string) => {
-    const sanitized = address.trim();
-    if (!isValidAddress(sanitized)) {
-      console.warn("[tokenManager] Invalid address:", address);
-      return;
-    }
+  const handleSelectCustomToken = useCallback(
+    (address: string) => {
+      const sanitized = address.trim();
+      if (!isValidAddress(sanitized)) {
+        console.warn("[tokenManager] Invalid address:", address);
+        return;
+      }
 
-    const normalizedAddress = sanitized.toLowerCase();
+      const normalizedAddress = sanitized.toLowerCase();
 
-    // Check if token already exists in list
-    const existingToken = tokenList.find(
-      (token) => token.address.toLowerCase() === normalizedAddress
-    );
+      // Check if token already exists in list
+      const existingToken = tokenList.find(
+        (token) => token.address.toLowerCase() === normalizedAddress
+      );
 
-    if (existingToken) {
-      commitSelection(existingToken);
-      return;
-    }
+      if (existingToken) {
+        commitSelection(existingToken);
+        return;
+      }
 
-    // Use prefetched details
-    if (!prefetchedTokenDetails) {
-      console.error("[tokenManager] No token details available for:", sanitized);
-      return;
-    }
+      // Use prefetched details
+      if (!prefetchedTokenDetails) {
+        console.error(
+          "[tokenManager] No token details available for:",
+          sanitized
+        );
+        return;
+      }
 
-    // Create temporary token (NOT added to token list)
-    const temporaryToken: TokenDescriptor = {
-      symbol: prefetchedTokenDetails.symbol,
-      name: prefetchedTokenDetails.name,
-      address: sanitized,
-      decimals: prefetchedTokenDetails.decimals,
-      isNative: false
-    };
+      // Create temporary token (NOT added to token list)
+      const temporaryToken: TokenDescriptor = {
+        symbol: prefetchedTokenDetails.symbol,
+        name: prefetchedTokenDetails.name,
+        address: sanitized,
+        decimals: prefetchedTokenDetails.decimals,
+        isNative: false
+      };
 
-    // Select the temporary token without adding to token list
-    commitSelection(temporaryToken);
+      // Select the temporary token without adding to token list
+      commitSelection(temporaryToken);
 
-    // Clear prefetched details
-    setPrefetchedTokenDetails(null);
-  }, [tokenList, prefetchedTokenDetails]);
+      // Clear prefetched details
+      setPrefetchedTokenDetails(null);
+    },
+    [tokenList, prefetchedTokenDetails, commitSelection]
+  );
 
   const normalizedSearch = tokenSearch.trim().toLowerCase();
 
@@ -527,7 +557,9 @@ export function useTokenManager(
       const nameMatch = token.name.toLowerCase().includes(normalizedSearch);
       // Support both exact and partial address matches
       const addressLower = token.address.toLowerCase();
-      const addressMatch = addressLower === normalizedSearch || addressLower.includes(normalizedSearch);
+      const addressMatch =
+        addressLower === normalizedSearch ||
+        addressLower.includes(normalizedSearch);
       return symbolMatch || nameMatch || addressMatch;
     });
   }, [tokenList, normalizedSearch]);
@@ -572,8 +604,10 @@ export function useTokenManager(
       }
       const nextIn = selectedOut;
       setSelectedOut(prevIn);
-      lastSetAddresses.current.selectedIn = nextIn?.address?.toLowerCase() ?? null;
-      lastSetAddresses.current.selectedOut = prevIn?.address?.toLowerCase() ?? null;
+      lastSetAddresses.current.selectedIn =
+        nextIn?.address?.toLowerCase() ?? null;
+      lastSetAddresses.current.selectedOut =
+        prevIn?.address?.toLowerCase() ?? null;
       return nextIn;
     });
   }, [selectedOut]);
@@ -586,18 +620,27 @@ export function useTokenManager(
 
   const wrappedSetSelectedOut = useCallback((token: TokenDescriptor | null) => {
     setSelectedOut(token);
-    lastSetAddresses.current.selectedOut = token?.address?.toLowerCase() ?? null;
+    lastSetAddresses.current.selectedOut =
+      token?.address?.toLowerCase() ?? null;
   }, []);
 
-  const wrappedSetLiquidityTokenA = useCallback((token: TokenDescriptor | null) => {
-    setLiquidityTokenA(token);
-    lastSetAddresses.current.liquidityA = token?.address?.toLowerCase() ?? null;
-  }, []);
+  const wrappedSetLiquidityTokenA = useCallback(
+    (token: TokenDescriptor | null) => {
+      setLiquidityTokenA(token);
+      lastSetAddresses.current.liquidityA =
+        token?.address?.toLowerCase() ?? null;
+    },
+    []
+  );
 
-  const wrappedSetLiquidityTokenB = useCallback((token: TokenDescriptor | null) => {
-    setLiquidityTokenB(token);
-    lastSetAddresses.current.liquidityB = token?.address?.toLowerCase() ?? null;
-  }, []);
+  const wrappedSetLiquidityTokenB = useCallback(
+    (token: TokenDescriptor | null) => {
+      setLiquidityTokenB(token);
+      lastSetAddresses.current.liquidityB =
+        token?.address?.toLowerCase() ?? null;
+    },
+    []
+  );
 
   return {
     tokenList,

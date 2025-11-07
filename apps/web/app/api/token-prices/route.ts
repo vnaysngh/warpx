@@ -54,6 +54,9 @@ export async function GET(request: Request) {
           );
 
           if (!response.ok) {
+            console.warn(
+              `[token-prices] Failed to fetch ${address}: ${response.status}`
+            );
             return { address, priceUsd: null };
           }
 
@@ -74,6 +77,7 @@ export async function GET(request: Request) {
             priceUsd: priceValue
           };
         } catch (error) {
+          console.error(`[token-prices] Error fetching ${address}:`, error);
           return { address, priceUsd: null };
         }
       })
@@ -88,6 +92,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ prices });
   } catch (error) {
+    console.error("[token-prices] Failed to fetch token prices:", error);
     return NextResponse.json(
       { error: "Failed to fetch token prices" },
       { status: 500 }

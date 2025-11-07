@@ -1,13 +1,6 @@
-import { useMemo } from "react";
 import { formatUnits, parseUnits } from "ethers";
-import type {
-  LiquidityFormState,
-  TokenDescriptor
-} from "@/lib/trade/types";
-import {
-  formatNumber,
-  getLiquidityMinted
-} from "@/lib/trade/math";
+import type { LiquidityFormState, TokenDescriptor } from "@/lib/trade/types";
+import { formatNumber, getLiquidityMinted } from "@/lib/trade/math";
 import styles from "@/app/page.module.css";
 
 type ReserveInfo = {
@@ -101,14 +94,8 @@ export function LiquidityConfirmDialog({
               ? liquidityForm.amountBExact
               : liquidityForm.amountB || "0";
 
-          const amountAWei = parseUnits(
-            amountAInput,
-            liquidityTokenA.decimals
-          );
-          const amountBWei = parseUnits(
-            amountBInput,
-            liquidityTokenB.decimals
-          );
+          const amountAWei = parseUnits(amountAInput, liquidityTokenA.decimals);
+          const amountBWei = parseUnits(amountBInput, liquidityTokenB.decimals);
 
           const lpTokensWei = getLiquidityMinted(
             amountAWei,
@@ -119,9 +106,7 @@ export function LiquidityConfirmDialog({
           );
 
           const lpTokensFormatted = formatUnits(lpTokensWei, 18);
-          return lpTokensWei > 0n
-            ? formatNumber(lpTokensFormatted, 6)
-            : "0";
+          return lpTokensWei > 0n ? formatNumber(lpTokensFormatted, 6) : "0";
         } catch (err) {
           console.warn("[liquidity] LP calculation failed", err);
           return "0";
@@ -129,7 +114,7 @@ export function LiquidityConfirmDialog({
       })()
     : null;
 
-  const stepConfigs = useMemo(() => {
+  const stepConfigs = (() => {
     const steps: Array<{ key: LiquidityFlowStep; label: string }> = [];
     if (flowRequirements.tokenA) {
       steps.push({
@@ -155,7 +140,7 @@ export function LiquidityConfirmDialog({
       label: pairExists ? "Supply liquidity" : "Create pair & supply"
     });
     return steps;
-  }, [flowRequirements, liquidityTokenA?.symbol, liquidityTokenB?.symbol, liquidityPairReserves]);
+  })();
 
   const stepKeys = stepConfigs.map((step) => step.key);
   const activeIndex = (() => {
@@ -206,7 +191,14 @@ export function LiquidityConfirmDialog({
   };
 
   const StepList = () => (
-    <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+    <div
+      style={{
+        padding: "1.5rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem"
+      }}
+    >
       {stepConfigs.map((step, index) => {
         const status = getStepStatus(step.key, index);
         return (
@@ -238,17 +230,24 @@ export function LiquidityConfirmDialog({
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.9rem" }}>{step.label}</div>
               {status === "active" && (
-                <div className={styles.loaderDots} style={{ justifyContent: "flex-start", marginTop: "0.15rem" }}>
+                <div
+                  className={styles.loaderDots}
+                  style={{ justifyContent: "flex-start", marginTop: "0.15rem" }}
+                >
                   <span />
                   <span />
                   <span />
                 </div>
               )}
               {status === "completed" && (
-                <div style={{ fontSize: "0.75rem", opacity: 0.7 }}>Completed</div>
+                <div style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                  Completed
+                </div>
               )}
               {status === "error" && (
-                <div style={{ fontSize: "0.75rem", color: "#ff6b6b" }}>Failed</div>
+                <div style={{ fontSize: "0.75rem", color: "#ff6b6b" }}>
+                  Failed
+                </div>
               )}
             </div>
           </div>
@@ -256,7 +255,13 @@ export function LiquidityConfirmDialog({
       })}
       {flowStage === "error" && (
         <div style={{ marginTop: "0.5rem" }}>
-          <div style={{ color: "#ff9e9e", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+          <div
+            style={{
+              color: "#ff9e9e",
+              fontSize: "0.85rem",
+              marginBottom: "0.5rem"
+            }}
+          >
             {flowError ?? "Transaction failed. Please try again."}
           </div>
           {onRetry && (
@@ -272,7 +277,9 @@ export function LiquidityConfirmDialog({
         </div>
       )}
       {flowStage === "success" && (
-        <div style={{ color: "var(--accent)", fontSize: "0.85rem" }}>Supply confirmed. Finalizing…</div>
+        <div style={{ color: "var(--accent)", fontSize: "0.85rem" }}>
+          Supply confirmed. Finalizing…
+        </div>
       )}
     </div>
   );
@@ -445,7 +452,8 @@ export function LiquidityConfirmDialog({
                                 liquidityTokenA.decimals
                               );
                               const rateWei =
-                                (oneTokenAWei * liquidityPairReserves.reserveBWei) /
+                                (oneTokenAWei *
+                                  liquidityPairReserves.reserveBWei) /
                                 liquidityPairReserves.reserveAWei;
                               const rateFormatted = formatUnits(
                                 rateWei,
@@ -475,7 +483,8 @@ export function LiquidityConfirmDialog({
                                 liquidityTokenB.decimals
                               );
                               const rateWei =
-                                (oneTokenBWei * liquidityPairReserves.reserveAWei) /
+                                (oneTokenBWei *
+                                  liquidityPairReserves.reserveAWei) /
                                 liquidityPairReserves.reserveBWei;
                               const rateFormatted = formatUnits(
                                 rateWei,

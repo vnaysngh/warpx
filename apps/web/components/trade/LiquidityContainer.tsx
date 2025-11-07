@@ -38,7 +38,6 @@ import type { PoolDetailsData } from "@/hooks/usePoolDetails";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 
-
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
   liquidityTokenB: TokenDescriptor | null;
@@ -70,7 +69,6 @@ type LiquidityContainerProps = {
     variant?: "default" | "highlight";
   } | null;
 };
-
 
 const nowPlusMinutes = (minutes: number) =>
   Math.floor(Date.now() / 1000) + minutes * 60;
@@ -132,13 +130,20 @@ export function LiquidityContainer({
   const [liquidityAllowanceNonce, setLiquidityAllowanceNonce] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
-  const [flowRequirements, setFlowRequirements] = useState<{ tokenA: boolean; tokenB: boolean }>({
+  const [flowRequirements, setFlowRequirements] = useState<{
+    tokenA: boolean;
+    tokenB: boolean;
+  }>({
     tokenA: false,
     tokenB: false
   });
-  const [liquidityFlowStage, setLiquidityFlowStage] = useState<LiquidityFlowStage>("review");
-  const [liquidityFlowActiveStep, setLiquidityFlowActiveStep] = useState<LiquidityFlowStep | null>(null);
-  const [liquidityFlowError, setLiquidityFlowError] = useState<string | null>(null);
+  const [liquidityFlowStage, setLiquidityFlowStage] =
+    useState<LiquidityFlowStage>("review");
+  const [liquidityFlowActiveStep, setLiquidityFlowActiveStep] =
+    useState<LiquidityFlowStep | null>(null);
+  const [liquidityFlowError, setLiquidityFlowError] = useState<string | null>(
+    null
+  );
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
   const handleRemoveLiquidityPercentChange = useCallback((value: string) => {
     // Replace commas with periods first (international number format support)
@@ -218,37 +223,43 @@ export function LiquidityContainer({
   const tokenAIsAddress = isAddress(liquidityTokenAAddress);
   const tokenBIsAddress = isAddress(liquidityTokenBAddress);
 
-  const {
-    data: balanceAData,
-    refetch: refetchBalanceA
-  } = useBalance({
+  const { data: balanceAData, refetch: refetchBalanceA } = useBalance({
     address:
-      balanceQueryEnabled && walletAccount ? (walletAccount as Address) : undefined,
+      balanceQueryEnabled && walletAccount
+        ? (walletAccount as Address)
+        : undefined,
     token:
       balanceQueryEnabled && (liquidityTokenAIsNative || tokenAIsAddress)
-        ? (liquidityTokenAIsNative ? undefined : (liquidityTokenAAddress as Address))
+        ? liquidityTokenAIsNative
+          ? undefined
+          : (liquidityTokenAAddress as Address)
         : undefined,
     chainId: Number(MEGAETH_CHAIN_ID),
     query: {
       enabled:
-        balanceQueryEnabled && (liquidityTokenAIsNative || tokenAIsAddress) && Boolean(liquidityTokenAAddress)
+        balanceQueryEnabled &&
+        (liquidityTokenAIsNative || tokenAIsAddress) &&
+        Boolean(liquidityTokenAAddress)
     }
   });
 
-  const {
-    data: balanceBData,
-    refetch: refetchBalanceB
-  } = useBalance({
+  const { data: balanceBData, refetch: refetchBalanceB } = useBalance({
     address:
-      balanceQueryEnabled && walletAccount ? (walletAccount as Address) : undefined,
+      balanceQueryEnabled && walletAccount
+        ? (walletAccount as Address)
+        : undefined,
     token:
       balanceQueryEnabled && (liquidityTokenBIsNative || tokenBIsAddress)
-        ? (liquidityTokenBIsNative ? undefined : (liquidityTokenBAddress as Address))
+        ? liquidityTokenBIsNative
+          ? undefined
+          : (liquidityTokenBAddress as Address)
         : undefined,
     chainId: Number(MEGAETH_CHAIN_ID),
     query: {
       enabled:
-        balanceQueryEnabled && (liquidityTokenBIsNative || tokenBIsAddress) && Boolean(liquidityTokenBAddress)
+        balanceQueryEnabled &&
+        (liquidityTokenBIsNative || tokenBIsAddress) &&
+        Boolean(liquidityTokenBAddress)
     }
   });
 
@@ -266,13 +277,21 @@ export function LiquidityContainer({
     return fetchedSymbol ?? token.symbol ?? null;
   };
 
-  const tokenASymbol = resolveDisplaySymbol(liquidityTokenA, balanceAData?.symbol);
-  const tokenBSymbol = resolveDisplaySymbol(liquidityTokenB, balanceBData?.symbol);
+  const tokenASymbol = resolveDisplaySymbol(
+    liquidityTokenA,
+    balanceAData?.symbol
+  );
+  const tokenBSymbol = resolveDisplaySymbol(
+    liquidityTokenB,
+    balanceBData?.symbol
+  );
 
   const balanceAWei = balanceAData?.value ?? null;
   const balanceBWei = balanceBData?.value ?? null;
-  const decimalsLiquidityA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
-  const decimalsLiquidityB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+  const decimalsLiquidityA =
+    liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+  const decimalsLiquidityB =
+    liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
   const parsedLiquidityAmountA = useMemo(() => {
     const source = liquidityForm.amountAExact ?? liquidityForm.amountA;
@@ -320,22 +339,21 @@ export function LiquidityContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenAIsAddress, tokenBIsAddress, refetchBalanceA, refetchBalanceB]);
 
-  const ensureWallet = useCallback(
-    () => {
-      if (!walletAccount) {
-        showError("Connect your wallet to continue.");
-        return null;
-      }
-      if (!ready) {
-        showError("Switch to the MegaETH Testnet to interact with the contracts.");
-        return null;
-      }
-      return {
-        account: walletAccount
-      };
-    },
-    [walletAccount, ready, showError]
-  );
+  const ensureWallet = useCallback(() => {
+    if (!walletAccount) {
+      showError("Connect your wallet to continue.");
+      return null;
+    }
+    if (!ready) {
+      showError(
+        "Switch to the MegaETH Testnet to interact with the contracts."
+      );
+      return null;
+    }
+    return {
+      account: walletAccount
+    };
+  }, [walletAccount, ready, showError]);
 
   useEffect(() => {
     const currentA = liquidityTokenA?.address
@@ -360,15 +378,22 @@ export function LiquidityContainer({
     setExpectedRemoveAmounts(null);
     setUserPooledAmounts(null);
     setLpTokenInfo(null);
-  }, [liquidityTokenA?.address, liquidityTokenB?.address]);
+  }, [
+    liquidityTokenA?.address,
+    liquidityTokenB?.address,
+    setNeedsApprovalA,
+    setNeedsApprovalB,
+    setCheckingLiquidityAllowances,
+    setShowLiquidityConfirm,
+    setExpectedRemoveAmounts,
+    setUserPooledAmounts,
+    setLpTokenInfo,
+    setLiquidityForm
+  ]);
   useEffect(() => {
     let active = true;
     const fetchPairReserves = async () => {
-      if (
-        !pairAddress ||
-        !liquidityTokenAAddress ||
-        !liquidityTokenBAddress
-      ) {
+      if (!pairAddress || !liquidityTokenAAddress || !liquidityTokenBAddress) {
         if (active) setLiquidityPairReserves(null);
         return;
       }
@@ -396,9 +421,13 @@ export function LiquidityContainer({
         const { reserves, totalSupply } = poolDetails;
 
         const reserveAWei =
-          pairToken0Lower === tokenALower ? reserves.reserve0 : reserves.reserve1;
+          pairToken0Lower === tokenALower
+            ? reserves.reserve0
+            : reserves.reserve1;
         const reserveBWei =
-          pairToken0Lower === tokenBLower ? reserves.reserve0 : reserves.reserve1;
+          pairToken0Lower === tokenBLower
+            ? reserves.reserve0
+            : reserves.reserve1;
 
         if (active) {
           setLiquidityPairReserves({
@@ -431,7 +460,11 @@ export function LiquidityContainer({
 
         if (!active) return;
 
-        const [reserve0, reserve1] = reservesData as readonly [bigint, bigint, number];
+        const [reserve0, reserve1] = reservesData as readonly [
+          bigint,
+          bigint,
+          number
+        ];
         const reserveAWei =
           pairToken0Lower === tokenALower ? reserve0 : reserve1;
         const reserveBWei =
@@ -448,7 +481,10 @@ export function LiquidityContainer({
           totalSupplyWei
         });
       } catch (err) {
-        const code = typeof err === "object" && err && "code" in err ? (err as { code?: string }).code : undefined;
+        const code =
+          typeof err === "object" && err && "code" in err
+            ? (err as { code?: string }).code
+            : undefined;
         if (code === "CALL_EXCEPTION") {
           console.warn("[liquidity] pair reserves unavailable after removal");
         } else {
@@ -568,7 +604,10 @@ export function LiquidityContainer({
     liquidityTokenB?.decimals,
     liquidityAllowanceNonce,
     liquidityTokenAIsNative,
-    liquidityTokenBIsNative
+    liquidityTokenBIsNative,
+    setNeedsApprovalA,
+    setNeedsApprovalB,
+    setCheckingLiquidityAllowances
   ]);
 
   useEffect(() => {
@@ -762,7 +801,8 @@ export function LiquidityContainer({
 
         if (liquidityPairReserves && liquidityTokenA && liquidityTokenB) {
           try {
-            const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
+            const decimalsB =
+              liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
             const amountAWei = parseUnits(parseSource, decimalsA);
             if (amountAWei <= 0n) {
               updated.amountB = "";
@@ -835,7 +875,8 @@ export function LiquidityContainer({
 
         if (liquidityPairReserves && liquidityTokenA && liquidityTokenB) {
           try {
-            const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
+            const decimalsA =
+              liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
             const amountBWei = parseUnits(parseSource, decimalsB);
             if (amountBWei <= 0n) {
               updated.amountA = "";
@@ -947,7 +988,9 @@ export function LiquidityContainer({
           return false;
         }
 
-        const nativeAmountWei = liquidityTokenAIsNative ? amountAWei : amountBWei;
+        const nativeAmountWei = liquidityTokenAIsNative
+          ? amountAWei
+          : amountBWei;
         const ercAmountWei = liquidityTokenAIsNative ? amountBWei : amountAWei;
         const ercTokenAddress = liquidityTokenAIsNative ? tokenB : tokenA;
         const ercTokenSymbol = liquidityTokenAIsNative
@@ -1009,14 +1052,20 @@ export function LiquidityContainer({
             address: tokenA as `0x${string}`,
             abi: erc20Abi,
             functionName: "allowance",
-            args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+            args: [
+              ctx.account as `0x${string}`,
+              routerAddress as `0x${string}`
+            ],
             chainId: Number(MEGAETH_CHAIN_ID)
           }),
           readContract(wagmiConfig, {
             address: tokenB as `0x${string}`,
             abi: erc20Abi,
             functionName: "allowance",
-            args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+            args: [
+              ctx.account as `0x${string}`,
+              routerAddress as `0x${string}`
+            ],
             chainId: Number(MEGAETH_CHAIN_ID)
           })
         ]);
@@ -1032,7 +1081,9 @@ export function LiquidityContainer({
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
           });
-          showLoading(`${liquidityTokenA.symbol || "Token A"} approval pending...`);
+          showLoading(
+            `${liquidityTokenA.symbol || "Token A"} approval pending...`
+          );
           await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
           setNeedsApprovalA(false);
         }
@@ -1048,7 +1099,9 @@ export function LiquidityContainer({
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
           });
-          showLoading(`${liquidityTokenB.symbol || "Token B"} approval pending...`);
+          showLoading(
+            `${liquidityTokenB.symbol || "Token B"} approval pending...`
+          );
           await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
           setNeedsApprovalB(false);
         }
@@ -1093,7 +1146,12 @@ export function LiquidityContainer({
       showSuccess(
         "Liquidity added successfully.",
         submittedTxHash
-          ? { link: { href: buildExplorerTxUrl(submittedTxHash), label: "View on explorer" } }
+          ? {
+              link: {
+                href: buildExplorerTxUrl(submittedTxHash),
+                label: "View on explorer"
+              }
+            }
           : undefined
       );
       return true;
@@ -1119,7 +1177,18 @@ export function LiquidityContainer({
     refreshBalances,
     routerAddress,
     onSwapRefresh,
-    wrappedNativeAddress
+    wrappedNativeAddress,
+    setNeedsApprovalA,
+    setNeedsApprovalB,
+    setLiquidityForm,
+    setShowLiquidityConfirm,
+    setExpectedRemoveAmounts,
+    setUserPooledAmounts,
+    setLpTokenInfo,
+    setLiquidityPairReserves,
+    setLiquidityReservesRefreshNonce,
+    setLiquidityAllowanceNonce,
+    setIsSubmitting
   ]);
 
   useEffect(() => {
@@ -1211,40 +1280,41 @@ export function LiquidityContainer({
       showLoading("Confirm transaction in your wallet...");
       const deadline = BigInt(nowPlusMinutes(10));
 
-      const txRequest = liquidityTokenAIsNative || liquidityTokenBIsNative
-        ? {
-            address: routerAddress as `0x${string}`,
-            abi: warpRouterAbi,
-            functionName: "removeLiquidityETH",
-            args: [
-              (liquidityTokenAIsNative ? tokenB : tokenA) as `0x${string}`,
-              liquidityToRemove,
-              0n,
-              0n,
-              ctx.account as `0x${string}`,
-              deadline
-            ],
-            account: ctx.account as `0x${string}`,
-            chainId: Number(MEGAETH_CHAIN_ID),
-            gas: 500000n
-          }
-        : {
-            address: routerAddress as `0x${string}`,
-            abi: warpRouterAbi,
-            functionName: "removeLiquidity",
-            args: [
-              tokenA as `0x${string}`,
-              tokenB as `0x${string}`,
-              liquidityToRemove,
-              0n,
-              0n,
-              ctx.account as `0x${string}`,
-              deadline
-            ],
-            account: ctx.account as `0x${string}`,
-            chainId: Number(MEGAETH_CHAIN_ID),
-            gas: 500000n
-          };
+      const txRequest =
+        liquidityTokenAIsNative || liquidityTokenBIsNative
+          ? {
+              address: routerAddress as `0x${string}`,
+              abi: warpRouterAbi,
+              functionName: "removeLiquidityETH",
+              args: [
+                (liquidityTokenAIsNative ? tokenB : tokenA) as `0x${string}`,
+                liquidityToRemove,
+                0n,
+                0n,
+                ctx.account as `0x${string}`,
+                deadline
+              ],
+              account: ctx.account as `0x${string}`,
+              chainId: Number(MEGAETH_CHAIN_ID),
+              gas: 500000n
+            }
+          : {
+              address: routerAddress as `0x${string}`,
+              abi: warpRouterAbi,
+              functionName: "removeLiquidity",
+              args: [
+                tokenA as `0x${string}`,
+                tokenB as `0x${string}`,
+                liquidityToRemove,
+                0n,
+                0n,
+                ctx.account as `0x${string}`,
+                deadline
+              ],
+              account: ctx.account as `0x${string}`,
+              chainId: Number(MEGAETH_CHAIN_ID),
+              gas: 500000n
+            };
 
       const txHash = await writeContract(
         wagmiConfig,
@@ -1288,7 +1358,18 @@ export function LiquidityContainer({
     showError,
     showLoading,
     showSuccess,
-    onSwapRefresh
+    onSwapRefresh,
+    setLiquidityPairReserves,
+    setLiquidityReservesRefreshNonce,
+    setExpectedRemoveAmounts,
+    setUserPooledAmounts,
+    setLpTokenInfo,
+    setLiquidityForm,
+    setNeedsApprovalA,
+    setNeedsApprovalB,
+    setLiquidityAllowanceNonce,
+    setIsSubmitting,
+    setRemoveLiquidityPercent
   ]);
 
   const handleCloseConfirm = useCallback(() => {
@@ -1385,7 +1466,9 @@ export function LiquidityContainer({
     }
     if (liquidityMode === "remove") {
       const userLpBalance =
-        liquidityPairReserves && liquidityPairReserves.pairAddress && walletAccount
+        liquidityPairReserves &&
+        liquidityPairReserves.pairAddress &&
+        walletAccount
           ? lpTokenInfo?.balance
           : null;
       const parsedBalance =
@@ -1474,7 +1557,10 @@ export function LiquidityContainer({
       liquidityTokenB,
       routerAddress,
       showError,
-      showLoading
+      showLoading,
+      setNeedsApprovalA,
+      setNeedsApprovalB,
+      setLiquidityAllowanceNonce
     ]
   );
 
@@ -1484,8 +1570,10 @@ export function LiquidityContainer({
     setLiquidityFlowActiveStep(null);
     setIsSubmitting(true);
     try {
-      const needA = flowRequirements.tokenA && isAddress(liquidityTokenAAddress);
-      const needB = flowRequirements.tokenB && isAddress(liquidityTokenBAddress);
+      const needA =
+        flowRequirements.tokenA && isAddress(liquidityTokenAAddress);
+      const needB =
+        flowRequirements.tokenB && isAddress(liquidityTokenBAddress);
 
       if (needA) {
         setLiquidityFlowStage("approveA");
@@ -1590,31 +1678,31 @@ export function LiquidityContainer({
           tokenBBalanceFormatted,
           tokenASymbol,
           tokenBSymbol,
-        onSetMaxAmountA: handleSetMaxLiquidityAmountA,
-        onSetMaxAmountB: handleSetMaxLiquidityAmountB,
-        onPrimary: handleLiquidityAction,
-        buttonLabel: liquidityButtonLabel,
-        buttonDisabled: liquidityButtonDisabled,
-        buttonVariant: addLiquidityOverride?.variant ?? "default"
-      }}
-      removeProps={{
-        liquidityTokenA,
-        liquidityTokenB,
-        liquidityPairReserves,
+          onSetMaxAmountA: handleSetMaxLiquidityAmountA,
+          onSetMaxAmountB: handleSetMaxLiquidityAmountB,
+          onPrimary: handleLiquidityAction,
+          buttonLabel: liquidityButtonLabel,
+          buttonDisabled: liquidityButtonDisabled,
+          buttonVariant: addLiquidityOverride?.variant ?? "default"
+        }}
+        removeProps={{
+          liquidityTokenA,
+          liquidityTokenB,
+          liquidityPairReserves,
           lpTokenInfo,
           userPooledAmounts,
           expectedRemoveAmounts,
-        removeLiquidityPercent,
-        onRemoveLiquidityPercentChange: handleRemoveLiquidityPercentChange,
+          removeLiquidityPercent,
+          onRemoveLiquidityPercentChange: handleRemoveLiquidityPercentChange,
           onOpenTokenDialog: handleOpenTokenDialog,
-        onRemoveLiquidity: handleRemoveLiquidity,
-        isSubmitting,
-        ready
-      }}
-      tokenSelectionEnabled={allowTokenSelection}
-      allowRemove={enableRemoveLiquidity}
-      addButtonVariant={addLiquidityOverride?.variant ?? "default"}
-    />
+          onRemoveLiquidity: handleRemoveLiquidity,
+          isSubmitting,
+          ready
+        }}
+        tokenSelectionEnabled={allowTokenSelection}
+        allowRemove={enableRemoveLiquidity}
+        addButtonVariant={addLiquidityOverride?.variant ?? "default"}
+      />
 
       <LiquidityConfirmDialog
         open={showLiquidityConfirm}

@@ -311,6 +311,8 @@ export default function PoolLiquidityPage() {
     tokenListMap,
     wrappedNativeLower,
     wrappedNativeAddress,
+    pairTokenAddresses.token0,
+    pairTokenAddresses.token1,
     liquidityTokenA,
     liquidityTokenB,
     setLiquidityTokenA,

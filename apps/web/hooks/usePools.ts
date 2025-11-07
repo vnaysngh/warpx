@@ -13,6 +13,7 @@ import {
 } from "@/lib/contracts/multicall";
 import type { TokenDescriptor } from "@/lib/trade/types";
 import { toSdkToken } from "@/lib/trade/warp";
+import { formatNumberWithGrouping } from "@/lib/trade/math";
 
 const FACTORY_ABI = [
   "function getPair(address tokenA, address tokenB) external view returns (address pair)"
@@ -28,6 +29,7 @@ export interface PoolData {
   contractToken1Address: string;
   totalLiquidityFormatted: string | null;
   totalLiquidityValue: number | null;
+  isTvlLoading: boolean;
   reserve0Exact: number;
   reserve1Exact: number;
   // Raw data for caching
@@ -38,6 +40,23 @@ export interface PoolData {
   };
   totalSupply?: bigint;
 }
+
+type PendingPool = {
+  id: number;
+  pairAddress: string;
+  displayToken0: TokenDescriptor;
+  displayToken1: TokenDescriptor;
+  contractToken0Address: string;
+  contractToken1Address: string;
+  reserve0Exact: number;
+  reserve1Exact: number;
+  reserves?: {
+    reserve0: bigint;
+    reserve1: bigint;
+    blockTimestampLast: number;
+  };
+  totalSupply?: bigint;
+};
 
 interface UsePoolsParams {
   tokenList: TokenDescriptor[];
@@ -150,22 +169,7 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
   ]);
 
   // Step 3: Process results
-  const pendingPools: Array<{
-    id: number;
-    pairAddress: string;
-    displayToken0: TokenDescriptor;
-    displayToken1: TokenDescriptor;
-    contractToken0Address: string;
-    contractToken1Address: string;
-    reserve0Exact: number;
-    reserve1Exact: number;
-    reserves?: {
-      reserve0: bigint;
-      reserve1: bigint;
-      blockTimestampLast: number;
-    };
-    totalSupply?: bigint;
-  }> = [];
+  const pendingPools: PendingPool[] = [];
   const tokenMap = new Map(tokenList.map((t) => [t.address.toLowerCase(), t]));
 
   const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
@@ -259,15 +263,49 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
   );
 
   let priceMap: Record<string, number> = {};
+  let priceFetchFailed = false;
   if (uniqueTokenAddresses.length > 0) {
     try {
       priceMap = await fetchTokenUsdPrices(uniqueTokenAddresses);
     } catch (error) {
       console.warn("[usePools] failed to fetch token USD prices", error);
+      priceFetchFailed = true;
     }
   }
 
+  const derivedPriceMap = deriveTokenPrices(priceMap, pendingPools);
+  const hasDerivedPrices = derivedPriceMap.size > 0;
+  const showGlobalTvlLoading =
+    uniqueTokenAddresses.length > 0 && !priceFetchFailed && !hasDerivedPrices;
+
   const pools: PoolData[] = pendingPools.map((pool) => {
+    const token0Lower = pool.contractToken0Address.toLowerCase();
+    const token1Lower = pool.contractToken1Address.toLowerCase();
+    const price0 = derivedPriceMap.get(token0Lower) ?? null;
+    const price1 = derivedPriceMap.get(token1Lower) ?? null;
+
+    let totalUsd = 0;
+    if (price0 !== null && Number.isFinite(price0)) {
+      totalUsd += pool.reserve0Exact * price0;
+    }
+    if (price1 !== null && Number.isFinite(price1)) {
+      totalUsd += pool.reserve1Exact * price1;
+    }
+
+    if (totalUsd <= 0 && wethLower) {
+      const ethPrice = derivedPriceMap.get(wethLower);
+      if (ethPrice && Number.isFinite(ethPrice)) {
+        if (token0Lower === wethLower) {
+          totalUsd = pool.reserve0Exact * ethPrice * 2;
+        } else if (token1Lower === wethLower) {
+          totalUsd = pool.reserve1Exact * ethPrice * 2;
+        }
+      }
+    }
+
+    const hasUsdValue = Number.isFinite(totalUsd) && totalUsd > 0;
+    const totalLiquidityValue = hasUsdValue ? totalUsd : null;
+
     return {
       id: pool.id,
       pairAddress: pool.pairAddress,
@@ -275,8 +313,11 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
       token1: pool.displayToken1,
       contractToken0Address: pool.contractToken0Address,
       contractToken1Address: pool.contractToken1Address,
-      totalLiquidityFormatted: null,
-      totalLiquidityValue: null,
+      totalLiquidityFormatted: hasUsdValue
+        ? formatNumberWithGrouping(totalUsd, 2)
+        : null,
+      totalLiquidityValue,
+      isTvlLoading: !hasUsdValue && showGlobalTvlLoading,
       reserve0Exact: pool.reserve0Exact,
       reserve1Exact: pool.reserve1Exact,
       reserves: pool.reserves,
@@ -316,6 +357,54 @@ export function usePools(params: UsePoolsParams) {
       params.tokenList.length >= 2,
     staleTime: 15 * 1000 // 15 seconds
   });
+}
+
+function deriveTokenPrices(
+  basePrices: Record<string, number>,
+  pools: PendingPool[]
+): Map<string, number> {
+  const priceMap = new Map<string, number>();
+  Object.entries(basePrices).forEach(([address, value]) => {
+    if (Number.isFinite(value) && value > 0) {
+      priceMap.set(address.toLowerCase(), value);
+    }
+  });
+
+  let updated = true;
+  let iterations = 0;
+  const maxIterations = pools.length * 2;
+
+  while (updated && iterations < maxIterations) {
+    updated = false;
+    iterations += 1;
+
+    for (const pool of pools) {
+      const token0Lower = pool.contractToken0Address.toLowerCase();
+      const token1Lower = pool.contractToken1Address.toLowerCase();
+      const reserve0 = pool.reserve0Exact;
+      const reserve1 = pool.reserve1Exact;
+      if (reserve0 <= 0 || reserve1 <= 0) continue;
+
+      const price0 = priceMap.get(token0Lower);
+      const price1 = priceMap.get(token1Lower);
+
+      if ((!price0 || price0 <= 0) && price1 && price1 > 0) {
+        const derivedPrice0 = (price1 * reserve1) / reserve0;
+        if (Number.isFinite(derivedPrice0) && derivedPrice0 > 0) {
+          priceMap.set(token0Lower, derivedPrice0);
+          updated = true;
+        }
+      } else if ((!price1 || price1 <= 0) && price0 && price0 > 0) {
+        const derivedPrice1 = (price0 * reserve0) / reserve1;
+        if (Number.isFinite(derivedPrice1) && derivedPrice1 > 0) {
+          priceMap.set(token1Lower, derivedPrice1);
+          updated = true;
+        }
+      }
+    }
+  }
+
+  return priceMap;
 }
 
 async function fetchTokenUsdPrices(addresses: string[]): Promise<Record<string, number>> {
