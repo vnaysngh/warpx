@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { JsonRpcProvider } from "ethers";
 import type { TokenDescriptor, TokenDialogSlot } from "@/lib/trade/types";
 import { DEFAULT_TOKEN_DECIMALS, TOKEN_CATALOG } from "@/lib/trade/constants";
+import { fetchTokenDetails, isValidAddress } from "@/lib/utils/tokenFetch";
 
 type TokenManifestEntry = {
   symbol: string;
@@ -24,6 +26,7 @@ type TokenManagerOptions = {
   initialSwapOut?: TokenDescriptor | null;
   initialLiquidityA?: TokenDescriptor | null;
   initialLiquidityB?: TokenDescriptor | null;
+  provider?: JsonRpcProvider;
 };
 
 const NATIVE_SYMBOL_FALLBACK = "ETH";
@@ -205,6 +208,13 @@ export function useTokenManager(
   const [tokenDialogSide, setTokenDialogSide] =
     useState<TokenDialogSlot>("swapIn");
   const [tokenSearch, setTokenSearch] = useState("");
+  const [isFetchingCustomToken, setIsFetchingCustomToken] = useState(false);
+  const [prefetchedTokenDetails, setPrefetchedTokenDetails] = useState<{
+    symbol: string;
+    name: string;
+    decimals: number;
+    address: string;
+  } | null>(null);
 
   // Track last set addresses to prevent circular updates
   const lastSetAddresses = useRef<{
@@ -289,6 +299,66 @@ export function useTokenManager(
       cancelled = true;
     };
   }, [deploymentNetwork, nativeSymbol, wrappedNativeAddress]);
+
+  // Prefetch token details when user enters a valid address
+  useEffect(() => {
+    const normalizedSearch = tokenSearch.trim().toLowerCase();
+
+    // Reset prefetched details if search is empty or not a valid address
+    if (!normalizedSearch || !isValidAddress(normalizedSearch)) {
+      setPrefetchedTokenDetails(null);
+      return;
+    }
+
+    // Check if token already exists
+    const existingToken = tokenList.find(
+      (token) => token.address.toLowerCase() === normalizedSearch
+    );
+
+    if (existingToken) {
+      setPrefetchedTokenDetails(null);
+      return;
+    }
+
+    // Fetch token details
+    const provider = options?.provider;
+    if (!provider) {
+      setPrefetchedTokenDetails(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsFetchingCustomToken(true);
+
+    const fetchDetails = async () => {
+      try {
+        const details = await fetchTokenDetails(normalizedSearch, provider);
+
+        if (cancelled) return;
+
+        if (details) {
+          setPrefetchedTokenDetails(details);
+        } else {
+          setPrefetchedTokenDetails(null);
+        }
+      } catch (error) {
+        console.error("[tokenManager] Error prefetching token details:", error);
+        if (!cancelled) {
+          setPrefetchedTokenDetails(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsFetchingCustomToken(false);
+        }
+      }
+    };
+
+    fetchDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tokenSearch, tokenList, options?.provider]);
 
   useEffect(() => {
     if (!tokenList.length) return;
@@ -405,24 +475,46 @@ export function useTokenManager(
     commitSelection(token);
   };
 
-  const handleSelectCustomToken = (address: string) => {
-    const sanitized = address.trim().toLowerCase();
-    if (!isAddress(sanitized)) return;
-    const derivedSymbol = `CUST-${sanitized.slice(2, 6).toUpperCase()}`;
-    const customToken: TokenDescriptor = {
-      symbol: derivedSymbol,
-      name: "Custom Token",
+  const handleSelectCustomToken = useCallback((address: string) => {
+    const sanitized = address.trim();
+    if (!isValidAddress(sanitized)) {
+      console.warn("[tokenManager] Invalid address:", address);
+      return;
+    }
+
+    const normalizedAddress = sanitized.toLowerCase();
+
+    // Check if token already exists in list
+    const existingToken = tokenList.find(
+      (token) => token.address.toLowerCase() === normalizedAddress
+    );
+
+    if (existingToken) {
+      commitSelection(existingToken);
+      return;
+    }
+
+    // Use prefetched details
+    if (!prefetchedTokenDetails) {
+      console.error("[tokenManager] No token details available for:", sanitized);
+      return;
+    }
+
+    // Create temporary token (NOT added to token list)
+    const temporaryToken: TokenDescriptor = {
+      symbol: prefetchedTokenDetails.symbol,
+      name: prefetchedTokenDetails.name,
       address: sanitized,
-      decimals: DEFAULT_TOKEN_DECIMALS,
+      decimals: prefetchedTokenDetails.decimals,
       isNative: false
     };
-    setTokenList((prev) => {
-      if (prev.some((token) => token.address.toLowerCase() === sanitized)) {
-        return prev;
-      }
-      return [...prev, customToken];
-    });
-  };
+
+    // Select the temporary token without adding to token list
+    commitSelection(temporaryToken);
+
+    // Clear prefetched details
+    setPrefetchedTokenDetails(null);
+  }, [tokenList, prefetchedTokenDetails]);
 
   const normalizedSearch = tokenSearch.trim().toLowerCase();
 
@@ -433,14 +525,17 @@ export function useTokenManager(
     return tokenList.filter((token) => {
       const symbolMatch = token.symbol.toLowerCase().includes(normalizedSearch);
       const nameMatch = token.name.toLowerCase().includes(normalizedSearch);
-      const addressMatch = token.address.toLowerCase() === normalizedSearch;
+      // Support both exact and partial address matches
+      const addressLower = token.address.toLowerCase();
+      const addressMatch = addressLower === normalizedSearch || addressLower.includes(normalizedSearch);
       return symbolMatch || nameMatch || addressMatch;
     });
   }, [tokenList, normalizedSearch]);
 
   const showCustomOption = useMemo(() => {
     if (!normalizedSearch) return false;
-    if (!isAddress(normalizedSearch)) return false;
+    if (!isValidAddress(normalizedSearch)) return false;
+    // Only show custom option if token doesn't exist in list
     return !tokenList.some(
       (token) => token.address.toLowerCase() === normalizedSearch
     );
@@ -526,6 +621,8 @@ export function useTokenManager(
     setSelectedIn: wrappedSetSelectedIn,
     setSelectedOut: wrappedSetSelectedOut,
     setLiquidityTokenA: wrappedSetLiquidityTokenA,
-    setLiquidityTokenB: wrappedSetLiquidityTokenB
+    setLiquidityTokenB: wrappedSetLiquidityTokenB,
+    isFetchingCustomToken,
+    prefetchedTokenDetails
   };
 }

@@ -70,6 +70,11 @@ export default function PoolLiquidityPage() {
     useToasts();
   const { deployment } = useDeploymentManifest();
 
+  const readProvider = useMemo(() => {
+    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
+    return new JsonRpcProvider(rpcUrl);
+  }, []);
+
   const wrappedNativeAddress = deployment?.wmegaeth ?? null;
   const wrappedNativeLower = wrappedNativeAddress?.toLowerCase() ?? null;
   const [pairTokenAddresses, setPairTokenAddresses] = useState<{
@@ -97,8 +102,10 @@ export default function PoolLiquidityPage() {
     handleSelectCustomToken,
     filteredTokens,
     showCustomOption,
-    activeAddress
-  } = useTokenManager(deployment);
+    activeAddress,
+    isFetchingCustomToken,
+    prefetchedTokenDetails
+  } = useTokenManager(deployment, { provider: readProvider });
 
   const tokenListMap = useMemo(() => {
     const map = new Map<string, TokenDescriptor>();
@@ -124,11 +131,6 @@ export default function PoolLiquidityPage() {
   });
 
   const [hasMounted, setHasMounted] = useState(false);
-
-  const readProvider = useMemo(() => {
-    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
-    return new JsonRpcProvider(rpcUrl);
-  }, []);
 
   // Use optimized multicall hook to fetch pool details
   const {
@@ -413,6 +415,8 @@ export default function PoolLiquidityPage() {
         activeAddress={activeAddress}
         onSelectToken={handleSelectToken}
         onSelectCustomToken={handleSelectCustomToken}
+        isFetchingCustomToken={isFetchingCustomToken}
+        prefetchedTokenDetails={prefetchedTokenDetails}
       />
     </>
   );

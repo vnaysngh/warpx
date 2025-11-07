@@ -13,6 +13,13 @@ type TokenDialogProps = {
   activeAddress: string | null;
   onSelectToken: (token: TokenDescriptor) => void;
   onSelectCustomToken: (address: string) => void;
+  isFetchingCustomToken?: boolean;
+  prefetchedTokenDetails?: {
+    symbol: string;
+    name: string;
+    decimals: number;
+    address: string;
+  } | null;
 };
 
 export function TokenDialog({
@@ -25,7 +32,9 @@ export function TokenDialog({
   showCustomOption,
   activeAddress,
   onSelectToken,
-  onSelectCustomToken
+  onSelectCustomToken,
+  isFetchingCustomToken = false,
+  prefetchedTokenDetails = null
 }: TokenDialogProps) {
   if (!open) {
     return null;
@@ -116,11 +125,22 @@ export function TokenDialog({
               type="button"
               className={styles.dialogItem}
               onClick={() => onSelectCustomToken(tokenSearch)}
+              disabled={isFetchingCustomToken || !prefetchedTokenDetails}
             >
               <div className={styles.dialogMeta}>
-                <span className={styles.dialogSymbol}>Custom</span>
+                <span className={styles.dialogSymbol}>
+                  {isFetchingCustomToken
+                    ? "Loading..."
+                    : prefetchedTokenDetails
+                      ? `Import ${prefetchedTokenDetails.symbol}`
+                      : "Import"}
+                </span>
                 <span className={styles.dialogAddress}>
-                  Use provided address
+                  {isFetchingCustomToken
+                    ? "Fetching token details..."
+                    : prefetchedTokenDetails
+                      ? prefetchedTokenDetails.name
+                      : "Unknown token"}
                 </span>
               </div>
               <span className={styles.dialogAddress}>

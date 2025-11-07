@@ -40,6 +40,12 @@ export default function Page() {
     showError
   } = useToasts();
   const { deployment } = useDeploymentManifest();
+
+  const readProvider = useMemo(() => {
+    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
+    return new JsonRpcProvider(rpcUrl);
+  }, []);
+
   const {
     selectedIn,
     selectedOut,
@@ -54,16 +60,13 @@ export default function Page() {
     filteredTokens,
     showCustomOption,
     activeAddress,
-    swapTokens
-  } = useTokenManager(deployment);
+    swapTokens,
+    isFetchingCustomToken,
+    prefetchedTokenDetails
+  } = useTokenManager(deployment, { provider: readProvider });
 
   const [hasMounted, setHasMounted] = useState(false);
   const [swapRefreshNonce, setSwapRefreshNonce] = useState(0);
-
-  const readProvider = useMemo(() => {
-    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
-    return new JsonRpcProvider(rpcUrl);
-  }, []);
 
   const ready = useMemo(() => {
     const onMegaEth = chain && chain.id === Number(MEGAETH_CHAIN_ID);
@@ -169,6 +172,8 @@ export default function Page() {
         activeAddress={activeAddress}
         onSelectToken={handleSelectToken}
         onSelectCustomToken={handleSelectCustomToken}
+        isFetchingCustomToken={isFetchingCustomToken}
+        prefetchedTokenDetails={prefetchedTokenDetails}
       />
     </>
   );

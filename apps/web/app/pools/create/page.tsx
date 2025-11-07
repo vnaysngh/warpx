@@ -38,6 +38,11 @@ export default function CreatePoolPage() {
     useToasts();
   const { deployment } = useDeploymentManifest();
 
+  const readProvider = useMemo(() => {
+    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
+    return new JsonRpcProvider(rpcUrl);
+  }, []);
+
   const {
     liquidityTokenA,
     liquidityTokenB,
@@ -52,16 +57,16 @@ export default function CreatePoolPage() {
     filteredTokens,
     showCustomOption,
     activeAddress,
-    setLiquidityTokenB
-  } = useTokenManager(deployment, { initialLiquidityB: null });
+    setLiquidityTokenB,
+    isFetchingCustomToken,
+    prefetchedTokenDetails
+  } = useTokenManager(deployment, {
+    initialLiquidityB: null,
+    provider: readProvider
+  });
 
   const isWalletConnected = Boolean(address) && status !== "disconnected";
   const walletAccount = isWalletConnected ? (address?.toLowerCase() ?? null) : null;
-
-  const readProvider = useMemo(() => {
-    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
-    return new JsonRpcProvider(rpcUrl);
-  }, []);
 
   const [hasMounted, setHasMounted] = useState(false);
   const [pairTokenAddresses, setPairTokenAddresses] = useState<PairOrder>({
@@ -344,6 +349,8 @@ export default function CreatePoolPage() {
         activeAddress={activeAddress}
         onSelectToken={handleSelectToken}
         onSelectCustomToken={handleSelectCustomToken}
+        isFetchingCustomToken={isFetchingCustomToken}
+        prefetchedTokenDetails={prefetchedTokenDetails}
       />
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
