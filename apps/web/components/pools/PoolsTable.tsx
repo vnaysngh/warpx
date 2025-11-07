@@ -4,7 +4,8 @@ import type { TokenDescriptor } from "@/lib/trade/types";
 import { FEES_DENOMINATOR, FEES_NUMERATOR } from "@/lib/trade/constants";
 
 const DEFAULT_FEE_PERCENT_DISPLAY = (
-  ((Number(FEES_DENOMINATOR - FEES_NUMERATOR) / Number(FEES_DENOMINATOR)) * 100)
+  (Number(FEES_DENOMINATOR - FEES_NUMERATOR) / Number(FEES_DENOMINATOR)) *
+  100
 ).toFixed(2);
 import styles from "./PoolsTable.module.css";
 
@@ -62,7 +63,6 @@ export function PoolsTable({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>#</th>
             <th>Pool</th>
             <th>Protocol</th>
             <th>Fee tier</th>
@@ -74,7 +74,9 @@ export function PoolsTable({
                   {totalTvl}
                 </span>
               ) : totalTvlLoading ? (
-                <span className={`${styles.totalTvlChip} ${styles.totalTvlChipLoading}`}>
+                <span
+                  className={`${styles.totalTvlChip} ${styles.totalTvlChipLoading}`}
+                >
                   <span className={styles.dots}>
                     <span />
                     <span />
@@ -116,9 +118,9 @@ export function PoolsTable({
                   }
                 }}
               >
-                <td className={styles.indexCell} data-label="#">
+                {/*   <td className={styles.indexCell} data-label="#">
                   {pool.id}
-                </td>
+                </td> */}
                 <td className={styles.poolCell} data-label="Pool">
                   <div className={styles.poolStack}>
                     <div className={styles.tokenStack}>

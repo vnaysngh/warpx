@@ -207,6 +207,10 @@ export default function PoolsPage() {
     refetchPools();
   }, [refetchPools]);
 
+  const handleCreatePool = useCallback(() => {
+    router.push("/pools/create");
+  }, [router]);
+
   const handlePoolSelect = useCallback(
     (pool: PoolsTableRow) => {
       // Cache pool data for instant details page load
@@ -254,10 +258,46 @@ export default function PoolsPage() {
     isFetching: tokenPricesFetching
   } = useTokenPrices(tokenPriceAddresses);
 
-  const usdPriceMap = useMemo(() => {
-    if (!usdPriceMapData) return new Map<string, number>();
-    return new Map<string, number>(Object.entries(usdPriceMapData));
-  }, [usdPriceMapData]);
+  const [usdPriceCache, setUsdPriceCache] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (tokenPriceAddresses.length === 0) {
+      setUsdPriceCache(new Map());
+      return;
+    }
+    if (!usdPriceMapData) {
+      return;
+    }
+
+    const entries = Object.entries(usdPriceMapData ?? {});
+    if (entries.length === 0) {
+      // Keep previous prices if we received no data (e.g., upstream failure)
+      return;
+    }
+
+    setUsdPriceCache((prev) => {
+      const next = new Map(prev);
+      const requested = new Set(tokenPriceAddresses.map((addr) => addr.toLowerCase()));
+
+      entries.forEach(([address, value]) => {
+        const lower = address.toLowerCase();
+        if (Number.isFinite(value)) {
+          const numeric = Number(value);
+          next.set(lower, numeric);
+        }
+      });
+
+      next.forEach((_, key) => {
+        if (!requested.has(key)) {
+          next.delete(key);
+        }
+      });
+
+      return next;
+    });
+  }, [usdPriceMapData, tokenPriceAddresses]);
+
+  const usdPriceMap = usdPriceCache;
   const hasTokenPriceQuery = tokenPriceAddresses.length > 0;
   const tvlLoading =
     hasTokenPriceQuery &&
@@ -386,19 +426,23 @@ export default function PoolsPage() {
   }, [poolsWithUsd, showMyPositionsOnly]);
 
   const totalTvlSummary = useMemo(() => {
-    if (poolsLoading || poolsError || filteredPools.length === 0) {
-      return { value: null as string | null, loading: false };
+    if (filteredPools.length === 0) {
+      return { value: null as string | null, loading: tvlLoading && hasTokenPriceQuery };
     }
 
-    const allHaveValues = filteredPools.every(
-      (pool) => typeof pool.totalLiquidityValue === "number" && pool.totalLiquidityValue > 0
+    const poolsWithValues = filteredPools.filter(
+      (pool) =>
+        typeof pool.totalLiquidityValue === "number" &&
+        pool.totalLiquidityValue !== null &&
+        pool.totalLiquidityValue > 0
     );
 
-    if (!allHaveValues) {
-      return { value: null, loading: tvlLoading };
+    if (poolsWithValues.length === 0) {
+      const anyLoading = filteredPools.some((pool) => pool.isTvlLoading);
+      return { value: null, loading: anyLoading && tvlLoading };
     }
 
-    const totalValue = filteredPools.reduce(
+    const totalValue = poolsWithValues.reduce(
       (acc, pool) => acc + (pool.totalLiquidityValue ?? 0),
       0
     );
@@ -407,11 +451,17 @@ export default function PoolsPage() {
       return { value: null, loading: false };
     }
 
+    const othersLoading = filteredPools.some(
+      (pool) =>
+        (!pool.totalLiquidityValue || pool.totalLiquidityValue <= 0) &&
+        pool.isTvlLoading
+    );
+
     return {
       value: `$${formatNumberWithGrouping(totalValue, 2)}`,
-      loading: false
+      loading: othersLoading && tvlLoading
     };
-  }, [filteredPools, poolsLoading, poolsError, tvlLoading]);
+  }, [filteredPools, tvlLoading, hasTokenPriceQuery]);
 
   return (
     <>
@@ -431,8 +481,8 @@ export default function PoolsPage() {
           </p>
         </div>
 
-        {hasMounted && isWalletConnected && (
-          <div style={{ display: "flex", justifyContent: "center" }}>
+        <div className={styles.toolbarRow}>
+          {hasMounted && isWalletConnected ? (
             <div className={pageStyles.segmented}>
               <button
                 type="button"
@@ -453,8 +503,17 @@ export default function PoolsPage() {
                 My Positions
               </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={handleCreatePool}
+          >
+            Create
+          </button>
+        </div>
 
         <div className={styles.tableSection}>
           <PoolsTable

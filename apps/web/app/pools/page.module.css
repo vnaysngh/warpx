@@ -33,6 +33,42 @@
   line-height: 1.5;
 }
 
+.noticeBanner {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1.1rem 1.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.noticeTitle {
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.noticeDescription {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.45;
+}
+
+.noticeHighlight {
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+  color: rgba(10, 255, 157, 0.95);
+}
+
+.noticeActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .pairSummary {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
@@ -72,6 +108,57 @@
   align-items: center;
   gap: 0.85rem;
   flex-wrap: wrap;
+}
+
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0.65rem 1.8rem;
+  border: none;
+  color: #04120d;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(13, 255, 180, 0.92), rgba(63, 255, 200, 0.92));
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(10, 255, 157, 0.45);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 22px 38px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(10, 255, 157, 0.6);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.inlineNotice {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.62);
+  margin: 0;
 }
 
 .timestamp {
@@ -154,6 +241,16 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.6rem;
+  }
+
+  .toolbarRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryButton {
+    width: 100%;
+    text-align: center;
   }
 
   .timestamp {

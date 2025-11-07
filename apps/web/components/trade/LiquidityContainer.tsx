@@ -16,7 +16,11 @@ import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
 import { LiquiditySection } from "./LiquiditySection";
-import { LiquidityConfirmDialog } from "./LiquidityConfirmDialog";
+import {
+  LiquidityConfirmDialog,
+  LiquidityFlowStage,
+  LiquidityFlowStep
+} from "./LiquidityConfirmDialog";
 import {
   DEFAULT_TOKEN_DECIMALS,
   LIQUIDITY_DEFAULT,
@@ -32,6 +36,7 @@ import type {
 import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
 import type { PoolDetailsData } from "@/hooks/usePoolDetails";
 import type { ToastOptions } from "@/hooks/useToasts";
+import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 
 
 type LiquidityContainerProps = {
@@ -57,7 +62,15 @@ type LiquidityContainerProps = {
   allowTokenSelection?: boolean;
   poolDetails?: PoolDetailsData | null;
   onConnect?: () => void;
+  enableRemoveLiquidity?: boolean;
+  addLiquidityOverride?: {
+    label: string;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: "default" | "highlight";
+  } | null;
 };
+
 
 const nowPlusMinutes = (minutes: number) =>
   Math.floor(Date.now() / 1000) + minutes * 60;
@@ -93,19 +106,54 @@ export function LiquidityContainer({
   onSwapRefresh,
   allowTokenSelection = true,
   poolDetails,
-  onConnect
+  onConnect,
+  enableRemoveLiquidity = true,
+  addLiquidityOverride = null
 }: LiquidityContainerProps) {
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [liquidityForm, setLiquidityForm] =
     useState<LiquidityFormState>(LIQUIDITY_DEFAULT);
-  const [needsApprovalA, setNeedsApprovalA] = useState(false);
-  const [needsApprovalB, setNeedsApprovalB] = useState(false);
+  const [needsApprovalAState, setNeedsApprovalAState] = useState(false);
+  const needsApprovalARef = useRef(needsApprovalAState);
+  const setNeedsApprovalA = useCallback((value: boolean) => {
+    needsApprovalARef.current = value;
+    setNeedsApprovalAState(value);
+  }, []);
+  const needsApprovalA = needsApprovalAState;
+  const [needsApprovalBState, setNeedsApprovalBState] = useState(false);
+  const needsApprovalBRef = useRef(needsApprovalBState);
+  const setNeedsApprovalB = useCallback((value: boolean) => {
+    needsApprovalBRef.current = value;
+    setNeedsApprovalBState(value);
+  }, []);
+  const needsApprovalB = needsApprovalBState;
   const [checkingLiquidityAllowances, setCheckingLiquidityAllowances] =
     useState(false);
   const [liquidityAllowanceNonce, setLiquidityAllowanceNonce] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
+  const [flowRequirements, setFlowRequirements] = useState<{ tokenA: boolean; tokenB: boolean }>({
+    tokenA: false,
+    tokenB: false
+  });
+  const [liquidityFlowStage, setLiquidityFlowStage] = useState<LiquidityFlowStage>("review");
+  const [liquidityFlowActiveStep, setLiquidityFlowActiveStep] = useState<LiquidityFlowStep | null>(null);
+  const [liquidityFlowError, setLiquidityFlowError] = useState<string | null>(null);
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
+  const handleRemoveLiquidityPercentChange = useCallback((value: string) => {
+    // Replace commas with periods first (international number format support)
+    const proposed = value.replace(/,/g, ".");
+
+    // Validate the input (max 2 decimals for percentage)
+    if (!isValidNumericInput(proposed, { maxDecimals: 2 })) {
+      return;
+    }
+
+    // Normalize the input (remove leading zeros, etc.)
+    const normalized = normalizeNumericInput(proposed);
+
+    setRemoveLiquidityPercent(normalized);
+  }, []);
   const [expectedRemoveAmounts, setExpectedRemoveAmounts] = useState<{
     amountA: string;
     amountB: string;
@@ -139,6 +187,12 @@ export function LiquidityContainer({
   const liquidityTokenBAddress = liquidityTokenB?.address ?? "";
   const liquidityTokenAIsNative = Boolean(liquidityTokenA?.isNative);
   const liquidityTokenBIsNative = Boolean(liquidityTokenB?.isNative);
+
+  useEffect(() => {
+    if (!enableRemoveLiquidity && liquidityMode !== "add") {
+      setLiquidityMode("add");
+    }
+  }, [enableRemoveLiquidity, liquidityMode]);
 
   // Debounce amounts to avoid excessive allowance checks while typing
   const debouncedAmountA = useDebounce(
@@ -669,34 +723,45 @@ export function LiquidityContainer({
 
   const applyLiquidityAmountA = useCallback(
     (value: string, exactValue?: string | null) => {
+      const decimalsA = liquidityTokenA?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+
+      // Replace commas with periods first (international number format support)
+      const proposed = value.replace(/,/g, ".");
+
+      // Validate the input
+      if (!isValidNumericInput(proposed, { maxDecimals: decimalsA })) {
+        return;
+      }
+
+      // Normalize the input (remove leading zeros, etc.)
+      const normalized = normalizeNumericInput(proposed);
+
       liquidityEditingFieldRef.current = "A";
 
       setLiquidityForm((prev) => {
-        if (liquidityEditingFieldRef.current !== "A") {
-          return prev;
-        }
+        // REMOVED the ref check that was causing race conditions
+        // We already set the ref above, so we know we're editing field A
 
         const updated: LiquidityFormState = {
           ...prev,
-          amountA: value,
+          amountA: normalized,
           amountAExact: exactValue ?? null
         };
 
-        if (!value || value.trim() === "") {
+        if (!normalized) {
           updated.amountB = "";
           updated.amountBExact = null;
           liquidityEditingFieldRef.current = null;
           return updated;
         }
 
-        const parseSource = (exactValue ?? value).trim();
-        if (!parseSource) {
+        const parseSource = (exactValue ?? normalized).trim();
+        if (!parseSource || parseSource === ".") {
           return updated;
         }
 
         if (liquidityPairReserves && liquidityTokenA && liquidityTokenB) {
           try {
-            const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
             const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
             const amountAWei = parseUnits(parseSource, decimalsA);
             if (amountAWei <= 0n) {
@@ -731,35 +796,46 @@ export function LiquidityContainer({
 
   const applyLiquidityAmountB = useCallback(
     (value: string, exactValue?: string | null) => {
+      const decimalsB = liquidityTokenB?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+
+      // Replace commas with periods first (international number format support)
+      const proposed = value.replace(/,/g, ".");
+
+      // Validate the input
+      if (!isValidNumericInput(proposed, { maxDecimals: decimalsB })) {
+        return;
+      }
+
+      // Normalize the input (remove leading zeros, etc.)
+      const normalized = normalizeNumericInput(proposed);
+
       liquidityEditingFieldRef.current = "B";
 
       setLiquidityForm((prev) => {
-        if (liquidityEditingFieldRef.current !== "B") {
-          return prev;
-        }
+        // REMOVED the ref check that was causing race conditions
+        // We already set the ref above, so we know we're editing field B
 
         const updated: LiquidityFormState = {
           ...prev,
-          amountB: value,
+          amountB: normalized,
           amountBExact: exactValue ?? null
         };
 
-        if (!value || value.trim() === "") {
+        if (!normalized) {
           updated.amountA = "";
           updated.amountAExact = null;
           liquidityEditingFieldRef.current = null;
           return updated;
         }
 
-        const parseSource = (exactValue ?? value).trim();
-        if (!parseSource) {
+        const parseSource = (exactValue ?? normalized).trim();
+        if (!parseSource || parseSource === ".") {
           return updated;
         }
 
         if (liquidityPairReserves && liquidityTokenA && liquidityTokenB) {
           try {
             const decimalsA = liquidityTokenA.decimals ?? DEFAULT_TOKEN_DECIMALS;
-            const decimalsB = liquidityTokenB.decimals ?? DEFAULT_TOKEN_DECIMALS;
             const amountBWei = parseUnits(parseSource, decimalsB);
             if (amountBWei <= 0n) {
               updated.amountA = "";
@@ -817,33 +893,33 @@ export function LiquidityContainer({
     applyLiquidityAmountB(displayValue, tokenBBalanceFormatted);
   }, [tokenBBalanceFormatted, applyLiquidityAmountB]);
 
-  const handleAddLiquidity = useCallback(async () => {
+  const handleAddLiquidity = useCallback(async (): Promise<boolean> => {
     const ctx = ensureWallet();
-    if (!ctx) return;
+    if (!ctx) return false;
     if (!liquidityTokenA || !liquidityTokenB) {
       showError("Select tokens to provide liquidity.");
-      return;
+      return false;
     }
     const tokenA = liquidityTokenAAddress;
     const tokenB = liquidityTokenBAddress;
     const { amountA, amountB } = liquidityForm;
     if (!isAddress(tokenA) || !isAddress(tokenB)) {
       showError("Enter valid token addresses for liquidity provision.");
-      return;
+      return false;
     }
     if (!amountA || !amountB) {
       showError("Provide both token amounts for liquidity.");
-      return;
+      return false;
     }
     const amountAInput = liquidityForm.amountAExact ?? amountA;
     const amountBInput = liquidityForm.amountBExact ?? amountB;
     if (!amountAInput || !amountBInput) {
       showError("Provide both token amounts for liquidity.");
-      return;
+      return false;
     }
     if (liquidityTokenAIsNative && liquidityTokenBIsNative) {
       showError("Native ETH must be paired with an ERC-20 token.");
-      return;
+      return false;
     }
 
     try {
@@ -859,7 +935,7 @@ export function LiquidityContainer({
       if (amountAWei <= 0n || amountBWei <= 0n) {
         showError("Enter valid liquidity amounts.");
         setIsSubmitting(false);
-        return;
+        return false;
       }
 
       const deadline = BigInt(nowPlusMinutes(10));
@@ -868,7 +944,7 @@ export function LiquidityContainer({
         if (!wrappedNativeAddress || !isAddress(wrappedNativeAddress)) {
           showError("Wrapped native address unavailable.");
           setIsSubmitting(false);
-          return;
+          return false;
         }
 
         const nativeAmountWei = liquidityTokenAIsNative ? amountAWei : amountBWei;
@@ -1020,9 +1096,11 @@ export function LiquidityContainer({
           ? { link: { href: buildExplorerTxUrl(submittedTxHash), label: "View on explorer" } }
           : undefined
       );
+      return true;
     } catch (err) {
       console.error("[liquidity] add failed", err);
       showError(parseErrorMessage(err));
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -1044,10 +1122,20 @@ export function LiquidityContainer({
     wrappedNativeAddress
   ]);
 
-  const handleConfirmAddLiquidity = useCallback(() => {
-    setShowLiquidityConfirm(false);
-    handleAddLiquidity();
-  }, [handleAddLiquidity]);
+  useEffect(() => {
+    if (!showLiquidityConfirm) return;
+    if (liquidityFlowStage === "success") {
+      const timer = setTimeout(() => {
+        setShowLiquidityConfirm(false);
+        setLiquidityFlowStage("review");
+        setLiquidityFlowActiveStep(null);
+        setLiquidityFlowError(null);
+        setFlowRequirements({ tokenA: false, tokenB: false });
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [liquidityFlowStage, showLiquidityConfirm]);
 
   const handleRemoveLiquidity = useCallback(async () => {
     const ctx = ensureWallet();
@@ -1203,13 +1291,20 @@ export function LiquidityContainer({
     onSwapRefresh
   ]);
 
-  const handleLiquidityPrimary = useCallback(() => {
-    if (liquidityMode === "add" && liquidityTokensReady && liquidityAmountsReady) {
-      setShowLiquidityConfirm(true);
-    } else if (liquidityMode === "remove") {
-      handleRemoveLiquidity();
+  const handleCloseConfirm = useCallback(() => {
+    if (
+      liquidityFlowStage !== "review" &&
+      liquidityFlowStage !== "error" &&
+      liquidityFlowStage !== "success"
+    ) {
+      return;
     }
-  }, [handleRemoveLiquidity, liquidityMode, liquidityAmountsReady, liquidityTokensReady]);
+    setShowLiquidityConfirm(false);
+    setLiquidityFlowStage("review");
+    setLiquidityFlowActiveStep(null);
+    setLiquidityFlowError(null);
+    setFlowRequirements({ tokenA: false, tokenB: false });
+  }, [liquidityFlowStage]);
 
   const liquidityButtonLabel = useMemo(() => {
     if (!hasMounted) {
@@ -1224,10 +1319,18 @@ export function LiquidityContainer({
     if (!liquidityTokensReady) {
       return "Select Tokens";
     }
-    if (liquidityMode === "add" && !liquidityAmountsReady) {
-      return "Enter Amounts";
-    }
-    if (liquidityMode === "add" && liquidityAmountsReady) {
+    if (liquidityMode === "add") {
+      if (!liquidityTokensReady) {
+        return "Select Tokens";
+      }
+      // Check override FIRST before checking amounts
+      // This ensures "Pool already exists" shows even without amounts
+      if (addLiquidityOverride?.label) {
+        return addLiquidityOverride.label;
+      }
+      if (!liquidityAmountsReady) {
+        return "Enter Amounts";
+      }
       if (insufficientLiquidityA && insufficientLiquidityB) {
         return "Insufficient token balances";
       }
@@ -1237,18 +1340,15 @@ export function LiquidityContainer({
       if (insufficientLiquidityB) {
         return `Insufficient ${liquidityTokenB?.symbol ?? "token B"} balance`;
       }
-    }
-    if (checkingLiquidityAllowances) {
-      return "Checking...";
-    }
-    if (liquidityMode === "add" && needsApprovalA) {
-      return `Approve ${liquidityTokenA?.symbol ?? "Token A"}`;
-    }
-    if (liquidityMode === "add" && needsApprovalB) {
-      return `Approve ${liquidityTokenB?.symbol ?? "Token B"}`;
-    }
-    if (liquidityMode === "add") {
-      return isSubmitting ? "Supplying..." : "Add Liquidity";
+      if (checkingLiquidityAllowances) {
+        return "Checking...";
+      }
+      // Check if pair already exists (has reserves)
+      const pairExists =
+        liquidityPairReserves &&
+        (liquidityPairReserves.reserveAWei > 0n ||
+          liquidityPairReserves.reserveBWei > 0n);
+      return pairExists ? "Add Liquidity" : "Create pair & supply";
     }
     return isSubmitting ? "Removing..." : "Remove Liquidity";
   }, [
@@ -1262,25 +1362,26 @@ export function LiquidityContainer({
     checkingLiquidityAllowances,
     insufficientLiquidityA,
     insufficientLiquidityB,
-    needsApprovalA,
-    needsApprovalB,
+    addLiquidityOverride?.label,
     liquidityTokenA?.symbol,
     liquidityTokenB?.symbol,
-    isSubmitting
+    isSubmitting,
+    liquidityPairReserves
   ]);
 
   const liquidityButtonDisabled = useMemo(() => {
     if (!hasMounted) return false;
     if (!isWalletConnected) return isAccountConnecting;
     if (!chainId || chainId !== Number(MEGAETH_CHAIN_ID)) return true;
-    if (!liquidityTokensReady) return true;
-    if (liquidityMode === "add" && !liquidityAmountsReady) return true;
-    if (liquidityMode === "add" && liquidityAmountsReady) {
+    if (liquidityMode === "add") {
+      // Check override FIRST - it has its own disabled state
+      if (addLiquidityOverride) {
+        return addLiquidityOverride.disabled ?? false;
+      }
+      if (!liquidityTokensReady || !liquidityAmountsReady) return true;
       if (insufficientLiquidityA || insufficientLiquidityB) return true;
-    }
-    if (checkingLiquidityAllowances) return true;
-    if (liquidityMode === "add" && (needsApprovalA || needsApprovalB)) {
-      return isSubmitting;
+      if (checkingLiquidityAllowances) return true;
+      return isSubmitting && liquidityFlowStage !== "success";
     }
     if (liquidityMode === "remove") {
       const userLpBalance =
@@ -1301,6 +1402,7 @@ export function LiquidityContainer({
     }
     return isSubmitting;
   }, [
+    addLiquidityOverride,
     hasMounted,
     isWalletConnected,
     isAccountConnecting,
@@ -1311,8 +1413,7 @@ export function LiquidityContainer({
     checkingLiquidityAllowances,
     insufficientLiquidityA,
     insufficientLiquidityB,
-    needsApprovalA,
-    needsApprovalB,
+    liquidityFlowStage,
     isSubmitting,
     lpTokenInfo,
     liquidityPairReserves,
@@ -1320,28 +1421,15 @@ export function LiquidityContainer({
   ]);
 
   const handleApproveToken = useCallback(
-    async (tokenAddress: string, amount: string) => {
+    async (tokenAddress: string): Promise<boolean> => {
       const ctx = ensureWallet();
-      if (!ctx) return;
+      if (!ctx) return false;
       if (!isAddress(tokenAddress) || !isAddress(routerAddress)) {
         showError("Provide valid token and spender addresses.");
-        return;
+        return false;
       }
       try {
-        setIsSubmitting(true);
-        const decimals = await readContract(wagmiConfig, {
-          address: tokenAddress as `0x${string}`,
-          abi: erc20Abi,
-          functionName: "decimals",
-          chainId: Number(MEGAETH_CHAIN_ID)
-        })
-          .then((value) => Number(value))
-          .catch(() => DEFAULT_TOKEN_DECIMALS);
-        const parsedAmount = parseUnits(
-          amount && amount.length ? amount : "1000000",
-          decimals
-        );
-
+        const parsedAmount = MaxUint256;
         showLoading("Confirm transaction in your wallet...");
         const txHash = await writeContract(wagmiConfig, {
           address: tokenAddress as `0x${string}`,
@@ -1370,14 +1458,14 @@ export function LiquidityContainer({
           setNeedsApprovalB(false);
         }
         setLiquidityAllowanceNonce((n) => n + 1);
-        showSuccess("Token approved successfully.", {
-          link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
-        });
+        showLoading("Approval confirmed, continuing…");
+        return true;
       } catch (err) {
         console.error("[liquidity] approval failed", err);
         showError(parseErrorMessage(err));
+        return false;
       } finally {
-        setIsSubmitting(false);
+        // no-op; outer flow controls submitting state
       }
     },
     [
@@ -1386,52 +1474,103 @@ export function LiquidityContainer({
       liquidityTokenB,
       routerAddress,
       showError,
-      showLoading,
-      showSuccess
+      showLoading
     ]
   );
 
+  const runAddLiquidityFlow = useCallback(async () => {
+    setLiquidityFlowError(null);
+    setLiquidityFlowStage("review");
+    setLiquidityFlowActiveStep(null);
+    setIsSubmitting(true);
+    try {
+      const needA = flowRequirements.tokenA && isAddress(liquidityTokenAAddress);
+      const needB = flowRequirements.tokenB && isAddress(liquidityTokenBAddress);
+
+      if (needA) {
+        setLiquidityFlowStage("approveA");
+        setLiquidityFlowActiveStep("approveA");
+        const approved = await handleApproveToken(liquidityTokenAAddress);
+        if (!approved) {
+          setLiquidityFlowStage("error");
+          return;
+        }
+      }
+
+      if (needB) {
+        setLiquidityFlowStage("approveB");
+        setLiquidityFlowActiveStep("approveB");
+        const approved = await handleApproveToken(liquidityTokenBAddress);
+        if (!approved) {
+          setLiquidityFlowStage("error");
+          return;
+        }
+      }
+
+      setLiquidityFlowStage("supplying");
+      setLiquidityFlowActiveStep("supply");
+      const supplied = await handleAddLiquidity();
+      if (!supplied) {
+        setLiquidityFlowStage("error");
+        return;
+      }
+
+      setLiquidityFlowStage("success");
+      setLiquidityFlowActiveStep(null);
+    } catch (error) {
+      setLiquidityFlowError(parseErrorMessage(error));
+      setLiquidityFlowStage("error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    flowRequirements.tokenA,
+    flowRequirements.tokenB,
+    handleAddLiquidity,
+    handleApproveToken,
+    liquidityTokenAAddress,
+    liquidityTokenBAddress
+  ]);
+
+  const handleConfirmAddLiquidity = useCallback(() => {
+    if (liquidityFlowStage !== "review") return;
+    runAddLiquidityFlow();
+  }, [liquidityFlowStage, runAddLiquidityFlow]);
+
   const handleLiquidityAction = useCallback(() => {
-    // Handle wallet connection
     if (!isWalletConnected && onConnect) {
       onConnect();
       return;
     }
 
     if (liquidityMode === "add") {
-      if (needsApprovalA) {
-        const approvalAmountA =
-          liquidityForm.amountAExact && liquidityForm.amountAExact.length > 0
-            ? liquidityForm.amountAExact
-            : liquidityForm.amountA || "0";
-        handleApproveToken(liquidityTokenAAddress, approvalAmountA);
-      } else if (needsApprovalB) {
-        const approvalAmountB =
-          liquidityForm.amountBExact && liquidityForm.amountBExact.length > 0
-            ? liquidityForm.amountBExact
-            : liquidityForm.amountB || "0";
-        handleApproveToken(liquidityTokenBAddress, approvalAmountB);
-      } else {
-        handleLiquidityPrimary();
+      if (addLiquidityOverride) {
+        if (!addLiquidityOverride.disabled) {
+          addLiquidityOverride.onClick?.();
+        }
+        return;
       }
+      setFlowRequirements({
+        tokenA: needsApprovalA && isAddress(liquidityTokenAAddress),
+        tokenB: needsApprovalB && isAddress(liquidityTokenBAddress)
+      });
+      setLiquidityFlowStage("review");
+      setLiquidityFlowActiveStep(null);
+      setLiquidityFlowError(null);
+      setShowLiquidityConfirm(true);
       return;
     }
     handleRemoveLiquidity();
   }, [
-    isWalletConnected,
-    onConnect,
-    handleApproveToken,
-    handleLiquidityPrimary,
+    addLiquidityOverride,
     handleRemoveLiquidity,
-    liquidityForm.amountA,
-    liquidityForm.amountB,
-    liquidityForm.amountAExact,
-    liquidityForm.amountBExact,
+    isWalletConnected,
     liquidityMode,
     liquidityTokenAAddress,
     liquidityTokenBAddress,
     needsApprovalA,
-    needsApprovalB
+    needsApprovalB,
+    onConnect
   ]);
 
   return (
@@ -1451,38 +1590,51 @@ export function LiquidityContainer({
           tokenBBalanceFormatted,
           tokenASymbol,
           tokenBSymbol,
-          onSetMaxAmountA: handleSetMaxLiquidityAmountA,
-          onSetMaxAmountB: handleSetMaxLiquidityAmountB,
-          onPrimary: handleLiquidityAction,
-          buttonLabel: liquidityButtonLabel,
-          buttonDisabled: liquidityButtonDisabled
-        }}
-        removeProps={{
-          liquidityTokenA,
-          liquidityTokenB,
-          liquidityPairReserves,
+        onSetMaxAmountA: handleSetMaxLiquidityAmountA,
+        onSetMaxAmountB: handleSetMaxLiquidityAmountB,
+        onPrimary: handleLiquidityAction,
+        buttonLabel: liquidityButtonLabel,
+        buttonDisabled: liquidityButtonDisabled,
+        buttonVariant: addLiquidityOverride?.variant ?? "default"
+      }}
+      removeProps={{
+        liquidityTokenA,
+        liquidityTokenB,
+        liquidityPairReserves,
           lpTokenInfo,
           userPooledAmounts,
           expectedRemoveAmounts,
-          removeLiquidityPercent,
-          onRemoveLiquidityPercentChange: setRemoveLiquidityPercent,
+        removeLiquidityPercent,
+        onRemoveLiquidityPercentChange: handleRemoveLiquidityPercentChange,
           onOpenTokenDialog: handleOpenTokenDialog,
-          onRemoveLiquidity: handleRemoveLiquidity,
-          isSubmitting,
-          ready
-        }}
-        tokenSelectionEnabled={allowTokenSelection}
-      />
+        onRemoveLiquidity: handleRemoveLiquidity,
+        isSubmitting,
+        ready
+      }}
+      tokenSelectionEnabled={allowTokenSelection}
+      allowRemove={enableRemoveLiquidity}
+      addButtonVariant={addLiquidityOverride?.variant ?? "default"}
+    />
 
       <LiquidityConfirmDialog
         open={showLiquidityConfirm}
-        onClose={() => setShowLiquidityConfirm(false)}
+        onClose={handleCloseConfirm}
         onConfirm={handleConfirmAddLiquidity}
+        onRetry={runAddLiquidityFlow}
+        disableClose={
+          liquidityFlowStage !== "review" &&
+          liquidityFlowStage !== "error" &&
+          liquidityFlowStage !== "success"
+        }
         isSubmitting={isSubmitting}
         liquidityPairReserves={liquidityPairReserves}
         liquidityForm={liquidityForm}
         liquidityTokenA={liquidityTokenA}
         liquidityTokenB={liquidityTokenB}
+        flowStage={liquidityFlowStage}
+        flowActiveStep={liquidityFlowActiveStep}
+        flowRequirements={flowRequirements}
+        flowError={liquidityFlowError}
       />
     </>
   );

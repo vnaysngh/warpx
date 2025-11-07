@@ -154,7 +154,8 @@ export default function PoolLiquidityPage() {
   // Derive pair resolution error
   const pairResolutionError = useMemo(() => {
     if (!pairAddress) return "Pool address missing from URL.";
-    if (poolDetailsError) return "Unable to load pool data. Verify the pool address.";
+    if (poolDetailsError)
+      return "Unable to load pool data. Verify the pool address.";
     return null;
   }, [pairAddress, poolDetailsError]);
 
@@ -231,7 +232,7 @@ export default function PoolLiquidityPage() {
 
       if (
         currentAddresses.size === targetAddresses.size &&
-        [...currentAddresses].every(addr => targetAddresses.has(addr))
+        [...currentAddresses].every((addr) => targetAddresses.has(addr))
       ) {
         return;
       }
@@ -283,7 +284,10 @@ export default function PoolLiquidityPage() {
     const descriptor1 = ensureDescriptor(poolDetails.token1Address);
 
     // Apply display ordering (non-native tokens first)
-    const [orderedTokenA, orderedTokenB] = orderTokensForDisplay(descriptor0, descriptor1);
+    const [orderedTokenA, orderedTokenB] = orderTokensForDisplay(
+      descriptor0,
+      descriptor1
+    );
 
     // Batch state updates
     pairTargetRef.current = {
@@ -363,7 +367,7 @@ export default function PoolLiquidityPage() {
             </div>
           </div>
           <p className={styles.description}>
-            Provide liquidity to trading pairs and earn fees from every swap..
+            Provide liquidity to trading pairs and earn fees from every swap.
           </p>
         </div>
 

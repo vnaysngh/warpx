@@ -31,6 +31,7 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
+import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import type { ToastOptions } from "@/hooks/useToasts";
 type EnsureWalletContext = {
   walletAccount: string | null;
@@ -147,6 +148,7 @@ export function SwapContainer({
   const swapInIsNative = Boolean(swapInDescriptor?.isNative);
   const swapOutIsNative = Boolean(swapOutDescriptor?.isNative);
   const swapInIsAddress = isAddress(swapInTokenAddress);
+  const swapOutDecimals = swapOutDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
   const { data: swapInBalanceData, refetch: refetchSwapInBalance } = useBalance({
     address:
@@ -653,76 +655,46 @@ export function SwapContainer({
   }, [swapInBalanceFormatted]);
 
   const handleSwapAmountInChange = useCallback((value: string) => {
+    // Replace commas with periods first (international number format support)
+    const proposed = value.replace(/,/g, ".");
+
+    // Validate the input
+    if (!isValidNumericInput(proposed, { maxDecimals: swapInDecimals })) {
+      return;
+    }
+
+    // Normalize the input (remove leading zeros, etc.)
+    const normalized = normalizeNumericInput(proposed);
+
     swapEditingFieldRef.current = "amountIn";
     setSwapForm((prev) => ({
       ...prev,
-      amountIn: value,
+      amountIn: normalized,
       amountInExact: null
     }));
-    // Reset price impact immediately when amount changes
     setPriceImpact(null);
-  }, []);
+  }, [swapInDecimals]);
 
   const handleSwapMinOutChange = useCallback((value: string) => {
+    const decimals = swapOutDecimals;
+
+    // Replace commas with periods first (international number format support)
+    const proposed = value.replace(/,/g, ".");
+
+    // Validate the input
+    if (!isValidNumericInput(proposed, { maxDecimals: decimals })) {
+      return;
+    }
+
+    // Normalize the input (remove leading zeros, etc.)
+    const normalized = normalizeNumericInput(proposed);
+
     swapEditingFieldRef.current = "minOut";
     setSwapForm((prev) => ({
       ...prev,
-      minOut: value
+      minOut: normalized
     }));
-  }, []);
-
-  const handleApprove = useCallback(async () => {
-    const tokenAddress = swapForm.tokenIn;
-    const amount = swapForm.amountIn || "0";
-    const ctx = ensureWallet();
-    if (!ctx) return;
-    if (swapInIsNative) {
-      showError("Native MegaETH does not require approval.");
-      return;
-    }
-    if (!isAddress(tokenAddress) || !isAddress(routerAddress)) {
-      showError("Provide valid token and spender addresses.");
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-
-      showLoading("Confirm transaction in your wallet...");
-      const txHash = await writeContract(wagmiConfig, {
-        address: tokenAddress as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [routerAddress as `0x${string}`, MaxUint256],
-        account: ctx.account as `0x${string}`,
-        chainId: Number(MEGAETH_CHAIN_ID),
-        gas: 100000n
-      });
-      showLoading("Approval pending...");
-      await waitForTransactionReceipt(wagmiConfig, {
-        hash: txHash
-      });
-
-      setNeedsApproval(false);
-      setAllowanceNonce((n) => n + 1);
-      showSuccess("Token approved successfully.", {
-        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
-      });
-    } catch (err) {
-      console.error("[swap] approval failed", err);
-      showError(parseErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    ensureWallet,
-    routerAddress,
-    showError,
-    showLoading,
-    showSuccess,
-    swapForm.amountIn,
-    swapForm.tokenIn,
-    swapInIsNative
-  ]);
+  }, [swapOutDecimals]);
 
   const handleSwap = useCallback(async () => {
     const ctx = ensureWallet();
@@ -777,16 +749,12 @@ export function SwapContainer({
       }
 
       const deadline = BigInt(nowPlusMinutes(10));
-      const isExactInput = swapEditingFieldRef.current === "amountIn";
-      const maxInputSource =
-        maxInput && maxInput.length > 0 ? maxInput : amountInputForTx;
-      const maxAmountInputWei = parseUnits(maxInputSource, decimalsIn);
-      const amountToApprove = isExactInput ? amountInWei : maxAmountInputWei;
 
       const wrappedNative =
         wrappedNativeAddress ??
         swapInDescriptor.wrappedAddress ??
-        swapOutDescriptor.wrappedAddress;
+        swapOutDescriptor.wrappedAddress ??
+        null;
 
       let functionName:
         | "swapExactTokensForTokens"
@@ -794,7 +762,6 @@ export function SwapContainer({
         | "swapExactTokensForETH";
       let args: unknown[];
       let txValue: bigint | undefined;
-      let path: `0x${string}`[];
 
       if (swapInIsNative) {
         if (!wrappedNative || !isAddress(wrappedNative)) {
@@ -802,7 +769,7 @@ export function SwapContainer({
           setIsSubmitting(false);
           return;
         }
-        path = [
+        const path: `0x${string}`[] = [
           wrappedNative as `0x${string}`,
           swapOutTokenAddress as `0x${string}`
         ];
@@ -820,7 +787,7 @@ export function SwapContainer({
           setIsSubmitting(false);
           return;
         }
-        path = [
+        const path: `0x${string}`[] = [
           swapInTokenAddress as `0x${string}`,
           wrappedNative as `0x${string}`
         ];
@@ -833,7 +800,7 @@ export function SwapContainer({
           deadline
         ];
       } else {
-        path = [
+        const path: `0x${string}`[] = [
           swapInTokenAddress as `0x${string}`,
           swapOutTokenAddress as `0x${string}`
         ];
@@ -845,31 +812,6 @@ export function SwapContainer({
           ctx.account as `0x${string}`,
           deadline
         ];
-      }
-
-      if (!swapInIsNative) {
-        const allowance = await readContract(wagmiConfig, {
-          address: tokenIn as `0x${string}`,
-          abi: erc20Abi,
-          functionName: "allowance",
-          args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
-          chainId: Number(MEGAETH_CHAIN_ID)
-        });
-
-        if (toBigInt(allowance) < amountToApprove) {
-          showLoading("Confirm transaction in your wallet...");
-          const approveHash = await writeContract(wagmiConfig, {
-            address: tokenIn as `0x${string}`,
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [routerAddress as `0x${string}`, MaxUint256],
-            account: ctx.account as `0x${string}`,
-            chainId: Number(MEGAETH_CHAIN_ID),
-            gas: 100000n
-          });
-          showLoading("Approval pending...");
-          await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
-        }
       }
 
       showLoading("Confirm transaction in your wallet...");
@@ -939,6 +881,60 @@ export function SwapContainer({
     swapInTokenAddress,
     swapOutTokenAddress,
     wrappedNativeAddress
+  ]);
+
+  const handleApprove = useCallback(async () => {
+    const tokenAddress = swapForm.tokenIn;
+    const ctx = ensureWallet();
+    if (!ctx) return;
+    if (swapInIsNative) {
+      showError("Native MegaETH does not require approval.");
+      return;
+    }
+    if (!isAddress(tokenAddress) || !isAddress(routerAddress)) {
+      showError("Provide valid token and spender addresses.");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+
+      showLoading("Confirm transaction in your wallet...");
+      const txHash = await writeContract(wagmiConfig, {
+        address: tokenAddress as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [routerAddress as `0x${string}`, MaxUint256],
+        account: ctx.account as `0x${string}`,
+        chainId: Number(MEGAETH_CHAIN_ID),
+        gas: 100000n
+      });
+      showLoading("Approval pending...");
+      await waitForTransactionReceipt(wagmiConfig, {
+        hash: txHash
+      });
+
+      setNeedsApproval(false);
+      setAllowanceNonce((n) => n + 1);
+      showLoading("Approval confirmed, continuing…");
+      setIsSubmitting(false);
+      setTimeout(() => {
+        handleSwap();
+      }, 0);
+      return;
+    } catch (err) {
+      console.error("[swap] approval failed", err);
+      showError(parseErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    ensureWallet,
+    handleSwap,
+    routerAddress,
+    showError,
+    showLoading,
+    swapForm.tokenIn,
+    swapInIsNative
   ]);
 
   const slippagePercentDisplay = useMemo(

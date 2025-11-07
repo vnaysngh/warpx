@@ -6,6 +6,22 @@ import {
   ONE_BIPS
 } from "./constants";
 
+const sqrtBigInt = (value: bigint): bigint => {
+  if (value < 0n) {
+    throw new Error("square root of negative numbers is not supported");
+  }
+  if (value < 2n) {
+    return value;
+  }
+  let x0 = value;
+  let x1 = (x0 + value / x0) >> 1n;
+  while (x1 < x0) {
+    x0 = x1;
+    x1 = (x0 + value / x0) >> 1n;
+  }
+  return x0;
+};
+
 /**
  * Format numbers with smart decimal handling (Warp AMM style)
  * - Strips trailing zeros
@@ -160,7 +176,7 @@ export const getLiquidityMinted = (
   if (totalSupplyWei === 0n) {
     // Initial liquidity: sqrt(amountA * amountB) - 1000
     const product = amountAWei * amountBWei;
-    const sqrtProduct = BigInt(Math.floor(Math.sqrt(Number(product))));
+    const sqrtProduct = sqrtBigInt(product);
     return sqrtProduct > MINIMUM_LIQUIDITY
       ? sqrtProduct - MINIMUM_LIQUIDITY
       : 0n;

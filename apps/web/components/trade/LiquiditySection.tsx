@@ -35,6 +35,7 @@ type LiquidityAddProps = {
   onPrimary: () => void;
   buttonLabel: string;
   buttonDisabled: boolean;
+  buttonVariant?: "default" | "highlight";
 };
 
 type LiquidityRemoveProps = {
@@ -58,6 +59,8 @@ type LiquiditySectionProps = {
   addProps: LiquidityAddProps;
   removeProps: LiquidityRemoveProps;
   tokenSelectionEnabled: boolean;
+  allowRemove: boolean;
+  addButtonVariant?: "default" | "highlight";
 };
 
 export function LiquiditySection({
@@ -65,33 +68,46 @@ export function LiquiditySection({
   onModeChange,
   addProps,
   removeProps,
-  tokenSelectionEnabled
+  tokenSelectionEnabled,
+  allowRemove,
+  addButtonVariant = "default"
 }: LiquiditySectionProps) {
+  const effectiveMode = allowRemove ? mode : "add";
+  const handleModeChange = (next: LiquidityMode) => {
+    if (!allowRemove && next === "remove") {
+      return;
+    }
+    onModeChange(next);
+  };
+
   return (
     <section className={styles.card}>
-      <div className={styles.cardHeader}>
-        <div className={styles.segmented}>
-          <button
-            type="button"
-            className={`${styles.segment} ${mode === "add" ? styles.segmentActive : ""}`}
-            onClick={() => onModeChange("add")}
-          >
-            Add
-          </button>
-          <button
-            type="button"
-            className={`${styles.segment} ${mode === "remove" ? styles.segmentActive : ""}`}
-            onClick={() => onModeChange("remove")}
-          >
-            Remove
-          </button>
+      {allowRemove ? (
+        <div className={styles.cardHeader}>
+          <div className={styles.segmented}>
+            <button
+              type="button"
+              className={`${styles.segment} ${effectiveMode === "add" ? styles.segmentActive : ""}`}
+              onClick={() => handleModeChange("add")}
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              className={`${styles.segment} ${effectiveMode === "remove" ? styles.segmentActive : ""}`}
+              onClick={() => handleModeChange("remove")}
+            >
+              Remove
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      {mode === "add" ? (
+      {effectiveMode === "add" ? (
         <LiquidityAddForm
           {...addProps}
           tokenSelectionEnabled={tokenSelectionEnabled}
+          buttonVariant={addButtonVariant}
         />
       ) : (
         <LiquidityRemoveForm
@@ -120,8 +136,17 @@ function LiquidityAddForm({
   onPrimary,
   buttonLabel,
   buttonDisabled,
-  tokenSelectionEnabled
-}: LiquidityAddProps & { tokenSelectionEnabled: boolean }) {
+  tokenSelectionEnabled,
+  buttonVariant = "default"
+}: LiquidityAddProps & { tokenSelectionEnabled: boolean; buttonVariant?: "default" | "highlight" }) {
+  const primaryButtonClass = [
+    styles.primaryButton,
+    styles.primaryFull,
+    buttonVariant === "highlight" ? styles.primaryButtonHighlight : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <>
       <div className={styles.swapPanel}>
@@ -160,7 +185,15 @@ function LiquidityAddForm({
           <div className={styles.assetAmountRow}>
             <input
               className={styles.amountInput}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoCorrect="off"
+              pattern="^[0-9]*[.,]?[0-9]*$"
               placeholder="0.0"
+              minLength={1}
+              maxLength={79}
+              spellCheck="false"
               value={liquidityForm.amountA}
               onChange={(event) => onAmountAChange(event.target.value)}
             />
@@ -221,7 +254,15 @@ function LiquidityAddForm({
           <div className={styles.assetAmountRow}>
             <input
               className={styles.amountInput}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoCorrect="off"
+              pattern="^[0-9]*[.,]?[0-9]*$"
               placeholder="0.0"
+              minLength={1}
+              maxLength={79}
+              spellCheck="false"
               value={liquidityForm.amountB}
               onChange={(event) => onAmountBChange(event.target.value)}
             />
@@ -250,7 +291,7 @@ function LiquidityAddForm({
 
       <div className={styles.summary}>
         <button
-          className={`${styles.primaryButton} ${styles.primaryFull}`}
+          className={primaryButtonClass}
           onClick={onPrimary}
           disabled={buttonDisabled}
           type="button"

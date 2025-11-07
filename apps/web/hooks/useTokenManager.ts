@@ -19,6 +19,13 @@ type DeploymentMetadata = {
   wmegaeth?: string;
 } | null;
 
+type TokenManagerOptions = {
+  initialSwapIn?: TokenDescriptor | null;
+  initialSwapOut?: TokenDescriptor | null;
+  initialLiquidityA?: TokenDescriptor | null;
+  initialLiquidityB?: TokenDescriptor | null;
+};
+
 const NATIVE_SYMBOL_FALLBACK = "ETH";
 
 const isAddress = (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value);
@@ -126,7 +133,10 @@ const mapTokenEntry = (
   };
 };
 
-export function useTokenManager(deployment?: DeploymentMetadata) {
+export function useTokenManager(
+  deployment?: DeploymentMetadata,
+  options?: TokenManagerOptions
+) {
   const deploymentNetwork = deployment?.network;
   const wrappedNativeAddress = deployment?.wmegaeth;
   const nativeSymbolValue =
@@ -141,18 +151,55 @@ export function useTokenManager(deployment?: DeploymentMetadata) {
     ).filter((token): token is TokenDescriptor => Boolean(token));
   }, [nativeSymbol, wrappedNativeAddress]);
 
+  const resolveInitial = <T>(
+    fallback: () => T | null,
+    value: T | null | undefined,
+    provided: boolean
+  ): T | null => {
+    if (provided) {
+      return value ?? null;
+    }
+    return fallback();
+  };
+
+  const hasInitialSwapIn = options ? "initialSwapIn" in options : false;
+  const hasInitialSwapOut = options ? "initialSwapOut" in options : false;
+  const hasInitialLiquidityA = options ? "initialLiquidityA" in options : false;
+  const hasInitialLiquidityB = options ? "initialLiquidityB" in options : false;
+
+  const initialSwapInToken = resolveInitial(
+    () => initialTokenList[0] ?? null,
+    options?.initialSwapIn,
+    hasInitialSwapIn
+  );
+  const initialSwapOutToken = resolveInitial(
+    () => initialTokenList[1] ?? initialTokenList[0] ?? null,
+    options?.initialSwapOut,
+    hasInitialSwapOut
+  );
+  const initialLiquidityTokenA = resolveInitial(
+    () => initialTokenList[0] ?? null,
+    options?.initialLiquidityA,
+    hasInitialLiquidityA
+  );
+  const initialLiquidityTokenB = resolveInitial(
+    () => initialTokenList[1] ?? initialTokenList[0] ?? null,
+    options?.initialLiquidityB,
+    hasInitialLiquidityB
+  );
+
   const [tokenList, setTokenList] = useState<TokenDescriptor[]>(initialTokenList);
   const [selectedIn, setSelectedIn] = useState<TokenDescriptor | null>(
-    initialTokenList[0] ?? null
+    initialSwapInToken
   );
   const [selectedOut, setSelectedOut] = useState<TokenDescriptor | null>(
-    initialTokenList[1] ?? initialTokenList[0] ?? null
+    initialSwapOutToken
   );
   const [liquidityTokenA, setLiquidityTokenA] = useState<TokenDescriptor | null>(
-    initialTokenList[0] ?? null
+    initialLiquidityTokenA
   );
   const [liquidityTokenB, setLiquidityTokenB] = useState<TokenDescriptor | null>(
-    initialTokenList[1] ?? initialTokenList[0] ?? null
+    initialLiquidityTokenB
   );
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [tokenDialogSide, setTokenDialogSide] =
@@ -166,10 +213,10 @@ export function useTokenManager(deployment?: DeploymentMetadata) {
     liquidityA: string | null;
     liquidityB: string | null;
   }>({
-    selectedIn: initialTokenList[0]?.address?.toLowerCase() ?? null,
-    selectedOut: (initialTokenList[1] ?? initialTokenList[0])?.address?.toLowerCase() ?? null,
-    liquidityA: initialTokenList[0]?.address?.toLowerCase() ?? null,
-    liquidityB: (initialTokenList[1] ?? initialTokenList[0])?.address?.toLowerCase() ?? null
+    selectedIn: initialSwapInToken?.address?.toLowerCase() ?? null,
+    selectedOut: initialSwapOutToken?.address?.toLowerCase() ?? null,
+    liquidityA: initialLiquidityTokenA?.address?.toLowerCase() ?? null,
+    liquidityB: initialLiquidityTokenB?.address?.toLowerCase() ?? null
   });
 
   useEffect(() => {

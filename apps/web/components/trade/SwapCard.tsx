@@ -85,7 +85,15 @@ export function SwapCard({
           <div className={styles.assetAmountRow}>
             <input
               className={styles.amountInput}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoCorrect="off"
+              pattern="^[0-9]*[.,]?[0-9]*$"
               placeholder="0.0"
+              minLength={1}
+              maxLength={79}
+              spellCheck="false"
               value={swapForm.amountIn}
               onChange={(event) => onAmountInChange(event.target.value)}
             />
@@ -182,7 +190,15 @@ export function SwapCard({
           <div className={styles.assetAmountRow}>
             <input
               className={styles.amountInput}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoCorrect="off"
+              pattern="^[0-9]*[.,]?[0-9]*$"
               placeholder={swapQuote ? swapQuote.amount : "0.0"}
+              minLength={1}
+              maxLength={79}
+              spellCheck="false"
               value={receiveValue}
               onChange={(event) => onMinOutChange(event.target.value)}
             />
