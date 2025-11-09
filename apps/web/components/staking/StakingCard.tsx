@@ -500,7 +500,7 @@ export function StakingCard({
     return () => {
       cancelled = true;
     };
-  }, [chainId, stakingTokenAddress]);
+  }, [stakingTokenAddress]);
 
   const pairLabel = useMemo(() => {
     if (pairTokens) {
