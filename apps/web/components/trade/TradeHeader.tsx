@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { type RefObject, useEffect, useMemo, useState } from "react";
 import styles from "@/app/page.module.css";
 
-type NavKey = "swap" | "pools";
+type NavKey = "swap" | "pools" | "stake";
 
 type TradeHeaderProps = {
   manifestTag: string;
@@ -27,7 +27,8 @@ type TradeHeaderProps = {
 
 const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string }> = [
   { key: "swap", label: "Swap", href: "/" },
-  { key: "pools", label: "Pools", href: "/pools" }
+  { key: "pools", label: "Pools", href: "/pools" },
+  { key: "stake", label: "Stake", href: "/stake" }
 ];
 
 export function TradeHeader({
@@ -53,7 +54,9 @@ export function TradeHeader({
   const resolvedActiveNav = useMemo<NavKey>(() => {
     if (activeNav) return activeNav;
     if (!pathname) return "swap";
-    return pathname.startsWith("/pools") ? "pools" : "swap";
+    if (pathname.startsWith("/pools")) return "pools";
+    if (pathname.startsWith("/stake")) return "stake";
+    return "swap";
   }, [activeNav, pathname]);
 
   useEffect(() => {

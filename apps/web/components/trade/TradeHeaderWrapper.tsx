@@ -113,7 +113,11 @@ export function TradeHeaderWrapper() {
 
   const showWalletActions = hasMounted && isWalletConnected;
 
-  const activeNav = pathname?.startsWith("/pools") ? "pools" : "swap";
+  const activeNav = pathname?.startsWith("/pools")
+    ? "pools"
+    : pathname?.startsWith("/stake")
+      ? "stake"
+      : "swap";
 
   return (
     <TradeHeader

@@ -86,6 +86,42 @@ Vercel manages production deployments for both frontends:
 
 Preview deployments will spin up independently, mirroring the production domain routing.
 
+### Staking rewards deployment
+
+LP staking contracts live under `packages/periphery/contracts/rewards`. Deploy a proxy + implementation pair and sync the frontend manifest with:
+
+```sh
+yarn deploy-staking
+```
+
+Set the following environment variables beforehand (all addresses should be checksum formatted):
+
+- `MEGAETH_STAKING_LP_TOKEN` – WarpX LP token address users will stake (required)
+- `MEGAETH_STAKING_REWARD_TOKEN` – reward token address (optional if `MEGAETH_STAKING_REWARD_SYMBOL` is provided)
+- `MEGAETH_STAKING_REWARD_SYMBOL` – symbol to look up in `*.tokens.json` when the reward token address isn’t provided
+- `MEGAETH_STAKING_OWNER` – address that can update durations, reclaim stray tokens, etc. (defaults to deployer)
+- `MEGAETH_STAKING_DISTRIBUTOR` – address allowed to call `notifyRewardAmount` (defaults to owner)
+- `MEGAETH_STAKING_PROXY_ADMIN` – proxy admin account for upgrades (defaults to deployer)
+- `MEGAETH_STAKING_DURATION` – emission window in seconds (defaults to 7 days)
+- `MEGAETH_STAKING_LABEL` – UI label for the staking card (optional)
+
+The script writes `/deployments/<network>.staking.json` and mirrors it to `apps/web/public/deployments`, which powers the staking page in the app. After deploying, transfer reward tokens into the staking contract and call `notifyRewardAmount` to start emissions.
+
+To restart emissions without touching the UI, fund the staking proxy with reward tokens and run:
+
+```sh
+MEGAETH_STAKING_CONTRACT=0xyourProxy \
+MEGAETH_STAKING_NOTIFY_AMOUNT=25000 \
+hardhat run scripts/notify-staking-rewards.ts --network megaethTestnet
+```
+
+Set `MEGAETH_STAKING_CONTRACT` to the proxy address and `MEGAETH_STAKING_NOTIFY_AMOUNT` to the number of reward tokens (human-readable, the script handles decimals). The signer must be the `rewardsDistributor`.
+
+Additional helper scripts:
+
+- `yarn notify-staking` – shorthand for the command above. Requires `MEGAETH_STAKING_NOTIFY_AMOUNT` (per emission window) and a distributor key in `MEGAETH_PRIVATE_KEY`.
+- `yarn change-staking-admin` – rotates the proxy admin address. Provide `MEGAETH_STAKING_NEW_ADMIN` (target address) and run with the current admin key. The script auto-detects the proxy from the manifest if `MEGAETH_STAKING_CONTRACT` isn’t set.
+
 ## Testing
 
 To run the tests for the smart contracts, use the following command:
