@@ -6,18 +6,18 @@ WarpX is a decentralized exchange (DEX) built on the Ethereum blockchain. It imp
 
 This project is a monorepo managed by Turborepo. It contains the following packages:
 
--   `apps/web`: A Next.js web application that provides the main user interface for the DEX.
--   `apps/landing`: A marketing landing page that introduces the protocol and links to the app.
--   `packages/core`: Contains the core smart contracts for the DEX, including the factory and pair contracts.
--   `packages/periphery`: Contains the router smart contract for interacting with the core contracts.
+- `apps/web`: A Next.js web application that provides the main user interface for the DEX.
+- `apps/landing`: A marketing landing page that introduces the protocol and links to the app.
+- `packages/core`: Contains the core smart contracts for the DEX, including the factory and pair contracts.
+- `packages/periphery`: Contains the router smart contract for interacting with the core contracts.
 
 ## Getting Started
 
 ### Prerequisites
 
--   [Node.js](https://nodejs.org/en/) (v18 or later)
--   [Yarn](https://yarnpkg.com/)
--   [Hardhat](https://hardhat.org/)
+- [Node.js](https://nodejs.org/en/) (v18 or later)
+- [Yarn](https://yarnpkg.com/)
+- [Hardhat](https://hardhat.org/)
 
 ### Installation
 
@@ -53,28 +53,28 @@ This will start both Next.js applications in watch mode via Turborepo. By defaul
 
 This is the main web application for the WarpX DEX. It is built with Next.js and uses the following libraries:
 
--   [Wagmi](https://wagmi.sh/): For interacting with the Ethereum blockchain.
--   [Ethers.js](https://docs.ethers.io/): For interacting with the Ethereum blockchain.
--   React Server Components (App Router) and a custom component library tailored for WarpX.
+- [Wagmi](https://wagmi.sh/): For interacting with the Ethereum blockchain.
+- [Ethers.js](https://docs.ethers.io/): For interacting with the Ethereum blockchain.
+- React Server Components (App Router) and a custom component library tailored for WarpX.
 
 ### `apps/landing`
 
-This Next.js application powers the marketing site at the root domain. It shares typography, colors, and layout tokens with the DEX to keep branding consistent. Run `yarn turbo run dev --filter=landing` for a focused development server. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` locally and `https://app.warpx.exchange` in production) if you need to override the Launch App button target.
+This Next.js application powers the marketing site at the root domain. It shares typography, colors, and layout tokens with the DEX to keep branding consistent. Run `yarn turbo run dev --filter=landing` for a focused development server. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` locally and `https://testnet.warpx.exchange` in production) if you need to override the Launch App button target.
 
 ### `packages/core`
 
 This package contains the core smart contracts for the DEX. The contracts are written in Solidity and power the Warp V2 AMM.
 
--   `WarpFactory.sol`: The factory contract for creating new token pairs.
--   `WarpPair.sol`: The contract for a single token pair.
--   `WarpERC20.sol`: An ERC20 token contract used for testing.
+- `WarpFactory.sol`: The factory contract for creating new token pairs.
+- `WarpPair.sol`: The contract for a single token pair.
+- `WarpERC20.sol`: An ERC20 token contract used for testing.
 
 ### `packages/periphery`
 
 This package contains the router smart contracts for interacting with the core contracts.
 
--   `WarpRouter.sol`: The router contract for swapping tokens.
--   `WarpRouter01.sol`: Legacy router interface maintained for compatibility.
+- `WarpRouter.sol`: The router contract for swapping tokens.
+- `WarpRouter01.sol`: Legacy router interface maintained for compatibility.
 
 ## Deployment
 

@@ -5,7 +5,7 @@ import styles from "./page.module.css";
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ??
   (process.env.NODE_ENV === "production"
-    ? "https://app.warpx.exchange"
+    ? "https://testnet.warpx.exchange"
     : "http://localhost:3000");
 
 export default function LandingPage() {
