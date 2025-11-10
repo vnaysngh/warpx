@@ -137,15 +137,24 @@ export function TradeHeader({
           ))}
         </nav>
         <div className={styles.navRight}>
-          <span className={styles.networkBadge}>MegaETH Testnet</span>
           {showWalletActions ? (
             <div ref={walletMenuRef} className={styles.walletMenuContainer}>
               <button
                 className={styles.walletButton}
                 onClick={onWalletButtonClick}
                 type="button"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                {shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}
+                <span>{shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
 
               {isWalletMenuOpen && (
@@ -270,8 +279,6 @@ export function TradeHeader({
             <div className={styles.mobileMenuDivider} />
 
             <div className={styles.mobileMenuFooter}>
-              <span className={styles.networkBadge}>MegaETH Testnet</span>
-
               {showWalletActions ? (
                 <div className={styles.mobileWalletSection}>
                   <div className={styles.mobileWalletMeta}>
