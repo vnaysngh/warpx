@@ -120,7 +120,6 @@ export function TradeHeader({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="WarpX" className={styles.logo} />
             <span className={styles.brandMain}>WarpX</span>
-            <span className={styles.brandSub}>Built on MegaETH</span>
           </div>
         </div>
 
@@ -256,7 +255,6 @@ export function TradeHeader({
                 <img src="/logo.png" alt="WarpX" className={styles.logo} />
                 <div className={styles.mobileMenuTitle}>
                   <span className={styles.brandMain}>WarpX</span>
-                  <span className={styles.brandSub}>Built on MegaETH</span>
                 </div>
               </div>
               <button

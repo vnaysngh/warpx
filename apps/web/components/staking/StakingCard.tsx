@@ -529,7 +529,7 @@ export function StakingCard({
           {rewardsMeta.symbol === "WARPX" && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src="/logos/warpx.jpeg"
+              src="/logos/warpx.png"
               alt="WarpX"
               className={styles.rewardLogo}
             />

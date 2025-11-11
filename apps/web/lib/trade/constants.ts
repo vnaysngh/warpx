@@ -44,7 +44,7 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     name: "WarpX",
     address: "0xA78FAa476Ee5aC877ddF77F7969e3410965B8376",
     decimals: 18,
-    logo: "/logos/warpx.jpeg"
+    logo: "/logos/warpx.png"
   },
   {
     symbol: "GTE",
