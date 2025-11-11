@@ -9,7 +9,7 @@ import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
-import { CopyIcon } from "@/components/icons/CopyIcon";
+import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
@@ -355,20 +355,6 @@ export default function PoolLiquidityPage() {
     appKit.open();
   }, []);
 
-  const handleCopyValue = useCallback(
-    async (value?: string | null, label = "Address") => {
-      if (!value || typeof navigator === "undefined") return;
-      try {
-        await navigator.clipboard.writeText(value);
-        showSuccess(`${label} copied`);
-      } catch (error) {
-        console.warn("[clipboard] failed to copy value", error);
-        showError("Failed to copy to clipboard.");
-      }
-    },
-    [showError, showSuccess]
-  );
-
   const breadcrumbPairLabel = useMemo(() => {
     if (liquidityTokenA && liquidityTokenB) {
       const [displayA, displayB] = orderTokensForDisplay(
@@ -428,14 +414,11 @@ export default function PoolLiquidityPage() {
                 {breadcrumbPairLabel ?? "Pool"}
               </span>
               {breadcrumbAddress ? (
-                <button
-                  type="button"
-                  className={`${styles.breadcrumbAddress} ${styles.copyTrigger}`}
-                  onClick={() => handleCopyValue(pairAddress, "Pool address")}
-                >
-                  <span>{breadcrumbAddress}</span>
-                  <CopyIcon className={styles.copyIcon} />
-                </button>
+                <CopyAddressButton
+                  value={pairAddress ?? ""}
+                  displayValue={breadcrumbAddress}
+                  className={styles.breadcrumbAddress}
+                />
               ) : null}
             </nav>
           </div>
@@ -487,5 +470,55 @@ export default function PoolLiquidityPage() {
         prefetchedTokenDetails={prefetchedTokenDetails}
       />
     </>
+  );
+}
+
+function CopyAddressButton({
+  value,
+  displayValue,
+  className
+}: {
+  value: string;
+  displayValue: string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    if (!value || typeof navigator === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.warn("[clipboard] failed to copy value", error);
+    }
+  }, [value]);
+
+  return (
+    <button
+      type="button"
+      className={`${styles.copyTrigger} ${className ?? ""}`}
+      onClick={handleCopy}
+    >
+      <span>{displayValue}</span>
+      {copied ? (
+        <CopySuccessIcon className={`${styles.copyIcon} ${styles.copyIconSuccess}`} />
+      ) : (
+        <CopyIcon className={styles.copyIcon} />
+      )}
+    </button>
   );
 }
