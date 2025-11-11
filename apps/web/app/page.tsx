@@ -17,6 +17,7 @@ import { useTokenManager } from "@/hooks/useTokenManager";
 import { MEGAETH_CHAIN_ID } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { appKit } from "@/lib/wagmi";
+import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 
 export default function Page() {
   const {
@@ -130,6 +131,8 @@ export default function Page() {
 
   return (
     <>
+      <AnimatedBackground variant="swap" />
+
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}

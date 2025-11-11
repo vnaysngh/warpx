@@ -17,6 +17,7 @@ import type { TokenManifest } from "@/lib/trade/types";
 import { appKit } from "@/lib/wagmi";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { StakingCard } from "@/components/staking/StakingCard";
+import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 
 type TokenMeta = {
   symbol: string;
@@ -130,6 +131,8 @@ export default function StakePage() {
 
   return (
     <>
+      <AnimatedBackground variant="stake" />
+
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}
@@ -155,7 +158,7 @@ export default function StakePage() {
 
           {!loading && programs.length === 0 && (
             <div className={styles.emptyState}>
-              <strong>No staking programs yet</strong>
+              <strong>No staking programs configured</strong>
               Deploy a WarpStakingRewards contract and sync the manifest to make
               it appear here.
             </div>

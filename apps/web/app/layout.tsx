@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={terminal.variable}>
+    <html lang="en" className={terminal.variable} suppressHydrationWarning>
       <body>
         <Providers>
           <ClientLayout>{children}</ClientLayout>

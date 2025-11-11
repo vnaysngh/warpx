@@ -1,0 +1,378 @@
+.demoPage {
+  padding: 48px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.header h1 {
+  font-size: 48px;
+  margin: 0 0 16px 0;
+  background: var(--gradient-speed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header p {
+  font-size: 18px;
+  color: var(--fg-subtle);
+}
+
+.section {
+  margin-bottom: 80px;
+  padding: 32px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.section h2 {
+  font-size: 32px;
+  margin: 0 0 32px 0;
+  color: var(--speed-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section h3 {
+  font-size: 20px;
+  margin: 0 0 16px 0;
+  color: var(--fg);
+  text-transform: uppercase;
+}
+
+/* Poses Grid */
+.posesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 24px;
+}
+
+.poseCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.poseCard:hover {
+  border-color: var(--speed-blue);
+  transform: translateY(-4px);
+  box-shadow: var(--glow-blue);
+}
+
+.poseName {
+  margin: 0;
+  font-size: 14px;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Interactive Demo */
+.interactiveDemo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.bigRabbit {
+  padding: 32px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border-bright);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glow-blue);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.controls label {
+  font-size: 14px;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.select {
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.select:hover {
+  border-color: var(--speed-blue);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--speed-blue);
+  box-shadow: var(--glow-blue);
+}
+
+/* Loading Demo */
+.loadingDemo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  margin-bottom: 48px;
+}
+
+.loadingCard {
+  padding: 32px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.txDemo {
+  padding: 32px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.txControls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+/* Empty States Demo */
+.emptyDemo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 32px;
+}
+
+.emptyCard {
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 400px;
+}
+
+/* Transaction Hook Demo */
+.txHookDemo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.txHookControls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 24px;
+  background: var(--gradient-speed);
+  border: none;
+  border-radius: var(--radius);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-blue);
+}
+
+.btnSuccess {
+  composes: btn;
+  background: var(--gradient-speed);
+}
+
+.btnError {
+  composes: btn;
+  background: linear-gradient(135deg, var(--error) 0%, var(--carrot-orange) 100%);
+}
+
+/* Sizes Demo */
+.sizesDemo {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 32px;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.sizeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.sizeCard p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+}
+
+/* Color System */
+.colorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.colorCard {
+  height: 100px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 14px;
+  color: var(--bg);
+  box-shadow: var(--shadow-md);
+}
+
+.gradientGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.gradientCard {
+  height: 120px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 16px;
+  color: var(--rabbit-white);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Footer */
+.footer {
+  margin-top: 64px;
+  padding: 32px;
+  background: var(--bg-panel);
+  border: 2px solid var(--border-bright);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.footer p {
+  margin: 0 0 12px 0;
+  color: var(--fg-subtle);
+  line-height: 1.6;
+}
+
+.footer p:last-child {
+  margin-bottom: 0;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .demoPage {
+    padding: 24px 16px;
+  }
+
+  .header h1 {
+    font-size: 32px;
+  }
+
+  .section {
+    padding: 24px 16px;
+  }
+
+  .section h2 {
+    font-size: 24px;
+  }
+
+  .posesGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .poseCard {
+    padding: 16px;
+  }
+
+  .emptyDemo {
+    grid-template-columns: 1fr;
+  }
+
+  .loadingDemo {
+    grid-template-columns: 1fr;
+  }
+
+  .txControls,
+  .txHookControls {
+    flex-direction: column;
+  }
+
+  .sizesDemo {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .colorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .gradientGrid {
+    grid-template-columns: 1fr;
+  }
+}

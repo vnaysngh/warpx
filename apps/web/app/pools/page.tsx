@@ -23,6 +23,7 @@ import {
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { formatNumberWithGrouping } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
+import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 
 export default function PoolsPage() {
   const { address, chain, status } = useAccount();
@@ -315,6 +316,8 @@ export default function PoolsPage() {
 
   return (
     <>
+      <AnimatedBackground variant="pools" />
+
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}

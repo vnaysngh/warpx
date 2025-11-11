@@ -1,14 +1,62 @@
 :root {
   color-scheme: dark;
-  --bg: #050505;
-  --bg-panel: #111;
-  --bg-subtle: #161616;
-  --fg: #f5f5f5;
-  --fg-subtle: #9fa5b3;
-  --accent: #0aff9d;
-  --accent-muted: rgba(10, 255, 157, 0.12);
-  --border: rgba(255, 255, 255, 0.08);
+
+  /* Base backgrounds - deeper, richer */
+  --bg: #0A0E27;
+  --bg-panel: #141B3D;
+  --bg-subtle: #1A2250;
+  --bg-elevated: #1F2859;
+
+  /* Foregrounds */
+  --fg: #FEFEFE;
+  --fg-subtle: #B8C1E8;
+  --fg-muted: #7D8AB8;
+
+  /* Brand colors - MegaETH inspired */
+  --speed-blue: #00D4FF;
+  --neon-cyan: #0AFF9D;
+  --carrot-orange: #FF6B35;
+  --neon-pink: #FF2E97;
+  --deep-purple: #7B2CBF;
+  --rabbit-white: #FEFEFE;
+
+  /* Primary accent (keep compatibility) */
+  --accent: var(--speed-blue);
+  --accent-muted: rgba(0, 212, 255, 0.12);
+  --accent-hover: #00E5FF;
+
+  /* Secondary accents */
+  --accent-secondary: var(--neon-pink);
+  --accent-tertiary: var(--carrot-orange);
+  --accent-success: var(--neon-cyan);
+
+  /* Gradients */
+  --gradient-speed: linear-gradient(135deg, var(--speed-blue) 0%, var(--neon-cyan) 100%);
+  --gradient-energy: linear-gradient(135deg, var(--carrot-orange) 0%, var(--neon-pink) 100%);
+  --gradient-premium: linear-gradient(135deg, var(--deep-purple) 0%, var(--speed-blue) 100%);
+  --gradient-rabbit: linear-gradient(135deg, #FEFEFE 0%, var(--speed-blue) 100%);
+
+  /* UI elements */
+  --border: rgba(255, 255, 255, 0.1);
+  --border-bright: rgba(0, 212, 255, 0.3);
   --radius: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  /* Shadows & glows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --glow-blue: 0 0 20px rgba(0, 212, 255, 0.4);
+  --glow-cyan: 0 0 20px rgba(10, 255, 157, 0.4);
+  --glow-pink: 0 0 20px rgba(255, 46, 151, 0.4);
+  --glow-orange: 0 0 20px rgba(255, 107, 53, 0.4);
+
+  /* Status colors */
+  --success: var(--neon-cyan);
+  --error: #FF4757;
+  --warning: var(--carrot-orange);
+  --info: var(--speed-blue);
   font-family: var(
     --font-mochiy,
     "JetBrains Mono",
@@ -46,13 +94,23 @@ body {
   background-image:
     radial-gradient(
       circle at top left,
-      rgba(10, 255, 157, 0.08),
+      rgba(0, 212, 255, 0.15),
       transparent 40%
     ),
     radial-gradient(
       circle at 80% 20%,
-      rgba(255, 255, 255, 0.06),
+      rgba(123, 44, 191, 0.12),
       transparent 45%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(255, 46, 151, 0.1),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(10, 255, 157, 0.08),
+      transparent 40%
     );
 }
 
