@@ -35,17 +35,33 @@
   height: auto;
 }
 
+.brandText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .brandMain {
   font-size: clamp(1.5rem, 2.8vw, 2rem);
   font-weight: 600;
+  line-height: 1;
+}
+
+.brandSub {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  opacity: 0.8;
 }
 
 .ctaButton {
   padding: 10px 20px;
   border-radius: 999px;
-  border: 1px solid rgba(10, 255, 157, 0.4);
-  background: rgba(10, 255, 157, 0.15);
-  color: var(--accent);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  background: var(--gradient-speed);
+  color: var(--bg);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -55,8 +71,8 @@
 
 .ctaButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(10, 255, 157, 0.25);
-  background: rgba(10, 255, 157, 0.22);
+  box-shadow: 0 12px 28px rgba(0, 212, 255, 0.4), 0 0 40px rgba(0, 212, 255, 0.2);
+  filter: brightness(1.1);
 }
 
 .hero {
@@ -92,21 +108,22 @@
   align-items: center;
   justify-content: center;
   width: fit-content;
-  padding: 12px 28px;
+  padding: 14px 32px;
   border-radius: 999px;
-  background: var(--accent);
-  color: #020403;
+  background: var(--gradient-speed);
+  color: var(--bg);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  font-size: 13px;
-  box-shadow: 0 12px 38px rgba(10, 255, 157, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: 14px;
+  box-shadow: 0 12px 38px rgba(0, 212, 255, 0.4), 0 0 60px rgba(10, 255, 157, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .ctaPrimary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 54px rgba(10, 255, 157, 0.45);
+  box-shadow: 0 18px 54px rgba(0, 212, 255, 0.5), 0 0 80px rgba(10, 255, 157, 0.3);
+  filter: brightness(1.1);
 }
 
 .heroGraphic {
@@ -122,26 +139,28 @@
   border-radius: 50%;
   background: radial-gradient(
     circle at center,
-    rgba(10, 255, 157, 0.28),
-    rgba(10, 255, 157, 0) 65%
+    rgba(0, 212, 255, 0.28),
+    rgba(10, 255, 157, 0.15) 40%,
+    transparent 70%
   );
   filter: blur(18px);
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .heroPulse {
   position: absolute;
   inset: 8%;
   border-radius: 50%;
-  border: 1px solid rgba(10, 255, 157, 0.18);
+  border: 1px solid rgba(0, 212, 255, 0.25);
   animation: hero-pulse 6s ease-in-out infinite;
+  box-shadow: inset 0 0 20px rgba(0, 212, 255, 0.1);
 }
 
 .heroOrbit {
   position: absolute;
   inset: 18%;
   border-radius: 50%;
-  border: 1px dashed rgba(10, 255, 157, 0.35);
+  border: 1px dashed rgba(0, 212, 255, 0.35);
   animation: hero-spin 18s linear infinite;
 }
 
@@ -158,8 +177,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 18px rgba(10, 255, 157, 0.55);
+  background: var(--speed-blue);
+  box-shadow: 0 0 18px rgba(0, 212, 255, 0.6);
 }
 
 .tokenA {
@@ -178,16 +197,18 @@
   bottom: -7px;
   left: 50%;
   transform: translate(-50%, 0);
-  background: #66ffe0;
-  box-shadow: 0 0 16px rgba(102, 255, 224, 0.45);
+  background: var(--neon-cyan);
+  box-shadow: 0 0 16px rgba(10, 255, 157, 0.6);
 }
 
 .heroCore {
   position: absolute;
   inset: 40%;
   border-radius: 16px;
-  background: rgba(15, 15, 15, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 27, 61, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,14 +217,15 @@
   line-height: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--fg-subtle);
-  box-shadow: 0 0 24px rgba(10, 255, 157, 0.22);
+  color: var(--fg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 212, 255, 0.15);
   white-space: nowrap;
   padding: 2px 4px;
 }
 
 .heroPairDivider {
-  color: rgba(10, 255, 157, 0.6);
+  color: var(--speed-blue);
+  font-weight: 700;
 }
 
 .footer {
@@ -248,10 +270,11 @@
 }
 
 .socialLink:hover {
-  border-color: rgba(10, 255, 157, 0.4);
-  background: rgba(10, 255, 157, 0.1);
-  color: var(--accent);
+  border-color: rgba(0, 212, 255, 0.5);
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--speed-blue);
   transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 212, 255, 0.2);
 }
 
 @media (max-width: 960px) {

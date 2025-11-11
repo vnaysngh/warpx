@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono as jetBrainsMono } from "next/font/google";
+import { Mochiy_Pop_One } from "next/font/google";
 import "@warpx/theme/globals.css";
 
-const terminal = jetBrainsMono({
+const terminal = Mochiy_Pop_One({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400"],
   variable: "--font-mochiy",
   display: "swap"
 });

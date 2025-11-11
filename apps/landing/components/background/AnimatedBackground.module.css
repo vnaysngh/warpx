@@ -1,0 +1,334 @@
+.backgroundContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Large gradient orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.6;
+  animation: float 20s ease-in-out infinite;
+}
+
+.orb1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--speed-blue) 0%, transparent 70%);
+  top: -200px;
+  left: -200px;
+  animation: float 25s ease-in-out infinite;
+}
+
+.orb2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--deep-purple) 0%, transparent 70%);
+  top: 10%;
+  right: -150px;
+  animation: float 30s ease-in-out infinite reverse;
+}
+
+.orb3 {
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, var(--neon-pink) 0%, transparent 70%);
+  bottom: -250px;
+  right: 10%;
+  animation: float 35s ease-in-out infinite;
+}
+
+.orb4 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--neon-cyan) 0%, transparent 70%);
+  bottom: 20%;
+  left: 5%;
+  animation: float 28s ease-in-out infinite reverse;
+}
+
+.orb5 {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, var(--carrot-orange) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse 15s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 30px) scale(0.9);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.6;
+  }
+}
+
+/* Particles */
+.particlesContainer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--speed-blue);
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat 20s ease-in-out infinite;
+  box-shadow: 0 0 10px var(--speed-blue);
+}
+
+.particle:nth-child(3n) {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.particle:nth-child(3n+1) {
+  background: var(--neon-pink);
+  box-shadow: 0 0 10px var(--neon-pink);
+}
+
+.particle:nth-child(3n+2) {
+  background: var(--carrot-orange);
+  box-shadow: 0 0 10px var(--carrot-orange);
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(50px);
+    opacity: 0;
+  }
+}
+
+/* Grid overlay */
+.gridOverlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.4;
+  animation: gridMove 30s linear infinite;
+}
+
+@keyframes gridMove {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(50px, 50px);
+  }
+}
+
+/* Gradient mesh */
+.gradientMesh {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+}
+
+.meshGradient1 {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 20% 30%, var(--speed-blue) 0%, transparent 50%);
+  animation: meshMove1 40s ease-in-out infinite;
+}
+
+.meshGradient2 {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 80% 70%, var(--neon-pink) 0%, transparent 50%);
+  animation: meshMove2 35s ease-in-out infinite;
+}
+
+.meshGradient3 {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 50% 50%, var(--deep-purple) 0%, transparent 50%);
+  animation: meshMove3 45s ease-in-out infinite;
+}
+
+@keyframes meshMove1 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(100px, -50px);
+  }
+}
+
+@keyframes meshMove2 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-80px, 60px);
+  }
+}
+
+@keyframes meshMove3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -40px) scale(1.2);
+  }
+}
+
+/* Floating shapes */
+.floatingShapes {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.shape {
+  position: absolute;
+  opacity: 0.15;
+  animation: shapeFloat 25s ease-in-out infinite;
+}
+
+.shape1 {
+  width: 150px;
+  height: 150px;
+  border: 3px solid var(--speed-blue);
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  top: 15%;
+  left: 10%;
+  animation: shapeFloat 20s ease-in-out infinite, shapeRotate 15s linear infinite;
+}
+
+.shape2 {
+  width: 200px;
+  height: 200px;
+  border: 3px solid var(--neon-pink);
+  border-radius: 50%;
+  top: 60%;
+  right: 15%;
+  animation: shapeFloat 25s ease-in-out infinite reverse;
+}
+
+.shape3 {
+  width: 100px;
+  height: 100px;
+  border: 3px solid var(--neon-cyan);
+  border-radius: 20%;
+  bottom: 25%;
+  left: 20%;
+  animation: shapeFloat 30s ease-in-out infinite, shapeRotate 20s linear infinite reverse;
+}
+
+.shape4 {
+  width: 180px;
+  height: 180px;
+  border: 3px solid var(--carrot-orange);
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  top: 40%;
+  right: 25%;
+  animation: shapeFloat 28s ease-in-out infinite;
+}
+
+@keyframes shapeFloat {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(50px, -30px) rotate(120deg);
+  }
+  66% {
+    transform: translate(-30px, 50px) rotate(240deg);
+  }
+}
+
+@keyframes shapeRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .particle,
+  .gridOverlay,
+  .meshGradient1,
+  .meshGradient2,
+  .meshGradient3,
+  .shape {
+    animation: none !important;
+  }
+
+  .orb {
+    opacity: 0.3;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .orb {
+    filter: blur(60px);
+  }
+
+  .orb1,
+  .orb2,
+  .orb3,
+  .orb4,
+  .orb5 {
+    width: 300px;
+    height: 300px;
+  }
+
+  .particle {
+    display: none; /* Hide particles on mobile for performance */
+  }
+
+  .shape {
+    display: none; /* Hide shapes on mobile */
+  }
+}

@@ -2,13 +2,12 @@
 
 import type { TokenDescriptor } from "@/lib/trade/types";
 import { FEES_DENOMINATOR, FEES_NUMERATOR } from "@/lib/trade/constants";
-import { Rabbit } from "@/components/mascot";
+import styles from "./PoolsTable.module.css";
 
 const DEFAULT_FEE_PERCENT_DISPLAY = (
   (Number(FEES_DENOMINATOR - FEES_NUMERATOR) / Number(FEES_DENOMINATOR)) *
   100
 ).toFixed(2);
-import styles from "./PoolsTable.module.css";
 
 export type PoolsTableRow = {
   id: number;
@@ -200,17 +199,14 @@ export function PoolsTable({
           {!showSkeleton && showEmpty && (
             <tr>
               <td colSpan={5} className={styles.stateCell}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '2rem' }}>
-                  <Rabbit pose="thinking" size={120} />
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 600 }}>
-                      No Pools Found
-                    </p>
-                    <p style={{ margin: 0, color: 'var(--fg-subtle)' }}>
-                      No liquidity pools available yet. Pools will appear here once
-                      they are initialized on the protocol.
-                    </p>
-                  </div>
+                <div className={styles.stateContent}>
+                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 600 }}>
+                    No Pools Found
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--fg-subtle)' }}>
+                    No liquidity pools available yet. Pools will appear here once
+                    they are initialized on the protocol.
+                  </p>
                 </div>
               </td>
             </tr>
@@ -219,18 +215,15 @@ export function PoolsTable({
           {showError && (
             <tr>
               <td colSpan={5} className={styles.stateCell}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '2rem' }}>
-                  <Rabbit pose="error" size={120} />
-                  <div className={styles.stateContent}>
-                    <span>{error}</span>
-                    <button
-                      type="button"
-                      className={styles.retryButton}
-                      onClick={onRetry}
-                    >
-                      Try again
-                    </button>
-                  </div>
+                <div className={styles.stateContent}>
+                  <span>{error}</span>
+                  <button
+                    type="button"
+                    className={styles.retryButton}
+                    onClick={onRetry}
+                  >
+                    Try again
+                  </button>
                 </div>
               </td>
             </tr>
