@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
-import { Mochiy_Pop_One } from "next/font/google";
+import { Work_Sans, Mochiy_Pop_One } from "next/font/google";
 import "@warpx/theme/globals.css";
 
-const terminal = Mochiy_Pop_One({
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-work-sans",
+  display: "swap"
+});
+
+const mochiyPopOne = Mochiy_Pop_One({
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-mochiy",
@@ -21,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={terminal.variable}>
+    <html lang="en" className={`${workSans.variable} ${mochiyPopOne.variable}`}>
       <body>{children}</body>
     </html>
   );

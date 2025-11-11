@@ -29,7 +29,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${workSans.variable} ${mochiyPopOne.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${workSans.variable} ${mochiyPopOne.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <Providers>
           <ClientLayout>{children}</ClientLayout>
