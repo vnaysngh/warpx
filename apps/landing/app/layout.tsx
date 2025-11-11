@@ -5,7 +5,7 @@ import "@warpx/theme/globals.css";
 const terminal = jetBrainsMono({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-terminal",
+  variable: "--font-mochiy",
   display: "swap"
 });
 
