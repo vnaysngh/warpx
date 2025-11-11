@@ -143,5 +143,18 @@ export const warpRouterAbi = [
     ],
     "outputs": [{ "type": "uint256[]", "name": "amounts" }],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "swapExactTokensForETH",
+    "inputs": [
+      { "type": "uint256", "name": "amountIn" },
+      { "type": "uint256", "name": "amountOutMin" },
+      { "type": "address[]", "name": "path" },
+      { "type": "address", "name": "to" },
+      { "type": "uint256", "name": "deadline" }
+    ],
+    "outputs": [{ "type": "uint256[]", "name": "amounts" }],
+    "stateMutability": "nonpayable"
   }
 ] as const

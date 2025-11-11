@@ -33,6 +33,7 @@ import type {
 import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import type { ToastOptions } from "@/hooks/useToasts";
+import { buildToastVisuals } from "@/lib/toastVisuals";
 type EnsureWalletContext = {
   walletAccount: string | null;
   ready: boolean;
@@ -182,6 +183,11 @@ export function SwapContainer({
 
   const swapInBalanceValue = swapInBalanceData?.value ?? null;
   const swapInDecimals = swapInDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
+
+  const swapToastVisuals = useMemo(
+    () => buildToastVisuals("swap", selectedIn, selectedOut),
+    [selectedIn, selectedOut]
+  );
 
   const parsedSwapAmountWei = useMemo(() => {
     const source = swapForm.amountInExact ?? swapForm.amountIn;
@@ -814,7 +820,9 @@ export function SwapContainer({
         ];
       }
 
-      showLoading("Confirm transaction in your wallet...");
+      showLoading("Confirm swap in your wallet...", {
+        visuals: swapToastVisuals
+      });
 
       const txRequest: Record<string, unknown> = {
         address: routerAddress as `0x${string}`,
@@ -835,7 +843,7 @@ export function SwapContainer({
         txRequest as Parameters<typeof writeContract>[1]
       );
 
-      showLoading("Swap pending...");
+      showLoading("Swap transaction pending...", { visuals: swapToastVisuals });
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       await refetchSwapInBalance();
       setSwapForm((prev) => ({
@@ -857,11 +865,14 @@ export function SwapContainer({
       setNeedsApproval(false);
       setCheckingAllowance(false);
       showSuccess("Swap executed successfully.", {
-        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
+        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" },
+        visuals: swapToastVisuals
       });
     } catch (err) {
       console.error("[swap] failed", err);
-      showError(parseErrorMessage(err));
+      showError(parseErrorMessage(err), {
+        visuals: swapToastVisuals
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -873,6 +884,7 @@ export function SwapContainer({
     showError,
     showLoading,
     showSuccess,
+    swapToastVisuals,
     swapForm,
     swapInDescriptor,
     swapOutDescriptor,
@@ -898,7 +910,9 @@ export function SwapContainer({
     try {
       setIsSubmitting(true);
 
-      showLoading("Confirm transaction in your wallet...");
+      showLoading("Confirm token approval in your wallet...", {
+        visuals: swapToastVisuals
+      });
       const txHash = await writeContract(wagmiConfig, {
         address: tokenAddress as `0x${string}`,
         abi: erc20Abi,
@@ -908,14 +922,16 @@ export function SwapContainer({
         chainId: Number(MEGAETH_CHAIN_ID),
         gas: 100000n
       });
-      showLoading("Approval pending...");
+      showLoading("Token approval pending...", { visuals: swapToastVisuals });
       await waitForTransactionReceipt(wagmiConfig, {
         hash: txHash
       });
 
       setNeedsApproval(false);
       setAllowanceNonce((n) => n + 1);
-      showLoading("Approval confirmed, continuing…");
+      showLoading("Approval confirmed, continuing…", {
+        visuals: swapToastVisuals
+      });
       setIsSubmitting(false);
       setTimeout(() => {
         handleSwap();
@@ -923,7 +939,9 @@ export function SwapContainer({
       return;
     } catch (err) {
       console.error("[swap] approval failed", err);
-      showError(parseErrorMessage(err));
+      showError(parseErrorMessage(err), {
+        visuals: swapToastVisuals
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -934,7 +952,8 @@ export function SwapContainer({
     showError,
     showLoading,
     swapForm.tokenIn,
-    swapInIsNative
+    swapInIsNative,
+    swapToastVisuals
   ]);
 
   const slippagePercentDisplay = useMemo(

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { Toast } from "@/components/Toast";
 
-export type ToastOptions = Pick<Toast, "duration" | "link">;
+export type ToastOptions = Pick<Toast, "duration" | "link" | "visuals">;
 
 export function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -15,7 +15,8 @@ export function useToasts() {
         message,
         type,
         duration: options.duration,
-        link: options.link
+        link: options.link,
+        visuals: options.visuals
       };
       setToasts((prev) => [...prev, newToast]);
       return id;

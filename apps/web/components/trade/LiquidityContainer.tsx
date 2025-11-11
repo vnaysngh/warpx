@@ -16,11 +16,7 @@ import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
 import { LiquiditySection } from "./LiquiditySection";
-import {
-  LiquidityConfirmDialog,
-  LiquidityFlowStage,
-  LiquidityFlowStep
-} from "./LiquidityConfirmDialog";
+import { LiquidityConfirmDialog } from "./LiquidityConfirmDialog";
 import {
   DEFAULT_TOKEN_DECIMALS,
   LIQUIDITY_DEFAULT,
@@ -37,6 +33,7 @@ import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
 import type { PoolDetailsData } from "@/hooks/usePoolDetails";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
+import { buildToastVisuals } from "@/lib/toastVisuals";
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
@@ -130,20 +127,6 @@ export function LiquidityContainer({
   const [liquidityAllowanceNonce, setLiquidityAllowanceNonce] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
-  const [flowRequirements, setFlowRequirements] = useState<{
-    tokenA: boolean;
-    tokenB: boolean;
-  }>({
-    tokenA: false,
-    tokenB: false
-  });
-  const [liquidityFlowStage, setLiquidityFlowStage] =
-    useState<LiquidityFlowStage>("review");
-  const [liquidityFlowActiveStep, setLiquidityFlowActiveStep] =
-    useState<LiquidityFlowStep | null>(null);
-  const [liquidityFlowError, setLiquidityFlowError] = useState<string | null>(
-    null
-  );
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
   const handleRemoveLiquidityPercentChange = useCallback((value: string) => {
     // Replace commas with periods first (international number format support)
@@ -192,6 +175,14 @@ export function LiquidityContainer({
   const liquidityTokenBAddress = liquidityTokenB?.address ?? "";
   const liquidityTokenAIsNative = Boolean(liquidityTokenA?.isNative);
   const liquidityTokenBIsNative = Boolean(liquidityTokenB?.isNative);
+  const addLiquidityToastVisuals = useMemo(
+    () => buildToastVisuals("addLiquidity", liquidityTokenA, liquidityTokenB),
+    [liquidityTokenA, liquidityTokenB]
+  );
+  const removeLiquidityToastVisuals = useMemo(
+    () => buildToastVisuals("removeLiquidity", liquidityTokenA, liquidityTokenB),
+    [liquidityTokenA, liquidityTokenB]
+  );
 
   useEffect(() => {
     if (!enableRemoveLiquidity && liquidityMode !== "add") {
@@ -374,17 +365,16 @@ export function LiquidityContainer({
     setNeedsApprovalA(false);
     setNeedsApprovalB(false);
     setCheckingLiquidityAllowances(false);
-    setShowLiquidityConfirm(false);
     setExpectedRemoveAmounts(null);
     setUserPooledAmounts(null);
     setLpTokenInfo(null);
+    setShowLiquidityConfirm(false);
   }, [
     liquidityTokenA?.address,
     liquidityTokenB?.address,
     setNeedsApprovalA,
     setNeedsApprovalB,
     setCheckingLiquidityAllowances,
-    setShowLiquidityConfirm,
     setExpectedRemoveAmounts,
     setUserPooledAmounts,
     setLpTokenInfo,
@@ -1006,7 +996,9 @@ export function LiquidityContainer({
         });
 
         if (toBigInt(allowance) < ercAmountWei) {
-          showLoading("Confirm transaction in your wallet...");
+          showLoading("Confirm token approval in your wallet...", {
+            visuals: addLiquidityToastVisuals
+          });
           const approveHash = await writeContract(wagmiConfig, {
             address: ercTokenAddress as `0x${string}`,
             abi: erc20Abi,
@@ -1016,7 +1008,9 @@ export function LiquidityContainer({
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
           });
-          showLoading(`${ercTokenSymbol || "Token"} approval pending...`);
+          showLoading("Token approval pending...", {
+            visuals: addLiquidityToastVisuals
+          });
           await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
           if (liquidityTokenAIsNative) {
             setNeedsApprovalB(false);
@@ -1025,7 +1019,9 @@ export function LiquidityContainer({
           }
         }
 
-        showLoading("Confirm transaction in your wallet...");
+        showLoading("Confirm add liquidity in your wallet...", {
+          visuals: addLiquidityToastVisuals
+        });
         const txHash = await writeContract(wagmiConfig, {
           address: routerAddress as `0x${string}`,
           abi: warpRouterAbi,
@@ -1043,7 +1039,9 @@ export function LiquidityContainer({
           gas: 5000000n,
           value: nativeAmountWei
         });
-        showLoading("Adding liquidity...");
+        showLoading("Add liquidity transaction pending...", {
+          visuals: addLiquidityToastVisuals
+        });
         await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
         submittedTxHash = txHash;
       } else {
@@ -1071,7 +1069,9 @@ export function LiquidityContainer({
         ]);
 
         if (toBigInt(allowanceA) < amountAWei) {
-          showLoading("Confirm transaction in your wallet...");
+          showLoading("Confirm token approval in your wallet...", {
+            visuals: addLiquidityToastVisuals
+          });
           const approveAHash = await writeContract(wagmiConfig, {
             address: tokenA as `0x${string}`,
             abi: erc20Abi,
@@ -1081,15 +1081,17 @@ export function LiquidityContainer({
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
           });
-          showLoading(
-            `${liquidityTokenA.symbol || "Token A"} approval pending...`
-          );
+          showLoading("Token approval pending...", {
+            visuals: addLiquidityToastVisuals
+          });
           await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
           setNeedsApprovalA(false);
         }
 
         if (toBigInt(allowanceB) < amountBWei) {
-          showLoading("Confirm transaction in your wallet...");
+          showLoading("Confirm token approval in your wallet...", {
+            visuals: addLiquidityToastVisuals
+          });
           const approveBHash = await writeContract(wagmiConfig, {
             address: tokenB as `0x${string}`,
             abi: erc20Abi,
@@ -1099,14 +1101,16 @@ export function LiquidityContainer({
             chainId: Number(MEGAETH_CHAIN_ID),
             gas: 100000n
           });
-          showLoading(
-            `${liquidityTokenB.symbol || "Token B"} approval pending...`
-          );
+          showLoading("Token approval pending...", {
+            visuals: addLiquidityToastVisuals
+          });
           await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
           setNeedsApprovalB(false);
         }
 
-        showLoading("Confirm transaction in your wallet...");
+        showLoading("Confirm add liquidity in your wallet...", {
+          visuals: addLiquidityToastVisuals
+        });
         const txHash = await writeContract(wagmiConfig, {
           address: routerAddress as `0x${string}`,
           abi: warpRouterAbi,
@@ -1125,7 +1129,9 @@ export function LiquidityContainer({
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 5000000n
         });
-        showLoading("Adding liquidity...");
+        showLoading("Add liquidity transaction pending...", {
+          visuals: addLiquidityToastVisuals
+        });
         await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
         submittedTxHash = txHash;
       }
@@ -1133,7 +1139,6 @@ export function LiquidityContainer({
       await refreshBalances();
       setLiquidityForm(LIQUIDITY_DEFAULT);
       liquidityEditingFieldRef.current = null;
-      setShowLiquidityConfirm(false);
       setExpectedRemoveAmounts(null);
       setUserPooledAmounts(null);
       setLpTokenInfo(null);
@@ -1143,21 +1148,21 @@ export function LiquidityContainer({
       setNeedsApprovalA(false);
       setNeedsApprovalB(false);
       setLiquidityAllowanceNonce((n) => n + 1);
-      showSuccess(
-        "Liquidity added successfully.",
-        submittedTxHash
+      showSuccess("Liquidity added successfully.", {
+        link: submittedTxHash
           ? {
-              link: {
-                href: buildExplorerTxUrl(submittedTxHash),
-                label: "View on explorer"
-              }
+              href: buildExplorerTxUrl(submittedTxHash),
+              label: "View on explorer"
             }
-          : undefined
-      );
+          : undefined,
+        visuals: addLiquidityToastVisuals
+      });
       return true;
     } catch (err) {
       console.error("[liquidity] add failed", err);
-      showError(parseErrorMessage(err));
+      showError(parseErrorMessage(err), {
+        visuals: addLiquidityToastVisuals
+      });
       return false;
     } finally {
       setIsSubmitting(false);
@@ -1178,10 +1183,10 @@ export function LiquidityContainer({
     routerAddress,
     onSwapRefresh,
     wrappedNativeAddress,
+    addLiquidityToastVisuals,
     setNeedsApprovalA,
     setNeedsApprovalB,
     setLiquidityForm,
-    setShowLiquidityConfirm,
     setExpectedRemoveAmounts,
     setUserPooledAmounts,
     setLpTokenInfo,
@@ -1190,21 +1195,6 @@ export function LiquidityContainer({
     setLiquidityAllowanceNonce,
     setIsSubmitting
   ]);
-
-  useEffect(() => {
-    if (!showLiquidityConfirm) return;
-    if (liquidityFlowStage === "success") {
-      const timer = setTimeout(() => {
-        setShowLiquidityConfirm(false);
-        setLiquidityFlowStage("review");
-        setLiquidityFlowActiveStep(null);
-        setLiquidityFlowError(null);
-        setFlowRequirements({ tokenA: false, tokenB: false });
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [liquidityFlowStage, showLiquidityConfirm]);
 
   const handleRemoveLiquidity = useCallback(async () => {
     const ctx = ensureWallet();
@@ -1263,7 +1253,9 @@ export function LiquidityContainer({
       });
 
       if (toBigInt(allowance) < liquidityToRemove) {
-        showLoading("Confirm transaction in your wallet...");
+        showLoading("Confirm token approval in your wallet...", {
+          visuals: removeLiquidityToastVisuals
+        });
         const approveHash = await writeContract(wagmiConfig, {
           address: pairAddress as `0x${string}`,
           abi: erc20Abi,
@@ -1273,11 +1265,13 @@ export function LiquidityContainer({
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n
         });
-        showLoading("Approval pending...");
+        showLoading("Token approval pending...", { visuals: removeLiquidityToastVisuals });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
 
-      showLoading("Confirm transaction in your wallet...");
+      showLoading("Confirm remove liquidity in your wallet...", {
+        visuals: removeLiquidityToastVisuals
+      });
       const deadline = BigInt(nowPlusMinutes(10));
 
       const txRequest =
@@ -1321,7 +1315,9 @@ export function LiquidityContainer({
         txRequest as Parameters<typeof writeContract>[1]
       );
 
-      showLoading("Removing liquidity...");
+      showLoading("Remove liquidity transaction pending...", {
+        visuals: removeLiquidityToastVisuals
+      });
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       await refreshBalances();
       setLiquidityPairReserves(null);
@@ -1336,12 +1332,15 @@ export function LiquidityContainer({
       setLiquidityAllowanceNonce((n) => n + 1);
       onSwapRefresh();
       showSuccess("Liquidity removed successfully.", {
-        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" }
+        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" },
+        visuals: removeLiquidityToastVisuals
       });
       setRemoveLiquidityPercent("25");
     } catch (err) {
       console.error("[liquidity] remove failed", err);
-      showError(parseErrorMessage(err));
+      showError(parseErrorMessage(err), {
+        visuals: removeLiquidityToastVisuals
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -1358,6 +1357,7 @@ export function LiquidityContainer({
     showError,
     showLoading,
     showSuccess,
+    removeLiquidityToastVisuals,
     onSwapRefresh,
     setLiquidityPairReserves,
     setLiquidityReservesRefreshNonce,
@@ -1371,21 +1371,6 @@ export function LiquidityContainer({
     setIsSubmitting,
     setRemoveLiquidityPercent
   ]);
-
-  const handleCloseConfirm = useCallback(() => {
-    if (
-      liquidityFlowStage !== "review" &&
-      liquidityFlowStage !== "error" &&
-      liquidityFlowStage !== "success"
-    ) {
-      return;
-    }
-    setShowLiquidityConfirm(false);
-    setLiquidityFlowStage("review");
-    setLiquidityFlowActiveStep(null);
-    setLiquidityFlowError(null);
-    setFlowRequirements({ tokenA: false, tokenB: false });
-  }, [liquidityFlowStage]);
 
   const liquidityButtonLabel = useMemo(() => {
     if (!hasMounted) {
@@ -1462,7 +1447,7 @@ export function LiquidityContainer({
       if (!liquidityTokensReady || !liquidityAmountsReady) return true;
       if (insufficientLiquidityA || insufficientLiquidityB) return true;
       if (checkingLiquidityAllowances) return true;
-      return isSubmitting && liquidityFlowStage !== "success";
+      return isSubmitting;
     }
     if (liquidityMode === "remove") {
       const userLpBalance =
@@ -1496,7 +1481,6 @@ export function LiquidityContainer({
     checkingLiquidityAllowances,
     insufficientLiquidityA,
     insufficientLiquidityB,
-    liquidityFlowStage,
     isSubmitting,
     lpTokenInfo,
     liquidityPairReserves,
@@ -1513,7 +1497,9 @@ export function LiquidityContainer({
       }
       try {
         const parsedAmount = MaxUint256;
-        showLoading("Confirm transaction in your wallet...");
+        showLoading("Confirm token approval in your wallet...", {
+          visuals: addLiquidityToastVisuals
+        });
         const txHash = await writeContract(wagmiConfig, {
           address: tokenAddress as `0x${string}`,
           abi: erc20Abi,
@@ -1523,7 +1509,7 @@ export function LiquidityContainer({
           chainId: Number(MEGAETH_CHAIN_ID),
           gas: 100000n
         });
-        showLoading("Approval pending...");
+        showLoading("Token approval pending...", { visuals: addLiquidityToastVisuals });
         await waitForTransactionReceipt(wagmiConfig, {
           hash: txHash
         });
@@ -1541,11 +1527,15 @@ export function LiquidityContainer({
           setNeedsApprovalB(false);
         }
         setLiquidityAllowanceNonce((n) => n + 1);
-        showLoading("Approval confirmed, continuing…");
+        showLoading("Approval confirmed, continuing…", {
+          visuals: addLiquidityToastVisuals
+        });
         return true;
       } catch (err) {
         console.error("[liquidity] approval failed", err);
-        showError(parseErrorMessage(err));
+        showError(parseErrorMessage(err), {
+          visuals: addLiquidityToastVisuals
+        });
         return false;
       } finally {
         // no-op; outer flow controls submitting state
@@ -1555,75 +1545,62 @@ export function LiquidityContainer({
       ensureWallet,
       liquidityTokenA,
       liquidityTokenB,
-      routerAddress,
-      showError,
-      showLoading,
-      setNeedsApprovalA,
-      setNeedsApprovalB,
-      setLiquidityAllowanceNonce
+    routerAddress,
+    showError,
+    showLoading,
+    addLiquidityToastVisuals,
+    setNeedsApprovalA,
+    setNeedsApprovalB,
+    setLiquidityAllowanceNonce
     ]
   );
 
   const runAddLiquidityFlow = useCallback(async () => {
-    setLiquidityFlowError(null);
-    setLiquidityFlowStage("review");
-    setLiquidityFlowActiveStep(null);
     setIsSubmitting(true);
     try {
-      const needA =
-        flowRequirements.tokenA && isAddress(liquidityTokenAAddress);
-      const needB =
-        flowRequirements.tokenB && isAddress(liquidityTokenBAddress);
+      const needA = needsApprovalA && isAddress(liquidityTokenAAddress);
+      const needB = needsApprovalB && isAddress(liquidityTokenBAddress);
 
       if (needA) {
-        setLiquidityFlowStage("approveA");
-        setLiquidityFlowActiveStep("approveA");
         const approved = await handleApproveToken(liquidityTokenAAddress);
         if (!approved) {
-          setLiquidityFlowStage("error");
           return;
         }
       }
 
       if (needB) {
-        setLiquidityFlowStage("approveB");
-        setLiquidityFlowActiveStep("approveB");
         const approved = await handleApproveToken(liquidityTokenBAddress);
         if (!approved) {
-          setLiquidityFlowStage("error");
           return;
         }
       }
 
-      setLiquidityFlowStage("supplying");
-      setLiquidityFlowActiveStep("supply");
-      const supplied = await handleAddLiquidity();
-      if (!supplied) {
-        setLiquidityFlowStage("error");
-        return;
-      }
-
-      setLiquidityFlowStage("success");
-      setLiquidityFlowActiveStep(null);
+      await handleAddLiquidity();
     } catch (error) {
-      setLiquidityFlowError(parseErrorMessage(error));
-      setLiquidityFlowStage("error");
+      showError(parseErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
   }, [
-    flowRequirements.tokenA,
-    flowRequirements.tokenB,
     handleAddLiquidity,
     handleApproveToken,
     liquidityTokenAAddress,
-    liquidityTokenBAddress
+    liquidityTokenBAddress,
+    needsApprovalA,
+    needsApprovalB,
+    showError
   ]);
 
   const handleConfirmAddLiquidity = useCallback(() => {
-    if (liquidityFlowStage !== "review") return;
+    if (isSubmitting) return;
+    setShowLiquidityConfirm(false);
     runAddLiquidityFlow();
-  }, [liquidityFlowStage, runAddLiquidityFlow]);
+  }, [isSubmitting, runAddLiquidityFlow]);
+
+  const handleCloseConfirm = useCallback(() => {
+    if (isSubmitting) return;
+    setShowLiquidityConfirm(false);
+  }, [isSubmitting]);
 
   const handleLiquidityAction = useCallback(() => {
     if (!isWalletConnected && onConnect) {
@@ -1638,13 +1615,6 @@ export function LiquidityContainer({
         }
         return;
       }
-      setFlowRequirements({
-        tokenA: needsApprovalA && isAddress(liquidityTokenAAddress),
-        tokenB: needsApprovalB && isAddress(liquidityTokenBAddress)
-      });
-      setLiquidityFlowStage("review");
-      setLiquidityFlowActiveStep(null);
-      setLiquidityFlowError(null);
       setShowLiquidityConfirm(true);
       return;
     }
@@ -1654,10 +1624,6 @@ export function LiquidityContainer({
     handleRemoveLiquidity,
     isWalletConnected,
     liquidityMode,
-    liquidityTokenAAddress,
-    liquidityTokenBAddress,
-    needsApprovalA,
-    needsApprovalB,
     onConnect
   ]);
 
@@ -1703,26 +1669,15 @@ export function LiquidityContainer({
         allowRemove={enableRemoveLiquidity}
         addButtonVariant={addLiquidityOverride?.variant ?? "default"}
       />
-
       <LiquidityConfirmDialog
         open={showLiquidityConfirm}
         onClose={handleCloseConfirm}
         onConfirm={handleConfirmAddLiquidity}
-        onRetry={runAddLiquidityFlow}
-        disableClose={
-          liquidityFlowStage !== "review" &&
-          liquidityFlowStage !== "error" &&
-          liquidityFlowStage !== "success"
-        }
         isSubmitting={isSubmitting}
         liquidityPairReserves={liquidityPairReserves}
         liquidityForm={liquidityForm}
         liquidityTokenA={liquidityTokenA}
         liquidityTokenB={liquidityTokenB}
-        flowStage={liquidityFlowStage}
-        flowActiveStep={liquidityFlowActiveStep}
-        flowRequirements={flowRequirements}
-        flowError={liquidityFlowError}
       />
     </>
   );

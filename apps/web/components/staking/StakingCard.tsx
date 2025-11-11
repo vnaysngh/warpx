@@ -23,6 +23,7 @@ import { formatAmount, shortAddress } from "@/lib/utils/format";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import type { StakingProgram } from "@/lib/config/staking";
 import type { ToastOptions } from "@/hooks/useToasts";
+import { buildToastVisuals } from "@/lib/toastVisuals";
 import pageStyles from "@/app/page.module.css";
 import styles from "./StakingCard.module.css";
 
@@ -103,6 +104,30 @@ export function StakingCard({
 
   const stakingAddress = program.contract as Address;
   const stakingTokenAddress = program.stakingToken as Address;
+
+  const stakeToastVisuals = useMemo(() => {
+    // Create token descriptor for the staking token
+    const stakingTokenDescriptor = {
+      symbol: stakingMeta.symbol,
+      name: stakingMeta.name,
+      decimals: stakingMeta.decimals,
+      address: program.stakingToken,
+      isNative: false
+    };
+    return buildToastVisuals("stake", stakingTokenDescriptor, null);
+  }, [stakingMeta, program.stakingToken]);
+
+  const withdrawToastVisuals = useMemo(() => {
+    // Create token descriptor for the staking token
+    const stakingTokenDescriptor = {
+      symbol: stakingMeta.symbol,
+      name: stakingMeta.name,
+      decimals: stakingMeta.decimals,
+      address: program.stakingToken,
+      isNative: false
+    };
+    return buildToastVisuals("unstake", stakingTokenDescriptor, null);
+  }, [stakingMeta, program.stakingToken]);
 
   const formatTokenAmount = useCallback(
     (
@@ -299,7 +324,9 @@ export function StakingCard({
       })) as bigint;
 
       if (allowance < amount) {
-        const approvingId = showLoading("Approving staking contract...");
+        const approvingId = showLoading("Confirm token approval in your wallet...", {
+          visuals: stakeToastVisuals
+        });
         const approveHash = await writeContract(wagmiConfig, {
           address: stakingTokenAddress,
           abi: erc20Abi,
@@ -313,11 +340,14 @@ export function StakingCard({
           chainId
         });
         showSuccess("Approval confirmed", {
-          link: { href: buildExplorerTxUrl(approveHash), label: "View tx" }
+          link: { href: buildExplorerTxUrl(approveHash), label: "View tx" },
+          visuals: stakeToastVisuals
         });
       }
 
-      const loadingId = showLoading("Submitting stake...");
+      const loadingId = showLoading("Confirm stake in your wallet...", {
+        visuals: stakeToastVisuals
+      });
       const stakeHash = await writeContract(wagmiConfig, {
         address: stakingAddress,
         abi: warpStakingRewardsAbi,
@@ -332,13 +362,16 @@ export function StakingCard({
         chainId
       });
       showSuccess("Stake confirmed", {
-        link: { href: buildExplorerTxUrl(stakeHash), label: "View tx" }
+        link: { href: buildExplorerTxUrl(stakeHash), label: "View tx" },
+        visuals: stakeToastVisuals
       });
       setStakeInput("");
       refreshStats();
     } catch (error: any) {
       console.error("[staking] stake failed", error);
-      showError(parseErrorMessage(error));
+      showError(parseErrorMessage(error), {
+        visuals: stakeToastVisuals
+      });
     } finally {
       setActionPending(false);
     }
@@ -356,7 +389,9 @@ export function StakingCard({
       setActionPending(true);
       const amount = withdrawAmountParsed;
 
-      const loadingId = showLoading("Submitting withdrawal...");
+      const loadingId = showLoading("Confirm withdrawal in your wallet...", {
+        visuals: withdrawToastVisuals
+      });
       const withdrawHash = await writeContract(wagmiConfig, {
         address: stakingAddress,
         abi: warpStakingRewardsAbi,
@@ -371,13 +406,16 @@ export function StakingCard({
         chainId
       });
       showSuccess("Withdrawal confirmed", {
-        link: { href: buildExplorerTxUrl(withdrawHash), label: "View tx" }
+        link: { href: buildExplorerTxUrl(withdrawHash), label: "View tx" },
+        visuals: withdrawToastVisuals
       });
       setWithdrawInput("");
       refreshStats();
     } catch (error: any) {
       console.error("[staking] withdraw failed", error);
-      showError(parseErrorMessage(error));
+      showError(parseErrorMessage(error), {
+        visuals: withdrawToastVisuals
+      });
     } finally {
       setActionPending(false);
     }
@@ -389,7 +427,9 @@ export function StakingCard({
 
     try {
       setActionPending(true);
-      const loadingId = showLoading("Claiming rewards...");
+      const loadingId = showLoading("Confirm claim in your wallet...", {
+        visuals: stakeToastVisuals
+      });
       const claimHash = await writeContract(wagmiConfig, {
         address: stakingAddress,
         abi: warpStakingRewardsAbi,
@@ -404,12 +444,15 @@ export function StakingCard({
         chainId
       });
       showSuccess("Rewards claimed", {
-        link: { href: buildExplorerTxUrl(claimHash), label: "View tx" }
+        link: { href: buildExplorerTxUrl(claimHash), label: "View tx" },
+        visuals: stakeToastVisuals
       });
       refreshStats();
     } catch (error: any) {
       console.error("[staking] claim failed", error);
-      showError(parseErrorMessage(error));
+      showError(parseErrorMessage(error), {
+        visuals: stakeToastVisuals
+      });
     } finally {
       setActionPending(false);
     }

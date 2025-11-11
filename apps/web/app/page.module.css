@@ -1084,10 +1084,10 @@
 
 .dialog {
   width: min(420px, 100%);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(10, 10, 10, 0.95);
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #2a2440 0%, #221c35 50%, #1a1528 100%);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   gap: 1rem;
