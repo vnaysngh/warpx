@@ -1,15 +1,8 @@
 import type { Metadata } from "next";
-import { Work_Sans, Mochiy_Pop_One } from "next/font/google";
+import { Mochiy_Pop_One } from "next/font/google";
 import "@warpx/theme/globals.css";
 import { Providers } from "./providers";
 import { ClientLayout } from "@/components/layout/ClientLayout";
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-work-sans",
-  display: "swap"
-});
 
 const mochiyPopOne = Mochiy_Pop_One({
   subsets: ["latin"],
@@ -31,7 +24,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${workSans.variable} ${mochiyPopOne.variable}`}
+      className={mochiyPopOne.variable}
       suppressHydrationWarning
     >
       <body>
