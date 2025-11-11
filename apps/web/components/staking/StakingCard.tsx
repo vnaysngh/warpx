@@ -459,7 +459,6 @@ export function StakingCard({
     pendingRewards !== null &&
     pendingRewards > 0n &&
     userStaked !== null &&
-    userStaked > 0n &&
     !actionPending &&
     !loadingPendingRewards;
 

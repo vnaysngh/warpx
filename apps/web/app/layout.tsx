@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
-import {
-  JetBrains_Mono as jetBrainsMono,
-  Mochiy_Pop_One
-} from "next/font/google";
+import { Work_Sans, Mochiy_Pop_One } from "next/font/google";
 import "@warpx/theme/globals.css";
 import { Providers } from "./providers";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
-const terminal = Mochiy_Pop_One({
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-work-sans",
+  display: "swap"
+});
+
+const mochiyPopOne = Mochiy_Pop_One({
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-mochiy",
@@ -25,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={terminal.variable} suppressHydrationWarning>
+    <html lang="en" className={`${workSans.variable} ${mochiyPopOne.variable}`} suppressHydrationWarning>
       <body>
         <Providers>
           <ClientLayout>{children}</ClientLayout>
