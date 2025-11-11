@@ -143,9 +143,11 @@ export function TradeHeader({
                 className={styles.walletButton}
                 onClick={onWalletButtonClick}
                 type="button"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <span>{shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}</span>
+                <span>
+                  {shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}
+                </span>
                 <svg
                   width="14"
                   height="14"
@@ -153,7 +155,14 @@ export function TradeHeader({
                   fill="currentColor"
                   aria-hidden="true"
                 >
-                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path
+                    d="M4 6l4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
 
@@ -181,7 +190,7 @@ export function TradeHeader({
 
                   {address && (
                     <a
-                      href={`https://megaeth-testnet.blockscout.com/address/${address}`}
+                      href={`https://www.mtrkr.xyz/wallet/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.walletDropdownItem}
@@ -305,7 +314,7 @@ export function TradeHeader({
 
                   {address && (
                     <a
-                      href={`https://megaeth-testnet.blockscout.com/address/${address}`}
+                      href={`https://www.mtrkr.xyz/wallet/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.mobileWalletActionLink}
