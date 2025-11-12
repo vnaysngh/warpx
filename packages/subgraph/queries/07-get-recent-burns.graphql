@@ -1,0 +1,25 @@
+# Get recent liquidity removals (burns)
+query GetRecentBurns($first: Int = 20) {
+  burns(first: $first, orderBy: timestamp, orderDirection: desc) {
+    id
+    timestamp
+    pair {
+      id
+      token0 {
+        symbol
+      }
+      token1 {
+        symbol
+      }
+    }
+    sender
+    to
+    liquidity
+    amount0
+    amount1
+    transaction {
+      id
+      blockNumber
+    }
+  }
+}

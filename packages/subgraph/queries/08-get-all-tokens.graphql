@@ -1,0 +1,17 @@
+# Get all tokens sorted by volume
+query GetAllTokens($first: Int = 20) {
+  tokens(first: $first, orderBy: volumeUSD, orderDirection: desc) {
+    id
+    symbol
+    name
+    decimals
+    totalSupply
+    derivedETH
+    derivedUSD
+    totalLiquidity
+    volume
+    volumeUSD
+    volumeETH
+    txCount
+  }
+}

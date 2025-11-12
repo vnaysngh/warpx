@@ -1,0 +1,207 @@
+"""
+WarpX v2 analytics schema aligned with legacy exchange metrics while using Warp naming.
+"""
+
+type WarpFactoryStats @entity(immutable: false) {
+  id: ID!
+  pairCount: BigInt!
+  totalVolumeUSD: BigDecimal!
+  totalVolumeETH: BigDecimal!
+  totalLiquidityUSD: BigDecimal!
+  totalLiquidityETH: BigDecimal!
+  txCount: BigInt!
+  """
+  Helper for aggregate day data
+  """
+  dayData: [WarpDayData!]! @derivedFrom(field: "factory")
+}
+
+type WarpDayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  factory: WarpFactoryStats!
+  dailyVolumeETH: BigDecimal!
+  dailyVolumeUSD: BigDecimal!
+  dailyTxns: BigInt!
+  totalLiquidityETH: BigDecimal!
+  totalLiquidityUSD: BigDecimal!
+}
+
+type Bundle @entity(immutable: false) {
+  id: ID!
+  ethPrice: BigDecimal!
+}
+
+type Token @entity(immutable: false) {
+  id: ID!
+  symbol: String!
+  name: String!
+  decimals: BigInt!
+  totalSupply: BigInt
+  derivedETH: BigDecimal!
+  derivedUSD: BigDecimal!
+  whitelistPairs: [Pair!]! @derivedFrom(field: "token0")
+  totalLiquidity: BigDecimal!
+  volume: BigDecimal!
+  volumeUSD: BigDecimal!
+  volumeETH: BigDecimal!
+  untrackedVolumeUSD: BigDecimal!
+  txCount: BigInt!
+  dayData: [TokenDayData!]! @derivedFrom(field: "token")
+  hourData: [TokenHourData!]! @derivedFrom(field: "token")
+}
+
+type TokenDayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  token: Token!
+  priceUSD: BigDecimal!
+  priceETH: BigDecimal!
+  dailyVolumeToken: BigDecimal!
+  dailyVolumeETH: BigDecimal!
+  dailyVolumeUSD: BigDecimal!
+  dailyTxns: BigInt!
+  totalLiquidityToken: BigDecimal!
+  totalLiquidityETH: BigDecimal!
+  totalLiquidityUSD: BigDecimal!
+}
+
+type TokenHourData @entity(immutable: false) {
+  id: ID!
+  periodStartUnix: Int!
+  token: Token!
+  hourlyVolumeToken: BigDecimal!
+  hourlyVolumeETH: BigDecimal!
+  hourlyVolumeUSD: BigDecimal!
+  hourlyTxns: BigInt!
+  priceUSD: BigDecimal!
+  priceETH: BigDecimal!
+}
+
+type Pair @entity(immutable: false) {
+  id: ID!
+  token0: Token!
+  token1: Token!
+  reserve0: BigDecimal!
+  reserve1: BigDecimal!
+  totalSupply: BigDecimal!
+  reserveETH: BigDecimal!
+  reserveUSD: BigDecimal!
+  trackedReserveETH: BigDecimal!
+  trackedReserveUSD: BigDecimal!
+  token0Price: BigDecimal!
+  token1Price: BigDecimal!
+  volumeToken0: BigDecimal!
+  volumeToken1: BigDecimal!
+  volumeUSD: BigDecimal!
+  untrackedVolumeUSD: BigDecimal!
+  txCount: BigInt!
+  createdAtTimestamp: BigInt!
+  createdAtBlockNumber: BigInt!
+  liquidityProviderCount: BigInt!
+  dayData: [PairDayData!]! @derivedFrom(field: "pair")
+  hourData: [PairHourData!]! @derivedFrom(field: "pair")
+  mints: [Mint!]! @derivedFrom(field: "pair")
+  burns: [Burn!]! @derivedFrom(field: "pair")
+  swaps: [Swap!]! @derivedFrom(field: "pair")
+}
+
+type PairDayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  pair: Pair!
+  dailyVolumeToken0: BigDecimal!
+  dailyVolumeToken1: BigDecimal!
+  dailyVolumeUSD: BigDecimal!
+  dailyTxns: BigInt!
+  reserve0: BigDecimal!
+  reserve1: BigDecimal!
+  reserveUSD: BigDecimal!
+}
+
+type PairHourData @entity(immutable: false) {
+  id: ID!
+  periodStartUnix: Int!
+  pair: Pair!
+  hourlyVolumeToken0: BigDecimal!
+  hourlyVolumeToken1: BigDecimal!
+  hourlyVolumeUSD: BigDecimal!
+  hourlyTxns: BigInt!
+  reserve0: BigDecimal!
+  reserve1: BigDecimal!
+  reserveUSD: BigDecimal!
+}
+
+type LiquidityPosition @entity(immutable: false) {
+  id: ID!
+  user: Bytes!
+  pair: Pair!
+  liquidityTokenBalance: BigDecimal!
+  snapshots: [LiquidityPositionSnapshot!]! @derivedFrom(field: "liquidityPosition")
+}
+
+type LiquidityPositionSnapshot @entity(immutable: true) {
+  id: ID!
+  liquidityPosition: LiquidityPosition!
+  timestamp: Int!
+  block: Int!
+  user: Bytes!
+  pair: Pair!
+  token0PriceUSD: BigDecimal!
+  token1PriceUSD: BigDecimal!
+  reserve0: BigDecimal!
+  reserve1: BigDecimal!
+  reserveUSD: BigDecimal!
+  liquidityTokenBalance: BigDecimal!
+}
+
+type Transaction @entity(immutable: true) {
+  id: ID!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  mints: [Mint!]!
+  burns: [Burn!]!
+  swaps: [Swap!]!
+}
+
+type Mint @entity(immutable: true) {
+  id: ID!
+  transaction: Transaction!
+  timestamp: BigInt!
+  pair: Pair!
+  to: Bytes
+  liquidity: BigDecimal!
+  sender: Bytes
+  amount0: BigDecimal
+  amount1: BigDecimal
+  logIndex: BigInt
+}
+
+type Burn @entity(immutable: true) {
+  id: ID!
+  transaction: Transaction!
+  timestamp: BigInt!
+  pair: Pair!
+  liquidity: BigDecimal!
+  sender: Bytes
+  amount0: BigDecimal
+  amount1: BigDecimal
+  to: Bytes
+  logIndex: BigInt
+  needsComplete: Boolean!
+}
+
+type Swap @entity(immutable: true) {
+  id: ID!
+  transaction: Transaction!
+  timestamp: BigInt!
+  pair: Pair!
+  sender: Bytes!
+  amount0In: BigDecimal!
+  amount1In: BigDecimal!
+  amount0Out: BigDecimal!
+  amount1Out: BigDecimal!
+  to: Bytes!
+  logIndex: BigInt
+  amountUSD: BigDecimal!
+}

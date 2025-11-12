@@ -1,0 +1,27 @@
+# Get recent swaps across all pairs
+query GetRecentSwaps($first: Int = 20) {
+  swaps(first: $first, orderBy: timestamp, orderDirection: desc) {
+    id
+    timestamp
+    pair {
+      id
+      token0 {
+        symbol
+      }
+      token1 {
+        symbol
+      }
+    }
+    sender
+    amount0In
+    amount1In
+    amount0Out
+    amount1Out
+    amountUSD
+    to
+    transaction {
+      id
+      blockNumber
+    }
+  }
+}

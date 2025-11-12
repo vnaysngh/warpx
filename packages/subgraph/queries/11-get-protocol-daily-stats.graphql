@@ -1,0 +1,12 @@
+# Get protocol daily stats (last 7 days)
+query GetProtocolDailyStats($days: Int = 7) {
+  warpDayDatas(first: $days, orderBy: date, orderDirection: desc) {
+    id
+    date
+    dailyVolumeETH
+    dailyVolumeUSD
+    dailyTxns
+    totalLiquidityETH
+    totalLiquidityUSD
+  }
+}

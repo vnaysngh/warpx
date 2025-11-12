@@ -1,0 +1,18 @@
+{
+  "name": "@warpx/subgraph",
+  "version": "0.1.0",
+  "description": "WarpX analytics subgraph mirroring the legacy v2 metrics schema.",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy:local": "graph deploy warpx/exchange-v2 --ipfs http://localhost:5001 --node http://localhost:8020",
+    "test": "graph test"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "^0.90.0",
+    "@graphprotocol/graph-ts": "^0.33.0"
+  },
+  "devDependencies": {
+    "matchstick-as": "^0.6.0"
+  }
+}

@@ -1,0 +1,49 @@
+# Get recent transactions with all events
+query GetRecentTransactions($first: Int = 20) {
+  transactions(first: $first, orderBy: timestamp, orderDirection: desc) {
+    id
+    blockNumber
+    timestamp
+    mints {
+      id
+      pair {
+        token0 {
+          symbol
+        }
+        token1 {
+          symbol
+        }
+      }
+      amount0
+      amount1
+    }
+    burns {
+      id
+      pair {
+        token0 {
+          symbol
+        }
+        token1 {
+          symbol
+        }
+      }
+      amount0
+      amount1
+    }
+    swaps {
+      id
+      pair {
+        token0 {
+          symbol
+        }
+        token1 {
+          symbol
+        }
+      }
+      amount0In
+      amount1In
+      amount0Out
+      amount1Out
+    }
+  }
+}

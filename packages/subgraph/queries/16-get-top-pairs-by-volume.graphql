@@ -1,0 +1,19 @@
+# Get top pairs by total volume
+query GetTopPairsByVolume($first: Int = 10) {
+  pairs(first: $first, orderBy: volumeUSD, orderDirection: desc) {
+    id
+    token0 {
+      symbol
+      name
+    }
+    token1 {
+      symbol
+      name
+    }
+    volumeUSD
+    reserveUSD
+    txCount
+    token0Price
+    token1Price
+  }
+}

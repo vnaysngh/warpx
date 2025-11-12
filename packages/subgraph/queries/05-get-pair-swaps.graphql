@@ -1,0 +1,26 @@
+# Get swaps for a specific pair
+query GetPairSwaps($pairId: ID!, $first: Int = 50) {
+  swaps(
+    first: $first
+    orderBy: timestamp
+    orderDirection: desc
+    where: { pair: $pairId }
+  ) {
+    id
+    timestamp
+    amount0In
+    amount1In
+    amount0Out
+    amount1Out
+    amountUSD
+    sender
+    to
+    transaction {
+      id
+      blockNumber
+    }
+  }
+}
+
+# Example:
+# Variables: { "pairId": "0x4787c40081af04395318e2e804f87ca14298317f", "first": 50 }

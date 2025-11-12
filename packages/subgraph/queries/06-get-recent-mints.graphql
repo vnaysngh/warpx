@@ -1,0 +1,25 @@
+# Get recent liquidity additions (mints)
+query GetRecentMints($first: Int = 20) {
+  mints(first: $first, orderBy: timestamp, orderDirection: desc) {
+    id
+    timestamp
+    pair {
+      id
+      token0 {
+        symbol
+      }
+      token1 {
+        symbol
+      }
+    }
+    to
+    sender
+    liquidity
+    amount0
+    amount1
+    transaction {
+      id
+      blockNumber
+    }
+  }
+}

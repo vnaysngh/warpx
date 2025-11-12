@@ -1,0 +1,31 @@
+# Get all trading pairs sorted by liquidity
+query GetAllPairs {
+  pairs(first: 100, orderBy: reserveUSD, orderDirection: desc) {
+    id
+    token0 {
+      id
+      symbol
+      name
+      decimals
+    }
+    token1 {
+      id
+      symbol
+      name
+      decimals
+    }
+    reserve0
+    reserve1
+    reserveETH
+    reserveUSD
+    totalSupply
+    volumeUSD
+    volumeToken0
+    volumeToken1
+    txCount
+    token0Price
+    token1Price
+    createdAtTimestamp
+    createdAtBlockNumber
+  }
+}

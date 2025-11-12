@@ -1,0 +1,27 @@
+# Search for all pairs containing a specific token
+query SearchPairsByToken($tokenAddress: String!) {
+  pairs(
+    where: {
+      or: [
+        { token0_: { id: $tokenAddress } }
+        { token1_: { id: $tokenAddress } }
+      ]
+    }
+  ) {
+    id
+    token0 {
+      symbol
+      name
+    }
+    token1 {
+      symbol
+      name
+    }
+    reserveUSD
+    volumeUSD
+    txCount
+  }
+}
+
+# Example:
+# Variables: { "tokenAddress": "0xa78faa476ee5ac877ddf77f7969e3410965b8376" }

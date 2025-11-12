@@ -1,0 +1,29 @@
+# Get user's liquidity positions
+query GetUserPositions($userAddress: Bytes!) {
+  liquidityPositions(
+    where: { user: $userAddress }
+    orderBy: liquidityTokenBalance
+    orderDirection: desc
+  ) {
+    id
+    liquidityTokenBalance
+    pair {
+      id
+      token0 {
+        symbol
+        name
+      }
+      token1 {
+        symbol
+        name
+      }
+      reserve0
+      reserve1
+      totalSupply
+      reserveUSD
+    }
+  }
+}
+
+# Example:
+# Variables: { "userAddress": "0x1234567890123456789012345678901234567890" }

@@ -1,0 +1,24 @@
+# Get token daily stats (last 7 days)
+query GetTokenDailyStats($tokenId: ID!, $days: Int = 7) {
+  tokenDayDatas(
+    first: $days
+    orderBy: date
+    orderDirection: desc
+    where: { token: $tokenId }
+  ) {
+    id
+    date
+    priceUSD
+    priceETH
+    dailyVolumeToken
+    dailyVolumeETH
+    dailyVolumeUSD
+    dailyTxns
+    totalLiquidityToken
+    totalLiquidityETH
+    totalLiquidityUSD
+  }
+}
+
+# Example:
+# Variables: { "tokenId": "0xa78faa476ee5ac877ddf77f7969e3410965b8376", "days": 7 }

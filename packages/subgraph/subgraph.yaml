@@ -1,0 +1,75 @@
+specVersion: 0.0.7
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: WarpFactory
+    network: megaeth-testnet
+    source:
+      address: "0x57A9156f9b3fFa1b603F188f0f64FF93f51C62F8"
+      abi: WarpFactory
+      startBlock: 21238258
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - WarpFactoryStats
+        - WarpDayData
+        - Pair
+        - Token
+      abis:
+        - name: WarpFactory
+          file: ./abis/WarpFactory.json
+        - name: WarpPair
+          file: ./abis/WarpPair.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: PairCreated(indexed address,indexed address,address,uint256)
+          handler: handlePairCreated
+      blockHandlers:
+        - handler: handleBlock
+      file: ./src/mappings/factory.ts
+templates:
+  - kind: ethereum/contract
+    name: WarpPair
+    network: megaeth-testnet
+    source:
+      abi: WarpPair
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Pair
+        - Token
+        - LiquidityPosition
+        - LiquidityPositionSnapshot
+        - Mint
+        - Burn
+        - Swap
+        - PairDayData
+        - PairHourData
+        - TokenDayData
+        - TokenHourData
+        - WarpFactoryStats
+      abis:
+        - name: WarpPair
+          file: ./abis/WarpPair.json
+        - name: WarpFactory
+          file: ./abis/WarpFactory.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Mint(indexed address,uint256,uint256)
+          handler: handleMint
+        - event: Burn(indexed address,uint256,uint256,indexed address)
+          handler: handleBurn
+        - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
+          handler: handleSwap
+        - event: Sync(uint112,uint112)
+          handler: handleSync
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/mappings/pair.ts

@@ -1,0 +1,13 @@
+# Get factory stats (protocol overview)
+# Replace the ID with your factory address (lowercase)
+query GetFactoryStats {
+  warpFactoryStats(id: "0x57a9156f9b3ffa1b603f188f0f64ff93f51c62f8") {
+    id
+    pairCount
+    totalVolumeUSD
+    totalVolumeETH
+    totalLiquidityUSD
+    totalLiquidityETH
+    txCount
+  }
+}

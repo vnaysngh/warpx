@@ -1,0 +1,22 @@
+# Get pair daily stats (last 7 days)
+query GetPairDailyStats($pairId: ID!, $days: Int = 7) {
+  pairDayDatas(
+    first: $days
+    orderBy: date
+    orderDirection: desc
+    where: { pair: $pairId }
+  ) {
+    id
+    date
+    dailyVolumeToken0
+    dailyVolumeToken1
+    dailyVolumeUSD
+    dailyTxns
+    reserve0
+    reserve1
+    reserveUSD
+  }
+}
+
+# Example:
+# Variables: { "pairId": "0x4787c40081af04395318e2e804f87ca14298317f", "days": 7 }

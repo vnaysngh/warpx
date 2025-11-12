@@ -1,0 +1,22 @@
+# Get pair hourly stats (last 24 hours)
+query GetPairHourlyStats($pairId: ID!, $hours: Int = 24) {
+  pairHourDatas(
+    first: $hours
+    orderBy: periodStartUnix
+    orderDirection: desc
+    where: { pair: $pairId }
+  ) {
+    id
+    periodStartUnix
+    hourlyVolumeToken0
+    hourlyVolumeToken1
+    hourlyVolumeUSD
+    hourlyTxns
+    reserve0
+    reserve1
+    reserveUSD
+  }
+}
+
+# Example:
+# Variables: { "pairId": "0x4787c40081af04395318e2e804f87ca14298317f", "hours": 24 }

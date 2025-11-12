@@ -1,0 +1,21 @@
+# Get specific token details
+query GetToken($tokenId: ID!) {
+  token(id: $tokenId) {
+    id
+    symbol
+    name
+    decimals
+    totalSupply
+    derivedETH
+    derivedUSD
+    totalLiquidity
+    volume
+    volumeUSD
+    volumeETH
+    untrackedVolumeUSD
+    txCount
+  }
+}
+
+# Example:
+# Variables: { "tokenId": "0xa78faa476ee5ac877ddf77f7969e3410965b8376" }
