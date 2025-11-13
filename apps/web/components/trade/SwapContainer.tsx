@@ -68,18 +68,16 @@ const nowPlusMinutes = (minutes: number) =>
   Math.floor(Date.now() / 1000) + minutes * 60;
 
 const createEnsureWallet =
-  ({
-    walletAccount,
-    ready,
-    showError
-  }: EnsureWalletContext) =>
+  ({ walletAccount, ready, showError }: EnsureWalletContext) =>
   () => {
     if (!walletAccount) {
       showError("Connect your wallet to continue.");
       return null;
     }
     if (!ready) {
-      showError("Switch to the MegaETH Testnet to interact with the contracts.");
+      showError(
+        "Switch to the MegaETH Testnet to interact with the contracts."
+      );
       return null;
     }
     return {
@@ -115,7 +113,9 @@ export function SwapContainer({
   });
   const [swapQuote, setSwapQuote] = useState<Quote | null>(null);
   const [reverseQuote, setReverseQuote] = useState<ReverseQuote | null>(null);
-  const [swapHasLiquidity, setSwapHasLiquidity] = useState<boolean | null>(null);
+  const [swapHasLiquidity, setSwapHasLiquidity] = useState<boolean | null>(
+    null
+  );
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [needsApproval, setNeedsApproval] = useState(false);
   const [checkingAllowance, setCheckingAllowance] = useState(false);
@@ -123,6 +123,7 @@ export function SwapContainer({
   const [isCalculatingQuote, setIsCalculatingQuote] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
+  const [isExactOutput, setIsExactOutput] = useState(false);
   const quoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reverseQuoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const allowanceDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -151,35 +152,40 @@ export function SwapContainer({
   const swapInIsAddress = isAddress(swapInTokenAddress);
   const swapOutDecimals = swapOutDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
-  const { data: swapInBalanceData, refetch: refetchSwapInBalance } = useBalance({
-    address:
-      walletAccount &&
-      chainId === Number(MEGAETH_CHAIN_ID) &&
-      hasMounted &&
-      isWalletConnected
-        ? (walletAccount as Address)
-        : undefined,
-    token:
-      walletAccount &&
-      chainId === Number(MEGAETH_CHAIN_ID) &&
-      (swapInIsNative || swapInIsAddress) &&
-      swapInTokenAddress
-        ? (swapInIsNative ? undefined : (swapInTokenAddress as Address))
-        : undefined,
-    chainId: Number(MEGAETH_CHAIN_ID),
-    query: {
-      enabled:
-        Boolean(walletAccount) &&
-        Boolean(swapInTokenAddress) &&
-        hasMounted &&
-        isWalletConnected &&
+  const { data: swapInBalanceData, refetch: refetchSwapInBalance } = useBalance(
+    {
+      address:
+        walletAccount &&
         chainId === Number(MEGAETH_CHAIN_ID) &&
-        (swapInIsNative || swapInIsAddress)
+        hasMounted &&
+        isWalletConnected
+          ? (walletAccount as Address)
+          : undefined,
+      token:
+        walletAccount &&
+        chainId === Number(MEGAETH_CHAIN_ID) &&
+        (swapInIsNative || swapInIsAddress) &&
+        swapInTokenAddress
+          ? swapInIsNative
+            ? undefined
+            : (swapInTokenAddress as Address)
+          : undefined,
+      chainId: Number(MEGAETH_CHAIN_ID),
+      query: {
+        enabled:
+          Boolean(walletAccount) &&
+          Boolean(swapInTokenAddress) &&
+          hasMounted &&
+          isWalletConnected &&
+          chainId === Number(MEGAETH_CHAIN_ID) &&
+          (swapInIsNative || swapInIsAddress)
+      }
     }
-  });
+  );
 
   const swapInBalanceFormatted = swapInBalanceData?.formatted ?? null;
-  const swapInSymbol = swapInDescriptor?.symbol ?? swapInBalanceData?.symbol ?? null;
+  const swapInSymbol =
+    swapInDescriptor?.symbol ?? swapInBalanceData?.symbol ?? null;
 
   const swapInBalanceValue = swapInBalanceData?.value ?? null;
   const swapInDecimals = swapInDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
@@ -264,6 +270,7 @@ export function SwapContainer({
     setNeedsApproval(false);
     setCheckingAllowance(false);
     setIsCalculatingQuote(false);
+    setIsExactOutput(false);
   }, [selectedIn?.address, selectedOut?.address]);
 
   useEffect(() => {
@@ -354,13 +361,27 @@ export function SwapContainer({
 
               const pairAddress = (await readContract(wagmiConfig, {
                 address: factoryAddress as `0x${string}`,
-                abi: [{"type":"function","name":"getPair","inputs":[{"type":"address"},{"type":"address"}],"outputs":[{"type":"address"}],"stateMutability":"view"}],
+                abi: [
+                  {
+                    type: "function",
+                    name: "getPair",
+                    inputs: [{ type: "address" }, { type: "address" }],
+                    outputs: [{ type: "address" }],
+                    stateMutability: "view"
+                  }
+                ],
                 functionName: "getPair",
-                args: [inputAddress as `0x${string}`, outputAddress as `0x${string}`],
+                args: [
+                  inputAddress as `0x${string}`,
+                  outputAddress as `0x${string}`
+                ],
                 chainId: Number(MEGAETH_CHAIN_ID)
               })) as string;
 
-              if (!pairAddress || pairAddress === "0x0000000000000000000000000000000000000000") {
+              if (
+                !pairAddress ||
+                pairAddress === "0x0000000000000000000000000000000000000000"
+              ) {
                 return null;
               }
 
@@ -402,16 +423,25 @@ export function SwapContainer({
 
         // Calculate price impact using reserves
         if (reserveData) {
-          const inputIsToken0 = reserveData.token0.toLowerCase() === inputAddress.toLowerCase();
-          const reserveIn = inputIsToken0 ? reserveData.reserves[0] : reserveData.reserves[1];
-          const reserveOut = inputIsToken0 ? reserveData.reserves[1] : reserveData.reserves[0];
+          const inputIsToken0 =
+            reserveData.token0.toLowerCase() === inputAddress.toLowerCase();
+          const reserveIn = inputIsToken0
+            ? reserveData.reserves[0]
+            : reserveData.reserves[1];
+          const reserveOut = inputIsToken0
+            ? reserveData.reserves[1]
+            : reserveData.reserves[0];
 
           // Calculate price impact
           // Mid price = reserveOut / reserveIn
           // Execution price = amountOut / amountIn
           // Price impact = (mid_price - execution_price) / mid_price
-          const midPrice = Number(formatUnits(reserveOut, decimalsOut)) / Number(formatUnits(reserveIn, decimalsIn));
-          const executionPrice = Number(formatUnits(amountOutWei, decimalsOut)) / Number(formatUnits(amountInWei, decimalsIn));
+          const midPrice =
+            Number(formatUnits(reserveOut, decimalsOut)) /
+            Number(formatUnits(reserveIn, decimalsIn));
+          const executionPrice =
+            Number(formatUnits(amountOutWei, decimalsOut)) /
+            Number(formatUnits(amountInWei, decimalsIn));
           const impact = ((midPrice - executionPrice) / midPrice) * 100;
 
           setPriceImpact(impact > 0 ? impact : 0);
@@ -422,7 +452,8 @@ export function SwapContainer({
         const outputExact = formatUnits(amountOutWei, decimalsOut);
         const limitedOut = formatNumber(outputExact, Math.min(6, decimalsOut));
 
-        const minOutWei = (amountOutWei * (10000n - DEFAULT_SLIPPAGE_BPS)) / 10000n;
+        const minOutWei =
+          (amountOutWei * (10000n - DEFAULT_SLIPPAGE_BPS)) / 10000n;
         const limitedMinOut = formatNumber(
           formatUnits(minOutWei, decimalsOut),
           Math.min(6, decimalsOut)
@@ -535,11 +566,16 @@ export function SwapContainer({
         if (amountNeededWei <= 0n) {
           setIsCalculatingQuote(false);
           setReverseQuote(null);
-          setSwapForm((prev) => ({ ...prev, amountIn: "", amountInExact: null }));
+          setSwapForm((prev) => ({
+            ...prev,
+            amountIn: "",
+            amountInExact: null
+          }));
           return;
         }
 
-        const maxInputWei = (amountNeededWei * (10000n + DEFAULT_SLIPPAGE_BPS)) / 10000n;
+        const maxInputWei =
+          (amountNeededWei * (10000n + DEFAULT_SLIPPAGE_BPS)) / 10000n;
 
         const limitedIn = formatNumber(
           formatUnits(amountNeededWei, decimalsIn),
@@ -592,13 +628,19 @@ export function SwapContainer({
 
     // Reset immediately if conditions aren't met
     const amountInForAllowance = swapForm.amountInExact ?? swapForm.amountIn;
+    const maxInputForAllowance = swapForm.maxInput;
+
+    // In exactOutput mode, check against maxInput; in exactInput mode, check against amountIn
+    const amountToCheck = isExactOutput
+      ? maxInputForAllowance
+      : amountInForAllowance;
 
     if (
       !walletAccount ||
       !routerAddress ||
       !isAddress(swapForm.tokenIn) ||
-      !amountInForAllowance ||
-      Number(amountInForAllowance) <= 0 ||
+      !amountToCheck ||
+      Number(amountToCheck) <= 0 ||
       swapInIsNative
     ) {
       setNeedsApproval(false);
@@ -614,7 +656,7 @@ export function SwapContainer({
         setCheckingAllowance(true);
         // Use descriptor decimals instead of fetching from contract
         const decimals = swapInDecimals;
-        const desired = parseUnits(amountInForAllowance, decimals);
+        const desired = parseUnits(amountToCheck, decimals);
 
         if (desired <= 0n) {
           if (!cancelled) setNeedsApproval(false);
@@ -644,6 +686,8 @@ export function SwapContainer({
     swapForm.tokenIn,
     swapForm.amountIn,
     swapForm.amountInExact,
+    swapForm.maxInput,
+    isExactOutput,
     allowanceNonce,
     readProvider,
     swapInIsNative,
@@ -660,47 +704,129 @@ export function SwapContainer({
     swapEditingFieldRef.current = "amountIn";
   }, [swapInBalanceFormatted]);
 
-  const handleSwapAmountInChange = useCallback((value: string) => {
-    // Replace commas with periods first (international number format support)
-    const proposed = value.replace(/,/g, ".");
+  const handleSwapAmountInChange = useCallback(
+    (value: string) => {
+      // Replace commas with periods first (international number format support)
+      const proposed = value.replace(/,/g, ".");
 
-    // Validate the input
-    if (!isValidNumericInput(proposed, { maxDecimals: swapInDecimals })) {
-      return;
-    }
+      // Validate the input
+      if (!isValidNumericInput(proposed, { maxDecimals: swapInDecimals })) {
+        return;
+      }
 
-    // Normalize the input (remove leading zeros, etc.)
-    const normalized = normalizeNumericInput(proposed);
+      // Normalize the input (remove leading zeros, etc.)
+      const normalized = normalizeNumericInput(proposed);
 
-    swapEditingFieldRef.current = "amountIn";
-    setSwapForm((prev) => ({
-      ...prev,
-      amountIn: normalized,
-      amountInExact: null
-    }));
-    setPriceImpact(null);
-  }, [swapInDecimals]);
+      swapEditingFieldRef.current = "amountIn";
+      setIsExactOutput(false);
+      setSwapForm((prev) => ({
+        ...prev,
+        amountIn: normalized,
+        amountInExact: null
+      }));
+      setPriceImpact(null);
+    },
+    [swapInDecimals]
+  );
 
-  const handleSwapMinOutChange = useCallback((value: string) => {
-    const decimals = swapOutDecimals;
+  const handleSwapMinOutChange = useCallback(
+    (value: string) => {
+      const decimals = swapOutDecimals;
 
-    // Replace commas with periods first (international number format support)
-    const proposed = value.replace(/,/g, ".");
+      // Replace commas with periods first (international number format support)
+      const proposed = value.replace(/,/g, ".");
 
-    // Validate the input
-    if (!isValidNumericInput(proposed, { maxDecimals: decimals })) {
-      return;
-    }
+      // Validate the input
+      if (!isValidNumericInput(proposed, { maxDecimals: decimals })) {
+        return;
+      }
 
-    // Normalize the input (remove leading zeros, etc.)
-    const normalized = normalizeNumericInput(proposed);
+      // Normalize the input (remove leading zeros, etc.)
+      const normalized = normalizeNumericInput(proposed);
 
-    swapEditingFieldRef.current = "minOut";
-    setSwapForm((prev) => ({
-      ...prev,
-      minOut: normalized
-    }));
-  }, [swapOutDecimals]);
+      swapEditingFieldRef.current = "minOut";
+      setIsExactOutput(true);
+      setSwapForm((prev) => ({
+        ...prev,
+        minOut: normalized
+      }));
+    },
+    [swapOutDecimals]
+  );
+
+  const requestRouterApproval = useCallback(
+    async (account: string) => {
+      if (swapInIsNative) {
+        throw new Error("Native MegaETH does not require approval.");
+      }
+
+      const tokenAddress = swapForm.tokenIn;
+      if (!isAddress(tokenAddress) || !isAddress(routerAddress)) {
+        throw new Error("Provide valid token and spender addresses.");
+      }
+
+      showLoading("Confirm token approval in your wallet...", {
+        visuals: swapToastVisuals
+      });
+
+      const txHash = await writeContract(wagmiConfig, {
+        address: tokenAddress as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [routerAddress as `0x${string}`, MaxUint256],
+        account: account as `0x${string}`,
+        chainId: Number(MEGAETH_CHAIN_ID)
+      });
+
+      showLoading("Token approval pending...", { visuals: swapToastVisuals });
+      await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+
+      setNeedsApproval(false);
+      setAllowanceNonce((n) => n + 1);
+
+      return txHash;
+    },
+    [
+      routerAddress,
+      showLoading,
+      swapForm.tokenIn,
+      swapInIsNative,
+      swapToastVisuals
+    ]
+  );
+
+  const ensureSufficientAllowance = useCallback(
+    async (account: string, desiredAmountWei: bigint) => {
+      if (swapInIsNative) {
+        return true;
+      }
+
+      if (!isAddress(swapForm.tokenIn) || !isAddress(routerAddress)) {
+        throw new Error("Provide valid token and spender addresses.");
+      }
+
+      const token = getToken(swapForm.tokenIn, readProvider);
+      const allowance = await token.allowance(account, routerAddress);
+      if (allowance >= desiredAmountWei) {
+        return true;
+      }
+
+      await requestRouterApproval(account);
+      const updatedAllowance = await token.allowance(account, routerAddress);
+      if (updatedAllowance < desiredAmountWei) {
+        throw new Error("Approval did not complete. Please try again.");
+      }
+
+      return true;
+    },
+    [
+      readProvider,
+      requestRouterApproval,
+      routerAddress,
+      swapForm.tokenIn,
+      swapInIsNative
+    ]
+  );
 
   const handleSwap = useCallback(async () => {
     const ctx = ensureWallet();
@@ -747,6 +873,19 @@ export function SwapContainer({
         return;
       }
 
+      // For exactInput mode, ensure allowance for amountIn
+      // For exactOutput mode, allowance is checked later with maxInput
+      if (!isExactOutput) {
+        const hasAllowance = await ensureSufficientAllowance(
+          ctx.account as string,
+          amountInWei
+        );
+        if (!hasAllowance) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const minOutWei = parseUnits(minOut, decimalsOut);
       if (minOutWei <= 0n) {
         showError("Enter a valid minimum output amount.");
@@ -765,83 +904,158 @@ export function SwapContainer({
       let functionName:
         | "swapExactTokensForTokens"
         | "swapExactETHForTokens"
-        | "swapExactTokensForETH";
+        | "swapExactTokensForETH"
+        | "swapTokensForExactTokens"
+        | "swapETHForExactTokens"
+        | "swapTokensForExactETH";
       let args: unknown[];
       let txValue: bigint | undefined;
 
-      if (swapInIsNative) {
-        if (!wrappedNative || !isAddress(wrappedNative)) {
-          showError("Wrapped native address unavailable.");
+      if (isExactOutput) {
+        // ExactOutput mode: user specifies desired output, we calculate max input
+        if (!maxInput) {
+          showError("Could not calculate required input amount.");
           setIsSubmitting(false);
           return;
         }
-        const path: `0x${string}`[] = [
-          wrappedNative as `0x${string}`,
-          swapOutTokenAddress as `0x${string}`
-        ];
-        functionName = "swapExactETHForTokens";
-        args = [
-          minOutWei,
-          path,
-          ctx.account as `0x${string}`,
-          deadline
-        ];
-        txValue = amountInWei;
-      } else if (swapOutIsNative) {
-        if (!wrappedNative || !isAddress(wrappedNative)) {
-          showError("Wrapped native address unavailable.");
+
+        const maxInputWei = parseUnits(maxInput, decimalsIn);
+        if (maxInputWei <= 0n) {
+          showError("Invalid maximum input amount.");
           setIsSubmitting(false);
           return;
         }
-        const path: `0x${string}`[] = [
-          swapInTokenAddress as `0x${string}`,
-          wrappedNative as `0x${string}`
-        ];
-        functionName = "swapExactTokensForETH";
-        args = [
-          amountInWei,
-          minOutWei,
-          path,
-          ctx.account as `0x${string}`,
-          deadline
-        ];
+
+        // Need to ensure allowance for maxInput instead of amountIn (only for non-native tokens)
+        if (!swapInIsNative) {
+          const hasAllowance = await ensureSufficientAllowance(
+            ctx.account as string,
+            maxInputWei
+          );
+          if (!hasAllowance) {
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        if (swapInIsNative) {
+          if (!wrappedNative || !isAddress(wrappedNative)) {
+            showError("Wrapped native address unavailable.");
+            setIsSubmitting(false);
+            return;
+          }
+          const path: `0x${string}`[] = [
+            wrappedNative as `0x${string}`,
+            swapOutTokenAddress as `0x${string}`
+          ];
+          functionName = "swapETHForExactTokens";
+          args = [minOutWei, path, ctx.account as `0x${string}`, deadline];
+          txValue = maxInputWei;
+        } else if (swapOutIsNative) {
+          if (!wrappedNative || !isAddress(wrappedNative)) {
+            showError("Wrapped native address unavailable.");
+            setIsSubmitting(false);
+            return;
+          }
+          const path: `0x${string}`[] = [
+            swapInTokenAddress as `0x${string}`,
+            wrappedNative as `0x${string}`
+          ];
+          functionName = "swapTokensForExactETH";
+          args = [
+            minOutWei,
+            maxInputWei,
+            path,
+            ctx.account as `0x${string}`,
+            deadline
+          ];
+        } else {
+          const path: `0x${string}`[] = [
+            swapInTokenAddress as `0x${string}`,
+            swapOutTokenAddress as `0x${string}`
+          ];
+          functionName = "swapTokensForExactTokens";
+          args = [
+            minOutWei,
+            maxInputWei,
+            path,
+            ctx.account as `0x${string}`,
+            deadline
+          ];
+        }
       } else {
-        const path: `0x${string}`[] = [
-          swapInTokenAddress as `0x${string}`,
-          swapOutTokenAddress as `0x${string}`
-        ];
-        functionName = "swapExactTokensForTokens";
-        args = [
-          amountInWei,
-          minOutWei,
-          path,
-          ctx.account as `0x${string}`,
-          deadline
-        ];
+        // ExactInput mode: user specifies exact input, we calculate min output
+        if (swapInIsNative) {
+          if (!wrappedNative || !isAddress(wrappedNative)) {
+            showError("Wrapped native address unavailable.");
+            setIsSubmitting(false);
+            return;
+          }
+          const path: `0x${string}`[] = [
+            wrappedNative as `0x${string}`,
+            swapOutTokenAddress as `0x${string}`
+          ];
+          functionName = "swapExactETHForTokens";
+          args = [minOutWei, path, ctx.account as `0x${string}`, deadline];
+          txValue = amountInWei;
+        } else if (swapOutIsNative) {
+          if (!wrappedNative || !isAddress(wrappedNative)) {
+            showError("Wrapped native address unavailable.");
+            setIsSubmitting(false);
+            return;
+          }
+          const path: `0x${string}`[] = [
+            swapInTokenAddress as `0x${string}`,
+            wrappedNative as `0x${string}`
+          ];
+          functionName = "swapExactTokensForETH";
+          args = [
+            amountInWei,
+            minOutWei,
+            path,
+            ctx.account as `0x${string}`,
+            deadline
+          ];
+        } else {
+          const path: `0x${string}`[] = [
+            swapInTokenAddress as `0x${string}`,
+            swapOutTokenAddress as `0x${string}`
+          ];
+          functionName = "swapExactTokensForTokens";
+          args = [
+            amountInWei,
+            minOutWei,
+            path,
+            ctx.account as `0x${string}`,
+            deadline
+          ];
+        }
       }
 
       showLoading("Confirm swap in your wallet...", {
         visuals: swapToastVisuals
       });
 
-      const txRequest: Record<string, unknown> = {
+      const baseTxRequest = {
         address: routerAddress as `0x${string}`,
         abi: warpRouterAbi,
         functionName,
         args,
         account: ctx.account as `0x${string}`,
-        chainId: Number(MEGAETH_CHAIN_ID),
-        gas: swapInIsNative || swapOutIsNative ? 400000n : 300000n
+        chainId: Number(MEGAETH_CHAIN_ID)
       };
 
-      if (txValue && txValue > 0n) {
-        txRequest.value = txValue;
-      }
+      const txRequestWithValue =
+        txValue && txValue > 0n
+          ? {
+              ...baseTxRequest,
+              value: txValue
+            }
+          : baseTxRequest;
 
-      const txHash = await writeContract(
-        wagmiConfig,
-        txRequest as Parameters<typeof writeContract>[1]
-      );
+      const txHash = await writeContract(wagmiConfig, {
+        ...txRequestWithValue
+      } as Parameters<typeof writeContract>[1]);
 
       showLoading("Swap transaction pending...", { visuals: swapToastVisuals });
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
@@ -858,6 +1072,7 @@ export function SwapContainer({
       setReverseQuote(null);
       setIsCalculatingQuote(false);
       setSwapHasLiquidity(null);
+      setIsExactOutput(false);
       onRequestRefresh();
       if (!swapInIsNative) {
         setAllowanceNonce((n) => n + 1);
@@ -892,7 +1107,8 @@ export function SwapContainer({
     swapOutIsNative,
     swapInTokenAddress,
     swapOutTokenAddress,
-    wrappedNativeAddress
+    wrappedNativeAddress,
+    ensureSufficientAllowance
   ]);
 
   const handleApprove = useCallback(async () => {
@@ -909,26 +1125,7 @@ export function SwapContainer({
     }
     try {
       setIsSubmitting(true);
-
-      showLoading("Confirm token approval in your wallet...", {
-        visuals: swapToastVisuals
-      });
-      const txHash = await writeContract(wagmiConfig, {
-        address: tokenAddress as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [routerAddress as `0x${string}`, MaxUint256],
-        account: ctx.account as `0x${string}`,
-        chainId: Number(MEGAETH_CHAIN_ID),
-        gas: 100000n
-      });
-      showLoading("Token approval pending...", { visuals: swapToastVisuals });
-      await waitForTransactionReceipt(wagmiConfig, {
-        hash: txHash
-      });
-
-      setNeedsApproval(false);
-      setAllowanceNonce((n) => n + 1);
+      await requestRouterApproval(ctx.account as string);
       showLoading("Approval confirmed, continuing…", {
         visuals: swapToastVisuals
       });
@@ -948,6 +1145,7 @@ export function SwapContainer({
   }, [
     ensureWallet,
     handleSwap,
+    requestRouterApproval,
     routerAddress,
     showError,
     showLoading,
@@ -1030,13 +1228,13 @@ export function SwapContainer({
       let formattedRate: string;
       if (rate >= 1) {
         // For rates >= 1, show 2-4 decimal places
-        formattedRate = rate.toLocaleString('en-US', {
+        formattedRate = rate.toLocaleString("en-US", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 4
         });
       } else {
         // For rates < 1, show more precision
-        formattedRate = rate.toLocaleString('en-US', {
+        formattedRate = rate.toLocaleString("en-US", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 6
         });
@@ -1046,12 +1244,18 @@ export function SwapContainer({
     } catch (err) {
       return null;
     }
-  }, [swapQuote, swapForm.amountIn, swapForm.amountInExact, selectedIn, selectedOut]);
+  }, [
+    swapQuote,
+    swapForm.amountIn,
+    swapForm.amountInExact,
+    selectedIn,
+    selectedOut
+  ]);
 
   const receiveAmountValue =
     swapEditingFieldRef.current === "minOut"
       ? swapForm.minOut
-      : swapQuote?.amount ?? "";
+      : (swapQuote?.amount ?? "");
   const minReceivedDisplay = swapForm.minOut || null;
 
   return (

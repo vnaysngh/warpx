@@ -1006,7 +1006,6 @@ export function LiquidityContainer({
             args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
-            gas: 100000n
           });
           showLoading("Token approval pending...", {
             visuals: addLiquidityToastVisuals
@@ -1036,7 +1035,6 @@ export function LiquidityContainer({
           ],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
-          gas: 5000000n,
           value: nativeAmountWei
         });
         showLoading("Add liquidity transaction pending...", {
@@ -1079,7 +1077,6 @@ export function LiquidityContainer({
             args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
-            gas: 100000n
           });
           showLoading("Token approval pending...", {
             visuals: addLiquidityToastVisuals
@@ -1099,7 +1096,6 @@ export function LiquidityContainer({
             args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
-            gas: 100000n
           });
           showLoading("Token approval pending...", {
             visuals: addLiquidityToastVisuals
@@ -1127,7 +1123,6 @@ export function LiquidityContainer({
           ],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
-          gas: 5000000n
         });
         showLoading("Add liquidity transaction pending...", {
           visuals: addLiquidityToastVisuals
@@ -1263,7 +1258,6 @@ export function LiquidityContainer({
           args: [routerAddress as `0x${string}`, MaxUint256],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
-          gas: 100000n
         });
         showLoading("Token approval pending...", { visuals: removeLiquidityToastVisuals });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
@@ -1290,7 +1284,6 @@ export function LiquidityContainer({
               ],
               account: ctx.account as `0x${string}`,
               chainId: Number(MEGAETH_CHAIN_ID),
-              gas: 500000n
             }
           : {
               address: routerAddress as `0x${string}`,
@@ -1307,7 +1300,6 @@ export function LiquidityContainer({
               ],
               account: ctx.account as `0x${string}`,
               chainId: Number(MEGAETH_CHAIN_ID),
-              gas: 500000n
             };
 
       const txHash = await writeContract(
@@ -1507,7 +1499,6 @@ export function LiquidityContainer({
           args: [routerAddress as `0x${string}`, parsedAmount],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
-          gas: 100000n
         });
         showLoading("Token approval pending...", { visuals: addLiquidityToastVisuals });
         await waitForTransactionReceipt(wagmiConfig, {

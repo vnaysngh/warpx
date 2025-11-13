@@ -156,5 +156,43 @@ export const warpRouterAbi = [
     ],
     "outputs": [{ "type": "uint256[]", "name": "amounts" }],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "swapTokensForExactTokens",
+    "inputs": [
+      { "type": "uint256", "name": "amountOut" },
+      { "type": "uint256", "name": "amountInMax" },
+      { "type": "address[]", "name": "path" },
+      { "type": "address", "name": "to" },
+      { "type": "uint256", "name": "deadline" }
+    ],
+    "outputs": [{ "type": "uint256[]", "name": "amounts" }],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "swapETHForExactTokens",
+    "inputs": [
+      { "type": "uint256", "name": "amountOut" },
+      { "type": "address[]", "name": "path" },
+      { "type": "address", "name": "to" },
+      { "type": "uint256", "name": "deadline" }
+    ],
+    "outputs": [{ "type": "uint256[]", "name": "amounts" }],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "swapTokensForExactETH",
+    "inputs": [
+      { "type": "uint256", "name": "amountOut" },
+      { "type": "uint256", "name": "amountInMax" },
+      { "type": "address[]", "name": "path" },
+      { "type": "address", "name": "to" },
+      { "type": "uint256", "name": "deadline" }
+    ],
+    "outputs": [{ "type": "uint256[]", "name": "amounts" }],
+    "stateMutability": "nonpayable"
   }
 ] as const

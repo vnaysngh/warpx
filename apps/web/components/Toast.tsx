@@ -6,7 +6,13 @@ import styles from "./Toast.module.css";
 
 export type ToastType = "success" | "error" | "info" | "loading";
 
-export type ToastVisualVariant = "default" | "swap" | "addLiquidity" | "removeLiquidity" | "stake" | "unstake";
+export type ToastVisualVariant =
+  | "default"
+  | "swap"
+  | "addLiquidity"
+  | "removeLiquidity"
+  | "stake"
+  | "unstake";
 
 export type ToastVisualToken = {
   symbol: string;
@@ -108,7 +114,10 @@ type TokenPairStackProps = {
 };
 
 const TokenPairStack = ({ leftToken, rightToken }: TokenPairStackProps) => {
-  const renderToken = (token: ToastVisualToken | null | undefined, isPrimary: boolean) => {
+  const renderToken = (
+    token: ToastVisualToken | null | undefined,
+    isPrimary: boolean
+  ) => {
     const className = `${styles.tokenStackBadge} ${
       isPrimary ? styles.tokenStackPrimary : styles.tokenStackSecondary
     }`;
@@ -208,7 +217,10 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
               rightToken={activeToast.visuals?.rightToken}
             />
           ) : variant === "removeLiquidity" ? null : (
-            <TokenBubble token={activeToast.visuals?.leftToken} position="left" />
+            <TokenBubble
+              token={activeToast.visuals?.leftToken}
+              position="left"
+            />
           )}
           <div className={styles.brandOrb}>
             <div className={styles.brandGlow} />
@@ -226,11 +238,13 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
               leftToken={activeToast.visuals?.leftToken}
               rightToken={activeToast.visuals?.rightToken}
             />
-          ) : variant !== "addLiquidity" && (
-            <TokenBubble
-              token={activeToast.visuals?.rightToken}
-              position="right"
-            />
+          ) : (
+            variant !== "addLiquidity" && (
+              <TokenBubble
+                token={activeToast.visuals?.rightToken}
+                position="right"
+              />
+            )
           )}
         </div>
 
@@ -250,7 +264,7 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
           </span>
           <span className={styles.etaValue}>
             {activeToast.type === "loading"
-              ? "~5s"
+              ? "~1s"
               : activeToast.type === "success"
                 ? "Confirmed"
                 : activeToast.type === "error"
