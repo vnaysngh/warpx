@@ -1,7 +1,7 @@
 import { Address, BigDecimal, BigInt } from '@graphprotocol/graph-ts'
 
-export const FACTORY_ADDRESS = Address.fromString('0x57A9156f9b3fFa1b603F188f0f64FF93f51C62F8')
-export const WMegaETH_ADDRESS = Address.fromString('0xBc4b9cA1986b00fF29FFB7B34C40e5C75E1914DB')
+export const FACTORY_ADDRESS = Address.fromString('0x4C40BA03b676bc14bFC8A7DAeBc361C05CbB6867')
+export const WMegaETH_ADDRESS = Address.fromString('0xA51EbEdb0970133D016444Be0049efFE9257D06A')
 
 export const ZERO_BI = BigInt.fromI32(0)
 export const ONE_BI = BigInt.fromI32(1)

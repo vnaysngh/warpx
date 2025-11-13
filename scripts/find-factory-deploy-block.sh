@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Search for first PairCreated event to find deployment block
-FACTORY="0x57A9156f9b3fFa1b603F188f0f64FF93f51C62F8"
+FACTORY="0x4C40BA03b676bc14bFC8A7DAeBc361C05CbB6867"
 PAIR_CREATED_TOPIC="0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9"
-RPC="https://carrot.megaeth.com/rpc"
+RPC="https://timothy.megaeth.com/rpc"
 
 echo "Searching for first pair creation event..."
 
 # Search in ranges (100k blocks at a time to respect limit)
-for start in 16000000 17000000 18000000 19000000 20000000 21000000; do
+for start in 3000000 3100000 3200000 3300000 3400000 3500000; do
   end=$((start + 99999))
   hex_start=$(printf "0x%x" $start)
   hex_end=$(printf "0x%x" $end)

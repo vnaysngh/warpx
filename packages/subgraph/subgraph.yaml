@@ -6,9 +6,9 @@ dataSources:
     name: WarpFactory
     network: megaeth-testnet
     source:
-      address: "0x57A9156f9b3fFa1b603F188f0f64FF93f51C62F8"
+      address: "0x4C40BA03b676bc14bFC8A7DAeBc361C05CbB6867"
       abi: WarpFactory
-      startBlock: 21238258
+      startBlock: 3334230
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

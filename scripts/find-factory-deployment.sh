@@ -1,7 +1,7 @@
 #!/bin/bash
 
 FACTORY="0x57A9156f9b3fFa1b603F188f0f64FF93f51C62F8"
-RPC="https://carrot.megaeth.com/rpc"
+RPC="https://timothy.megaeth.com/rpc"
 
 check_block() {
     local block=$1
