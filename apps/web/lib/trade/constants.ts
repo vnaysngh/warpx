@@ -4,7 +4,7 @@ import type {
   TokenDescriptor
 } from "./types";
 
-export const MEGAETH_CHAIN_ID = 6342n;
+export const MEGAETH_CHAIN_ID = 6343n;
 export const DEFAULT_SLIPPAGE_BPS = 50n; // 0.50% default slippage tolerance
 export const ONE_BIPS = 10000n; // 10000 basis points = 100%
 export const MINIMUM_LIQUIDITY = 1000n; // Minimum liquidity burned
@@ -12,7 +12,7 @@ export const FEES_DENOMINATOR = 1000n; // Standard Warp fee = 0.3% = 3/1000
 export const FEES_NUMERATOR = 997n; // 1000 - 3 fee
 export const DEFAULT_TOKEN_DECIMALS = 18;
 export const MEGAETH_EXPLORER_BASE_URL =
-  "https://megaeth-testnet.blockscout.com";
+  "https://megaeth-testnet-v2.blockscout.com";
 
 export const SWAP_DEFAULT: SwapFormState = {
   tokenIn: "",
@@ -33,16 +33,16 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
   {
     symbol: "ETH",
     name: "Ethereum",
-    address: "0xBc4b9cA1986b00fF29FFB7B34C40e5C75E1914DB",
+    address: "0xA51EbEdb0970133D016444Be0049efFE9257D06A",
     decimals: 18,
     isNative: true,
-    wrappedAddress: "0xBc4b9cA1986b00fF29FFB7B34C40e5C75E1914DB",
+    wrappedAddress: "0xA51EbEdb0970133D016444Be0049efFE9257D06A",
     logo: "/logos/eth.jpeg"
   },
   {
     symbol: "WARPX",
     name: "WarpX",
-    address: "0xA78FAa476Ee5aC877ddF77F7969e3410965B8376",
+    address: "0x5124C91CDa8dA5C2B0c838C64b25089443f5D109",
     decimals: 18,
     logo: "/logos/warpx.png"
   },

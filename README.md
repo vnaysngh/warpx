@@ -47,6 +47,25 @@ This will start both Next.js applications in watch mode via Turborepo. By defaul
 - `apps/web` runs at `http://localhost:3000`
 - `apps/landing` runs at `http://localhost:3001`
 
+## MegaETH Testnet V2
+
+WarpX now targets the MegaETH Testnet V2 environment.
+
+- RPC: `https://timothy.megaeth.com/rpc` (set `MEGAETH_RPC_URL` and `NEXT_PUBLIC_MEGAETH_RPC_URL`)
+- Faucet: https://docs.megaeth.com/faucet
+- Explorer: https://megaeth-testnet-v2.blockscout.com
+- Deployment gas: if the RPC rejects `eth_estimateGas` around 10M, set `MEGAETH_DEPLOY_GAS_LIMIT=9000000` (or an appropriate value under the chain limit) so the deploy script bypasses the faulty estimator.
+
+After updating your environment variables, redeploy the contracts so the manifests under `deployments/` and `apps/web/public/deployments/` reflect the new network:
+
+```sh
+yarn deploy-router
+yarn deploy-tokens
+yarn deploy-staking   # if you need the rewards system live
+```
+
+These scripts will refresh the JSON manifests that the app reads for addresses. Share the new addresses with the team so any liquidity seeding scripts (`yarn seed-warpx-liquidity`, `yarn add-warpx-eth-liquidity`, etc.) target the correct contracts.
+
 ## Packages
 
 ### `apps/web`

@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // MegaETH Testnet configuration
-const MEGAETH_TESTNET_RPC = "https://carrot.megaeth.com/rpc";
+const MEGAETH_TESTNET_RPC = "https://timothy.megaeth.com/rpc";
 
 // ABIs
 const FACTORY_ABI = [

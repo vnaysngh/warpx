@@ -1,26 +1,26 @@
 import type { Chain } from "wagmi/chains";
 
 export const megaethTestnet: Chain = {
-  id: 6342,
-  name: "MegaETH Testnet",
+  id: 6343,
+  name: "MegaETH Testnet V2",
   nativeCurrency: {
     name: "MegaETH",
     symbol: "MEGA",
-    decimals: 18,
+    decimals: 18
   },
   rpcUrls: {
     default: {
-      http: ["https://carrot.megaeth.com/rpc"],
+      http: ["https://timothy.megaeth.com/rpc"]
     },
     public: {
-      http: ["https://carrot.megaeth.com/rpc"],
-    },
+      http: ["https://timothy.megaeth.com/rpc"]
+    }
   },
   blockExplorers: {
     default: {
       name: "MegaETH Explorer",
-      url: "https://explorer.megaeth.com",
-    },
+      url: "https://megaeth-testnet-v2.blockscout.com"
+    }
   },
-  testnet: true,
+  testnet: true
 };

@@ -4,7 +4,7 @@
     {
       "name": "Ethereum",
       "symbol": "ETH",
-      "address": "0xBc4b9cA1986b00fF29FFB7B34C40e5C75E1914DB",
+      "address": "0xA51EbEdb0970133D016444Be0049efFE9257D06A",
       "decimals": 18,
       "isNative": true,
       "logo": "/logos/ethereum.png"
@@ -12,7 +12,7 @@
     {
       "name": "WarpX",
       "symbol": "WARPX",
-      "address": "0xA78FAa476Ee5aC877ddF77F7969e3410965B8376",
+      "address": "0x5124C91CDa8dA5C2B0c838C64b25089443f5D109",
       "decimals": 18,
       "logo": "/logos/warpx.png"
     },

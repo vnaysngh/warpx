@@ -28,8 +28,8 @@ type TokenManifest = {
 };
 
 // Configuration - adjust these values as needed
-const WARPX_AMOUNT = process.env.WARPX_AMOUNT ?? "50"; // Amount of WARPX tokens to add
-const ETH_AMOUNT = process.env.ETH_AMOUNT ?? "0.001"; // Amount of ETH to add
+const WARPX_AMOUNT = process.env.WARPX_AMOUNT ?? "50000"; // Amount of WARPX tokens to add
+const ETH_AMOUNT = process.env.ETH_AMOUNT ?? "1"; // Amount of ETH to add
 const DEADLINE_MINUTES = Number(process.env.LIQUIDITY_DEADLINE_MINUTES ?? "10");
 const SLIPPAGE_PERCENT = Number(process.env.SLIPPAGE_PERCENT ?? "1"); // 1% slippage tolerance
 
@@ -68,7 +68,8 @@ async function ensureAllowance(
   owner: string,
   spender: string,
   required: bigint,
-  symbol: string
+  symbol: string,
+  gasLimitOverride?: bigint
 ) {
   const current = await token.allowance(owner, spender);
   if (current >= required) {
@@ -77,7 +78,8 @@ async function ensureAllowance(
   }
 
   console.log(`Approving ${symbol} for router...`);
-  const tx = await token.approve(spender, ethers.MaxUint256);
+  const txOptions = gasLimitOverride ? { gasLimit: gasLimitOverride } : {};
+  const tx = await token.approve(spender, ethers.MaxUint256, txOptions);
   await tx.wait();
   console.log(`✅ ${symbol} approved`);
 }
@@ -86,6 +88,10 @@ async function main() {
   const network = process.env.HARDHAT_NETWORK ?? "megaethTestnet";
   const root = path.resolve(__dirname, "..");
   const deploymentsDir = path.join(root, "deployments");
+
+  const gasLimitOverride = process.env.MEGAETH_DEPLOY_GAS_LIMIT
+    ? BigInt(process.env.MEGAETH_DEPLOY_GAS_LIMIT)
+    : undefined;
 
   // Load WarpX deployment
   const deploymentManifest = loadJsonFile<DeploymentManifest>(
@@ -187,7 +193,8 @@ async function main() {
     deployerAddress,
     deploymentManifest.router,
     amountWARPXDesired,
-    "WARPX"
+    "WARPX",
+    gasLimitOverride
   );
   console.log("");
 
@@ -267,6 +274,11 @@ async function main() {
 
   const deadline = Math.floor(Date.now() / 1000) + DEADLINE_MINUTES * 60;
 
+  const txOptions: any = { value: amountETHDesired };
+  if (gasLimitOverride) {
+    txOptions.gasLimit = gasLimitOverride;
+  }
+
   const tx = await router.addLiquidityETH(
     warpxTokenData.address,
     amountWARPXDesired,
@@ -274,7 +286,7 @@ async function main() {
     amountETHMin,
     deployerAddress,
     deadline,
-    { value: amountETHDesired }
+    txOptions
   );
 
   console.log(`⏳ Transaction sent: ${tx.hash}`);

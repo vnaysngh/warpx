@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     megaethTestnet: {
-      url: process.env.MEGAETH_RPC_URL || 'https://carrot.megaeth.com/rpc',
+      url: process.env.MEGAETH_RPC_URL || 'https://timothy.megaeth.com/rpc',
       accounts: process.env.MEGAETH_PRIVATE_KEY ? [process.env.MEGAETH_PRIVATE_KEY] : [],
       gasPrice: process.env.MEGAETH_GAS_PRICE ? parseInt(process.env.MEGAETH_GAS_PRICE, 10) : undefined
     }

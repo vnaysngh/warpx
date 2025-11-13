@@ -24,6 +24,16 @@ async function main() {
 
   console.log(`Deployer: ${deployerAddress}`);
 
+  const gasLimitOverride = process.env.MEGAETH_DEPLOY_GAS_LIMIT
+    ? BigInt(process.env.MEGAETH_DEPLOY_GAS_LIMIT)
+    : undefined;
+
+  if (gasLimitOverride) {
+    console.log(`Using gas limit override: ${gasLimitOverride.toString()}`);
+  }
+
+  const deployOverrides = gasLimitOverride ? { gasLimit: gasLimitOverride } : {};
+
   const ERC20 = await ethers.getContractFactory(
     "packages/periphery/contracts/test/ERC20Decimals.sol:ERC20Decimals"
   );
@@ -87,12 +97,20 @@ async function main() {
 
   for (const token of TOKENS) {
     console.log(`Deploying ${token.symbol}…`);
-    const contract = await ERC20.deploy(
-      token.name,
-      token.symbol,
-      token.decimals,
-      token.initialSupply
-    );
+    const contract = deployOverrides.gasLimit
+      ? await ERC20.deploy(
+          token.name,
+          token.symbol,
+          token.decimals,
+          token.initialSupply,
+          deployOverrides
+        )
+      : await ERC20.deploy(
+          token.name,
+          token.symbol,
+          token.decimals,
+          token.initialSupply
+        );
     await contract.waitForDeployment();
     const address = await contract.getAddress();
     deployments.push({

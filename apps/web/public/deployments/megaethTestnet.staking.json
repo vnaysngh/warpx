@@ -6,7 +6,7 @@
       "contract": "0x2AE9Efb422d5e7BB7DDF6ea0b94f87114313d1a1",
       "implementation": "0x810350312dAaCF11254C903B27Aa7b5F6E2AB546",
       "stakingToken": "0x4787C40081aF04395318e2e804F87CA14298317F",
-      "rewardsToken": "0xA78FAa476Ee5aC877ddF77F7969e3410965B8376",
+      "rewardsToken": "0x5124C91CDa8dA5C2B0c838C64b25089443f5D109",
       "rewardsDuration": 604800,
       "owner": "0x0B95ec21579aee6Ef7b712976bD86689D68b5A08",
       "rewardsDistributor": "0x0B95ec21579aee6Ef7b712976bD86689D68b5A08",

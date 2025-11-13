@@ -9,5 +9,5 @@ export enum ChainId {
   ARBITRUM_ONE = 42161,
   BASE = 8453,
   BNB = 56,
-  MEGAETH_TESTNET = 6342
+  MEGAETH_TESTNET = 6343
 }

@@ -36,20 +36,36 @@ async function main() {
   console.log(`Using deployer ${deployerAddress}`)
   console.log(`Factory feeToSetter ${feeToSetter}`)
 
+  const gasLimitOverride = process.env.MEGAETH_DEPLOY_GAS_LIMIT
+    ? BigInt(process.env.MEGAETH_DEPLOY_GAS_LIMIT)
+    : undefined
+
+  if (gasLimitOverride) {
+    console.log(`Using gas limit override: ${gasLimitOverride.toString()}`)
+  }
+
+  const deployOverrides = gasLimitOverride ? { gasLimit: gasLimitOverride } : {}
+
   const Factory = await ethers.getContractFactory('WarpFactory')
-  const factory = await Factory.deploy(feeToSetter)
+  const factory = deployOverrides.gasLimit
+    ? await Factory.deploy(feeToSetter, deployOverrides)
+    : await Factory.deploy(feeToSetter)
   await factory.waitForDeployment()
   const factoryAddress = await factory.getAddress()
   console.log(`Factory deployed at ${factoryAddress}`)
 
   const WMegaETH = await ethers.getContractFactory('WMegaETH')
-  const wmegaeth = await WMegaETH.deploy()
+  const wmegaeth = deployOverrides.gasLimit
+    ? await WMegaETH.deploy(deployOverrides)
+    : await WMegaETH.deploy()
   await wmegaeth.waitForDeployment()
   const wmegaethAddress = await wmegaeth.getAddress()
   console.log(`WMegaETH deployed at ${wmegaethAddress}`)
 
   const Router = await ethers.getContractFactory('WarpRouter')
-  const router = await Router.deploy(factoryAddress, wmegaethAddress)
+  const router = deployOverrides.gasLimit
+    ? await Router.deploy(factoryAddress, wmegaethAddress, deployOverrides)
+    : await Router.deploy(factoryAddress, wmegaethAddress)
   await router.waitForDeployment()
   const routerAddress = await router.getAddress()
   console.log(`Router deployed at ${routerAddress}`)
