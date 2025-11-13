@@ -19,6 +19,8 @@ export type PoolsTableRow = {
   contractToken1Address?: string;
   totalLiquidityFormatted: string | null;
   totalLiquidityValue: number | null;
+  totalVolumeFormatted?: string | null;
+  totalVolumeValue?: number | null;
   userLpBalance?: string;
   userLpBalanceRaw?: bigint;
   reserves?: {
@@ -30,6 +32,7 @@ export type PoolsTableRow = {
   reserve0Exact?: number;
   reserve1Exact?: number;
   isTvlLoading?: boolean;
+  isVolumeLoading?: boolean;
 };
 
 type PoolsTableProps = {
@@ -67,7 +70,7 @@ export function PoolsTable({
             <th>Protocol</th>
             <th>Fee tier</th>
             <th className={styles.tvlHeader}>
-              <span>TVL (USD)</span>
+              <span>TVL</span>
               {totalTvl ? (
                 <span className={styles.totalTvlChip}>
                   <span aria-hidden="true">Σ</span>
@@ -85,6 +88,7 @@ export function PoolsTable({
                 </span>
               ) : null}
             </th>
+            <th>Volume</th>
           </tr>
         </thead>
         <tbody>
@@ -180,7 +184,7 @@ export function PoolsTable({
                 <td className={styles.feeCell} data-label="Fee tier">
                   {DEFAULT_FEE_PERCENT_DISPLAY}%
                 </td>
-                <td className={styles.tvlCell} data-label="TVL (USD)">
+                <td className={styles.tvlCell} data-label="TVL">
                   {pool.isTvlLoading ? (
                     <span className={styles.loaderDots}>
                       <span />
@@ -193,6 +197,19 @@ export function PoolsTable({
                     "—"
                   )}
                 </td>
+                <td className={styles.volumeCell} data-label="Volume">
+                  {pool.isVolumeLoading ? (
+                    <span className={styles.loaderDots}>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  ) : pool.totalVolumeFormatted ? (
+                    `$${pool.totalVolumeFormatted}`
+                  ) : (
+                    "—"
+                  )}
+                </td>
               </tr>
             ))}
 
@@ -200,12 +217,18 @@ export function PoolsTable({
             <tr>
               <td colSpan={5} className={styles.stateCell}>
                 <div className={styles.stateContent}>
-                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 600 }}>
+                  <p
+                    style={{
+                      margin: "0 0 0.5rem 0",
+                      fontSize: "1.1rem",
+                      fontWeight: 600
+                    }}
+                  >
                     No Pools Found
                   </p>
-                  <p style={{ margin: 0, color: 'var(--fg-subtle)' }}>
-                    No liquidity pools available yet. Pools will appear here once
-                    they are initialized on the protocol.
+                  <p style={{ margin: 0, color: "var(--fg-subtle)" }}>
+                    No liquidity pools available yet. Pools will appear here
+                    once they are initialized on the protocol.
                   </p>
                 </div>
               </td>

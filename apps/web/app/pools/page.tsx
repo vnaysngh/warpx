@@ -180,7 +180,10 @@ export default function PoolsPage() {
         totalSupply: pool.totalSupply,
         reserve0Exact: pool.reserve0Exact,
         reserve1Exact: pool.reserve1Exact,
-        isTvlLoading: pool.isTvlLoading
+        isTvlLoading: pool.isTvlLoading,
+        isVolumeLoading: pool.isVolumeLoading,
+        totalVolumeFormatted: pool.totalVolumeFormatted,
+        totalVolumeValue: pool.totalVolumeValue
       };
     });
   }, [poolsData, balancesData]);

@@ -243,7 +243,8 @@
   letter-spacing: 0.08em;
 }
 
-.tvlCell {
+.tvlCell,
+.volumeCell {
   width: 140px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -410,12 +411,14 @@
 
   .protocolCell,
   .feeCell,
-  .tvlCell {
+  .tvlCell,
+  .volumeCell {
     order: 3;
     width: 100%;
   }
 
-  .tvlCell {
+  .tvlCell,
+  .volumeCell {
     font-size: 0.9rem;
     font-weight: 600;
   }
@@ -469,11 +472,13 @@
   .protocolCell,
   .feeCell,
   .tvlCell,
+  .volumeCell,
   .indexCell {
     align-items: flex-start;
   }
 
-  .tvlCell {
+  .tvlCell,
+  .volumeCell {
     font-size: 1rem;
   }
 }
