@@ -30,6 +30,14 @@ const NATIVE_SYMBOL = (
 const isNativeToken = (token?: TokenDescriptor | null) =>
   Boolean(token?.isNative) || token?.symbol?.toUpperCase() === NATIVE_SYMBOL;
 
+// Helper to display "ETH" instead of wrapped token symbol
+const getDisplaySymbol = (token: TokenDescriptor): string => {
+  if (token.isNative || token.symbol.toUpperCase() === "WMETH") {
+    return "ETH";
+  }
+  return token.symbol;
+};
+
 const orderTokensForDisplay = <T extends TokenDescriptor>(
   tokenA: T,
   tokenB: T
@@ -361,7 +369,7 @@ export default function PoolLiquidityPage() {
         liquidityTokenA,
         liquidityTokenB
       );
-      return `${displayA.symbol}/${displayB.symbol}`;
+      return `${getDisplaySymbol(displayA)}/${getDisplaySymbol(displayB)}`;
     }
 
     const token0 =
@@ -373,7 +381,7 @@ export default function PoolLiquidityPage() {
 
     if (token0 && token1) {
       const [displayA, displayB] = orderTokensForDisplay(token0, token1);
-      return `${displayA.symbol}/${displayB.symbol}`;
+      return `${getDisplaySymbol(displayA)}/${getDisplaySymbol(displayB)}`;
     }
 
     return null;

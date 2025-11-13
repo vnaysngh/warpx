@@ -415,9 +415,9 @@ export function LiquidityContainer({
             ? reserves.reserve0
             : reserves.reserve1;
         const reserveBWei =
-          pairToken0Lower === tokenBLower
-            ? reserves.reserve0
-            : reserves.reserve1;
+          pairToken0Lower === tokenALower
+            ? reserves.reserve1
+            : reserves.reserve0;
 
         if (active) {
           setLiquidityPairReserves({
@@ -458,7 +458,7 @@ export function LiquidityContainer({
         const reserveAWei =
           pairToken0Lower === tokenALower ? reserve0 : reserve1;
         const reserveBWei =
-          pairToken0Lower === tokenBLower ? reserve0 : reserve1;
+          pairToken0Lower === tokenALower ? reserve1 : reserve0;
         const totalSupplyWei = totalSupplyData as bigint;
 
         setLiquidityPairReserves({
@@ -541,17 +541,27 @@ export function LiquidityContainer({
 
         const allowanceAPromise = liquidityTokenAIsNative
           ? Promise.resolve(desiredA)
-          : getToken(liquidityTokenAAddress, provider).allowance(
-              walletAccount,
-              routerAddress
-            );
+          : getToken(liquidityTokenAAddress, provider)
+              .allowance(walletAccount, routerAddress)
+              .catch((err) => {
+                console.warn(
+                  "Failed to check tokenA allowance, assuming approval needed",
+                  err
+                );
+                return 0n;
+              });
 
         const allowanceBPromise = liquidityTokenBIsNative
           ? Promise.resolve(desiredB)
-          : getToken(liquidityTokenBAddress, provider).allowance(
-              walletAccount,
-              routerAddress
-            );
+          : getToken(liquidityTokenBAddress, provider)
+              .allowance(walletAccount, routerAddress)
+              .catch((err) => {
+                console.warn(
+                  "Failed to check tokenB allowance, assuming approval needed",
+                  err
+                );
+                return 0n;
+              });
 
         const [allowanceA, allowanceB] = await Promise.all([
           allowanceAPromise,
@@ -567,7 +577,7 @@ export function LiquidityContainer({
           );
         }
       } catch (err) {
-        console.error("liquidity allowance check failed", err);
+        console.warn("liquidity allowance check failed", err);
         if (!cancelled) {
           setNeedsApprovalA(true);
           setNeedsApprovalB(true);

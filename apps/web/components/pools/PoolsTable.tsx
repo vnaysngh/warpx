@@ -9,6 +9,14 @@ const DEFAULT_FEE_PERCENT_DISPLAY = (
   100
 ).toFixed(2);
 
+// Helper to display "ETH" instead of wrapped token symbol
+const getDisplaySymbol = (token: TokenDescriptor): string => {
+  if (token.isNative || token.symbol.toUpperCase() === "WMETH") {
+    return "ETH";
+  }
+  return token.symbol;
+};
+
 export type PoolsTableRow = {
   id: number;
   pairAddress: string;
@@ -161,7 +169,7 @@ export function PoolsTable({
                     </div>
                     <div className={styles.poolMeta}>
                       <div className={styles.poolLabel}>
-                        {pool.token0.symbol}/{pool.token1.symbol}
+                        {getDisplaySymbol(pool.token0)}/{getDisplaySymbol(pool.token1)}
                         {pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n ? (
                           <span
                             className={styles.positionBadge}

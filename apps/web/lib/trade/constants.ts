@@ -45,6 +45,13 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     address: "0x5124C91CDa8dA5C2B0c838C64b25089443f5D109",
     decimals: 18,
     logo: "/logos/warpx.png"
+  },
+  {
+    symbol: "wUSD",
+    name: "Wrapped USD",
+    address: "0x07b1EDd4a0D76D07C5A91B9159D13Cb51C8e4E42",
+    decimals: 6,
+    logo: "/logos/wusd.png"
   }
   // {
   //   symbol: "GTE",
