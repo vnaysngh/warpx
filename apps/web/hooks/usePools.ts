@@ -172,7 +172,7 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
   const pendingPools: PendingPool[] = [];
   const tokenMap = new Map(tokenList.map((t) => [t.address.toLowerCase(), t]));
 
-  const wethLower = wrappedNativeAddress?.toLowerCase() ?? "";
+  const wethLower = wrappedNativeAddress?.toLowerCase() ?? null;
   let poolId = 1;
   for (const [key, pairAddress] of poolAddresses.entries()) {
     const index = pairAddressList.indexOf(pairAddress);
@@ -209,8 +209,12 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
       : [token1, token0];
 
     // For display, always show ETH as the quote (second) token: TOKEN/ETH format
-    const token0IsEth = wethLower && token0Descriptor.address.toLowerCase() === wethLower;
-    const token1IsEth = wethLower && token1Descriptor.address.toLowerCase() === wethLower;
+    const token0IsEth =
+      wethLower !== null &&
+      token0Descriptor.address.toLowerCase() === wethLower;
+    const token1IsEth =
+      wethLower !== null &&
+      token1Descriptor.address.toLowerCase() === wethLower;
 
     let displayToken0: TokenDescriptor;
     let displayToken1: TokenDescriptor;
@@ -253,30 +257,36 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
     });
   }
 
-  const uniqueTokenAddresses = Array.from(
-    new Set(
-      pendingPools.flatMap((pool) => [
-        pool.contractToken0Address.toLowerCase(),
-        pool.contractToken1Address.toLowerCase()
-      ])
-    )
-  );
-
-  let priceMap: Record<string, number> = {};
+  const needsEthPrice = Boolean(wethLower);
+  let ethPriceUsd: number | null = null;
   let priceFetchFailed = false;
-  if (uniqueTokenAddresses.length > 0) {
+
+  if (needsEthPrice) {
     try {
-      priceMap = await fetchTokenUsdPrices(uniqueTokenAddresses);
+      ethPriceUsd = await fetchEthUsdPrice();
     } catch (error) {
-      console.warn("[usePools] failed to fetch token USD prices", error);
+      console.warn("[usePools] failed to fetch ETH price", error);
       priceFetchFailed = true;
     }
   }
 
-  const derivedPriceMap = deriveTokenPrices(priceMap, pendingPools);
+  const basePrices: Record<string, number> = {};
+  if (
+    wethLower &&
+    typeof ethPriceUsd === "number" &&
+    Number.isFinite(ethPriceUsd) &&
+    ethPriceUsd > 0
+  ) {
+    basePrices[wethLower] = ethPriceUsd;
+  }
+
+  const derivedPriceMap = deriveTokenPrices(basePrices, pendingPools);
   const hasDerivedPrices = derivedPriceMap.size > 0;
   const showGlobalTvlLoading =
-    uniqueTokenAddresses.length > 0 && !priceFetchFailed && !hasDerivedPrices;
+    needsEthPrice &&
+    !priceFetchFailed &&
+    typeof ethPriceUsd === "number" &&
+    !hasDerivedPrices;
 
   const pools: PoolData[] = pendingPools.map((pool) => {
     const token0Lower = pool.contractToken0Address.toLowerCase();
@@ -407,37 +417,32 @@ function deriveTokenPrices(
   return priceMap;
 }
 
-async function fetchTokenUsdPrices(addresses: string[]): Promise<Record<string, number>> {
-  if (addresses.length === 0) return {};
-  if (typeof window === "undefined") return {};
+async function fetchEthUsdPrice(): Promise<number | null> {
+  if (typeof window === "undefined") return null;
 
-  const params = new URLSearchParams({
-    addresses: addresses.join(",")
-  });
-
-  const response = await fetch(`/api/token-prices?${params.toString()}`, {
+  const response = await fetch("/api/eth-price", {
     method: "GET",
     cache: "no-store"
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch token prices: ${response.status}`);
+    throw new Error(`Failed to fetch ETH price: ${response.status}`);
   }
 
   const payload = (await response.json()) as {
-    prices?: Record<string, string | number | null>;
+    priceUsd?: number | string | null;
   };
 
-  const parsed: Record<string, number> = {};
-  if (payload?.prices) {
-    Object.entries(payload.prices).forEach(([address, value]) => {
-      const numericValue =
-        typeof value === "string" ? Number(value) : typeof value === "number" ? value : null;
-      if (numericValue !== null && Number.isFinite(numericValue)) {
-        parsed[address.toLowerCase()] = numericValue;
-      }
-    });
+  if (typeof payload?.priceUsd === "number" && Number.isFinite(payload.priceUsd)) {
+    return payload.priceUsd;
   }
 
-  return parsed;
+  if (typeof payload?.priceUsd === "string") {
+    const parsed = Number.parseFloat(payload.priceUsd);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
 }

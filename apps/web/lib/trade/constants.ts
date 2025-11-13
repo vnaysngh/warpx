@@ -45,26 +45,26 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     address: "0x5124C91CDa8dA5C2B0c838C64b25089443f5D109",
     decimals: 18,
     logo: "/logos/warpx.png"
-  },
-  {
-    symbol: "GTE",
-    name: "GTE Token",
-    address: "0x9629684df53db9e4484697d0a50c442b2bfa80a8",
-    decimals: 18,
-    logo: "/logos/gte.png"
-  },
-  {
-    symbol: "MEGA",
-    name: "MEGA",
-    address: "0x10a6be7d23989d00d528e68cf8051d095f741145",
-    decimals: 18,
-    logo: "/logos/mega.png"
-  },
-  {
-    symbol: "cUSD",
-    name: "cap USD",
-    address: "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
-    decimals: 18,
-    logo: "/logos/usd.png"
   }
+  // {
+  //   symbol: "GTE",
+  //   name: "GTE Token",
+  //   address: "0x9629684df53db9e4484697d0a50c442b2bfa80a8",
+  //   decimals: 18,
+  //   logo: "/logos/gte.png"
+  // },
+  // {
+  //   symbol: "MEGA",
+  //   name: "MEGA",
+  //   address: "0x10a6be7d23989d00d528e68cf8051d095f741145",
+  //   decimals: 18,
+  //   logo: "/logos/mega.png"
+  // },
+  // {
+  //   symbol: "cUSD",
+  //   name: "cap USD",
+  //   address: "0xe9b6e75c243b6100ffcb1c66e8f78f96feea727f",
+  //   decimals: 18,
+  //   logo: "/logos/usd.png"
+  // }
 ];

@@ -54,6 +54,7 @@ WarpX now targets the MegaETH Testnet V2 environment.
 - RPC: `https://timothy.megaeth.com/rpc` (set `MEGAETH_RPC_URL` and `NEXT_PUBLIC_MEGAETH_RPC_URL`)
 - Faucet: https://docs.megaeth.com/faucet
 - Explorer: https://megaeth-testnet-v2.blockscout.com
+- TVL data pulls the Ethereum mainnet price via Moralis; set `MORALIS_API_KEY` in your environment so `/api/eth-price` works.
 - Deployment gas: if the RPC rejects `eth_estimateGas` around 10M, set `MEGAETH_DEPLOY_GAS_LIMIT=9000000` (or an appropriate value under the chain limit) so the deploy script bypasses the faulty estimator.
 
 After updating your environment variables, redeploy the contracts so the manifests under `deployments/` and `apps/web/public/deployments/` reflect the new network:

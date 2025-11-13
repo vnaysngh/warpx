@@ -27,8 +27,8 @@ type TradeHeaderProps = {
 
 const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string }> = [
   { key: "swap", label: "Swap", href: "/" },
-  { key: "pools", label: "Pools", href: "/pools" },
-  { key: "stake", label: "Stake", href: "/stake" }
+  { key: "pools", label: "Pools", href: "/pools" }
+  // { key: "stake", label: "Stake", href: "/stake" }
 ];
 
 export function TradeHeader({
