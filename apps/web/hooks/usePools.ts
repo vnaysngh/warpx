@@ -41,7 +41,7 @@ const SUBGRAPH_URL =
   "";
 
 const SUBGRAPH_AUTH_TOKEN =
-  process.env.NEXT_PUBLIC_SUBGRAPH_AUTH_TOKEN ??
+  process.env.SUBGRAPH_AUTH_TOKEN ??
   process.env.NEXT_PUBLIC_GRAPH_API_KEY ??
   "";
 
@@ -170,12 +170,13 @@ function buildTokenDescriptor(
   const decimalsParsed = Number.parseInt(decimalsRaw || "", 10);
 
   return {
-    symbol: token.symbol || fallback?.symbol || token.id.slice(2, 6).toUpperCase(),
+    symbol:
+      token.symbol || fallback?.symbol || token.id.slice(2, 6).toUpperCase(),
     name: token.name || fallback?.name || token.symbol || token.id,
     address: token.id,
     decimals: Number.isFinite(decimalsParsed)
       ? decimalsParsed
-      : fallback?.decimals ?? DEFAULT_TOKEN_DECIMALS,
+      : (fallback?.decimals ?? DEFAULT_TOKEN_DECIMALS),
     isNative: fallback?.isNative,
     wrappedAddress: fallback?.wrappedAddress,
     logo: fallback?.logo
@@ -351,8 +352,7 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
   });
 
   pools.sort(
-    (a, b) =>
-      (b.totalLiquidityValue ?? 0) - (a.totalLiquidityValue ?? 0)
+    (a, b) => (b.totalLiquidityValue ?? 0) - (a.totalLiquidityValue ?? 0)
   );
 
   pools.forEach((pool, index) => {
@@ -371,9 +371,7 @@ export function usePools(params: UsePoolsParams) {
   return useQuery({
     queryKey,
     queryFn: () => fetchPoolsData(params),
-    enabled:
-      params.enabled !== false &&
-      !!params.factoryAddress,
+    enabled: params.enabled !== false && !!params.factoryAddress,
     staleTime: 15 * 1000
   });
 }
@@ -442,7 +440,10 @@ async function fetchEthUsdPrice(): Promise<number | null> {
     priceUsd?: number | string | null;
   };
 
-  if (typeof payload?.priceUsd === "number" && Number.isFinite(payload.priceUsd)) {
+  if (
+    typeof payload?.priceUsd === "number" &&
+    Number.isFinite(payload.priceUsd)
+  ) {
     return payload.priceUsd;
   }
 
