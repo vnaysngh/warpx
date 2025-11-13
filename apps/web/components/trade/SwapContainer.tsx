@@ -10,7 +10,6 @@ import {
 } from "wagmi/actions";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { warpRouterAbi } from "@/lib/abis/router";
-import { pairAbi } from "@/lib/abis/pair";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
@@ -338,74 +337,14 @@ export function SwapContainer({
           outputAddress as `0x${string}`
         ];
 
-        // Run quote and reserve fetching in PARALLEL for performance
-        const [amounts, reserveData] = await Promise.all([
-          // Get quote
-          readContract(wagmiConfig, {
-            address: routerAddress as `0x${string}`,
-            abi: warpRouterAbi,
-            functionName: "getAmountsOut",
-            args: [amountInWei, path],
-            chainId: Number(MEGAETH_CHAIN_ID)
-          }) as Promise<readonly bigint[]>,
-
-          // Get reserves for price impact calculation (in parallel)
-          (async () => {
-            try {
-              const factoryAddress = (await readContract(wagmiConfig, {
-                address: routerAddress as `0x${string}`,
-                abi: warpRouterAbi,
-                functionName: "factory",
-                chainId: Number(MEGAETH_CHAIN_ID)
-              })) as string;
-
-              const pairAddress = (await readContract(wagmiConfig, {
-                address: factoryAddress as `0x${string}`,
-                abi: [
-                  {
-                    type: "function",
-                    name: "getPair",
-                    inputs: [{ type: "address" }, { type: "address" }],
-                    outputs: [{ type: "address" }],
-                    stateMutability: "view"
-                  }
-                ],
-                functionName: "getPair",
-                args: [
-                  inputAddress as `0x${string}`,
-                  outputAddress as `0x${string}`
-                ],
-                chainId: Number(MEGAETH_CHAIN_ID)
-              })) as string;
-
-              if (
-                !pairAddress ||
-                pairAddress === "0x0000000000000000000000000000000000000000"
-              ) {
-                return null;
-              }
-
-              const [reserves, token0] = await Promise.all([
-                readContract(wagmiConfig, {
-                  address: pairAddress as `0x${string}`,
-                  abi: pairAbi,
-                  functionName: "getReserves",
-                  chainId: Number(MEGAETH_CHAIN_ID)
-                }) as Promise<readonly [bigint, bigint, number]>,
-                readContract(wagmiConfig, {
-                  address: pairAddress as `0x${string}`,
-                  abi: pairAbi,
-                  functionName: "token0",
-                  chainId: Number(MEGAETH_CHAIN_ID)
-                }) as Promise<string>
-              ]);
-
-              return { reserves, token0 };
-            } catch {
-              return null;
-            }
-          })()
-        ]);
+        // OPTIMIZATION: Only fetch quote (1 RPC call) - skip price impact to reduce load
+        const amounts = (await readContract(wagmiConfig, {
+          address: routerAddress as `0x${string}`,
+          abi: warpRouterAbi,
+          functionName: "getAmountsOut",
+          args: [amountInWei, path],
+          chainId: Number(MEGAETH_CHAIN_ID)
+        })) as readonly bigint[];
 
         const amountOutWei = amounts[amounts.length - 1];
 
@@ -421,33 +360,8 @@ export function SwapContainer({
         // Price impact warnings are shown in the UI, but swaps are never blocked
         setSwapHasLiquidity(true);
 
-        // Calculate price impact using reserves
-        if (reserveData) {
-          const inputIsToken0 =
-            reserveData.token0.toLowerCase() === inputAddress.toLowerCase();
-          const reserveIn = inputIsToken0
-            ? reserveData.reserves[0]
-            : reserveData.reserves[1];
-          const reserveOut = inputIsToken0
-            ? reserveData.reserves[1]
-            : reserveData.reserves[0];
-
-          // Calculate price impact
-          // Mid price = reserveOut / reserveIn
-          // Execution price = amountOut / amountIn
-          // Price impact = (mid_price - execution_price) / mid_price
-          const midPrice =
-            Number(formatUnits(reserveOut, decimalsOut)) /
-            Number(formatUnits(reserveIn, decimalsIn));
-          const executionPrice =
-            Number(formatUnits(amountOutWei, decimalsOut)) /
-            Number(formatUnits(amountInWei, decimalsIn));
-          const impact = ((midPrice - executionPrice) / midPrice) * 100;
-
-          setPriceImpact(impact > 0 ? impact : 0);
-        } else {
-          setPriceImpact(null);
-        }
+        // Price impact calculation disabled to reduce RPC calls
+        setPriceImpact(null);
 
         const outputExact = formatUnits(amountOutWei, decimalsOut);
         const limitedOut = formatNumber(outputExact, Math.min(6, decimalsOut));
@@ -1070,9 +984,38 @@ export function SwapContainer({
             }
           : baseTxRequest;
 
-      const txHash = await writeContract(wagmiConfig, {
-        ...txRequestWithValue
-      } as Parameters<typeof writeContract>[1]);
+      // Retry logic for rate limit errors
+      let txHash: `0x${string}` | undefined;
+      let retries = 3;
+      let lastError: Error | null = null;
+
+      while (retries > 0 && !txHash) {
+        try {
+          txHash = await writeContract(wagmiConfig, {
+            ...txRequestWithValue
+          } as Parameters<typeof writeContract>[1]);
+        } catch (error: any) {
+          lastError = error;
+          const errorMessage = error?.message || String(error);
+
+          // Check if it's a rate limit error
+          if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
+            retries--;
+            if (retries > 0) {
+              console.warn(`Rate limited, retrying... (${retries} attempts left)`);
+              // Wait with exponential backoff: 2s, 4s, 8s
+              await new Promise(resolve => setTimeout(resolve, 2000 * (4 - retries)));
+              continue;
+            }
+          }
+          // If not a rate limit error, or out of retries, throw immediately
+          throw error;
+        }
+      }
+
+      if (!txHash) {
+        throw lastError || new Error("Failed to execute swap transaction");
+      }
 
       showLoading("Swap transaction pending...", { visuals: swapToastVisuals });
       await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
