@@ -43,6 +43,9 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .statValueTvl {

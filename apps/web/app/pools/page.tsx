@@ -21,7 +21,7 @@ import {
   TOKEN_CATALOG
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
-import { formatNumberWithGrouping } from "@/lib/trade/math";
+import { formatNumberWithGrouping, formatCompactNumber } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 
@@ -290,7 +290,7 @@ export default function PoolsPage() {
     );
 
     return {
-      value: `$${formatNumberWithGrouping(totalValue, 2)}`,
+      value: `$${formatCompactNumber(totalValue, 2)}`,
       loading: tvlLoading || othersLoading
     };
   }, [filteredPools, tvlLoading]);
@@ -328,7 +328,7 @@ export default function PoolsPage() {
     );
 
     return {
-      value: `$${formatNumberWithGrouping(totalValue, 2)}`,
+      value: `$${formatCompactNumber(totalValue, 2)}`,
       loading: volumeLoading || othersLoading
     };
   }, [filteredPools, volumeLoading]);

@@ -64,6 +64,43 @@ export const formatNumberWithGrouping = (
 };
 
 /**
+ * Format large numbers with abbreviations (K, M, B, T)
+ * Perfect for stat cards and compact displays
+ */
+export const formatCompactNumber = (
+  value: string | number,
+  maxDecimals: number = 2
+): string => {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+
+  if (isNaN(num) || num === 0) return "0";
+
+  const absNum = Math.abs(num);
+  const sign = num < 0 ? "-" : "";
+
+  // Billions
+  if (absNum >= 1_000_000_000) {
+    const billions = absNum / 1_000_000_000;
+    return `${sign}${billions.toFixed(maxDecimals).replace(/\.?0+$/, "")}B`;
+  }
+
+  // Millions
+  if (absNum >= 1_000_000) {
+    const millions = absNum / 1_000_000;
+    return `${sign}${millions.toFixed(maxDecimals).replace(/\.?0+$/, "")}M`;
+  }
+
+  // Thousands
+  if (absNum >= 10_000) {
+    const thousands = absNum / 1_000;
+    return `${sign}${thousands.toFixed(maxDecimals).replace(/\.?0+$/, "")}K`;
+  }
+
+  // Regular numbers under 10K - use grouping
+  return formatNumberWithGrouping(num, maxDecimals);
+};
+
+/**
  * Format percentage values (0-100)
  */
 export const formatPercent = (
