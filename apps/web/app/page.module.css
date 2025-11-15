@@ -202,7 +202,7 @@
   gap: 1.5rem;
   padding: 1.75rem 1.5rem;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(20, 27, 61, 0.95);
+  background: linear-gradient(135deg, #2a2440 0%, #221c35 50%, #1a1528 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: -12px 0 36px rgba(0, 0, 0, 0.35);
@@ -459,18 +459,31 @@
 }
 
 .walletButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   border-radius: 999px;
-  padding: 0.55rem 1.2rem;
-  border: 1px solid rgba(10, 255, 157, 0.3);
-  background: var(--accent-muted);
-  color: var(--accent);
+  padding: 0.55rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 0.875rem;
-  letter-spacing: 0.15em;
-  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-weight: 500;
   text-transform: none;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.walletButtonText {
+  display: inline-block;
+}
+
+.walletButtonChevron {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
 }
 
 .walletButton:disabled {
@@ -479,8 +492,41 @@
 }
 
 .walletButton:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 1);
+}
+
+.walletButton:not(:disabled):hover .walletButtonChevron {
+  opacity: 1;
+}
+
+.connectWalletButton {
+  border-radius: 999px;
+  padding: 0.7rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--bg);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: none;
+  font-weight: 600;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.connectWalletButton:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(10, 255, 157, 0.2);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 1);
+}
+
+.connectWalletButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .walletMenuContainer {
@@ -494,7 +540,7 @@
   width: 240px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(20, 27, 61, 0.95);
+  background: transparent;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -861,6 +907,81 @@
   width: 100%;
 }
 
+.swapSummaryToggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.swapSummaryToggle:hover {
+  opacity: 0.8;
+}
+
+.swapSummaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0;
+}
+
+.swapSummaryText {
+  font-size: 0.8rem;
+  color: var(--fg-subtle);
+  font-weight: 400;
+  text-transform: none;
+}
+
+.swapSummaryRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.swapSummaryNetworkCost {
+  font-size: 0.8rem;
+  color: var(--fg-subtle);
+  font-weight: 400;
+}
+
+.swapSummaryChevron {
+  color: var(--fg-subtle);
+  transition: transform 0.2s ease;
+}
+
+.swapDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.swapDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.swapDetailLabel {
+  font-size: 0.8rem;
+  color: var(--fg-subtle);
+  font-weight: 400;
+  text-transform: none;
+}
+
+.swapDetailValue {
+  font-size: 0.8rem;
+  color: var(--fg);
+  font-weight: 500;
+  text-transform: none;
+}
+
 .summaryPrimary {
   color: var(--fg);
   font-weight: 500;
@@ -916,8 +1037,8 @@
 .primaryButton {
   border-radius: 12px;
   padding: 0.7rem 1.35rem;
-  border: 1px solid transparent;
-  background: var(--gradient-speed);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--bg);
   font-size: 0.85rem;
   letter-spacing: 0.12em;
@@ -939,23 +1060,20 @@
 
 .primaryButton:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow:
-    var(--glow-blue),
-    0 8px 20px rgba(0, 212, 255, 0.4);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 1);
 }
 
 .primaryButtonHighlight {
-  background: var(--gradient-speed);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--bg);
-  border-color: var(--speed-blue);
-  box-shadow: var(--glow-blue);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .primaryButtonHighlight:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow:
-    var(--glow-blue),
-    0 12px 30px rgba(0, 212, 255, 0.5);
+  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 1);
 }
 
 .secondaryButton {
@@ -1005,7 +1123,7 @@
 }
 
 .segmentActive {
-  background: var(--gradient-speed);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--bg);
   font-weight: 600;
 }

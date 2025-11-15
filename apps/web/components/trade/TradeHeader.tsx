@@ -144,23 +144,37 @@ export function TradeHeader({
                 className={styles.walletButton}
                 onClick={onWalletButtonClick}
                 type="button"
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <span>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                  <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                  <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+                </svg>
+                <span className={styles.walletButtonText}>
                   {shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}
                 </span>
                 <svg
                   width="14"
                   height="14"
                   viewBox="0 0 16 16"
-                  fill="currentColor"
+                  fill="none"
                   aria-hidden="true"
+                  className={styles.walletButtonChevron}
                 >
                   <path
                     d="M4 6l4 4 4-4"
                     stroke="currentColor"
                     strokeWidth="2"
-                    fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
@@ -170,12 +184,14 @@ export function TradeHeader({
               {isWalletMenuOpen && (
                 <div className={styles.walletDropdown}>
                   <div className={styles.walletDropdownHeader}>
-                    <div className={styles.walletDropdownLabel}>Wallet</div>
+                    {/* <div className={styles.walletDropdownLabel}>Wallet</div> */}
                     <button
                       onClick={onCopyAddress}
                       className={styles.walletDropdownAddressWithCopy}
                       type="button"
-                      title={copyStatus === "copied" ? "Copied!" : "Copy address"}
+                      title={
+                        copyStatus === "copied" ? "Copied!" : "Copy address"
+                      }
                     >
                       <span className={styles.walletDropdownAddress}>
                         {shortAccountAddress}
@@ -223,7 +239,7 @@ export function TradeHeader({
             </div>
           ) : (
             <button
-              className={styles.walletButton}
+              className={styles.connectWalletButton}
               onClick={onConnect}
               disabled={isAccountConnecting && hasMounted}
               type="button"
@@ -342,7 +358,7 @@ export function TradeHeader({
                 </div>
               ) : (
                 <button
-                  className={styles.walletButton}
+                  className={styles.connectWalletButton}
                   onClick={() => {
                     closeMobileMenu();
                     onConnect();

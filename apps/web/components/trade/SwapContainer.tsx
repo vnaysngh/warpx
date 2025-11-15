@@ -1237,6 +1237,7 @@ export function SwapContainer({
       minReceived={minReceivedDisplay}
       summaryMessage={swapSummaryMessage}
       priceImpact={priceImpact}
+      slippage={slippagePercentDisplay}
       buttonLabel={swapButtonLabel}
       buttonDisabled={swapButtonDisabled}
       onButtonClick={swapButtonAction}

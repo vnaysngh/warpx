@@ -22,7 +22,10 @@
   flex-direction: column;
   gap: 0.75rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .statCard:hover {
@@ -50,14 +53,6 @@
   max-width: 100%;
 }
 
-.statValueTvl {
-  color: #00d4ff;
-}
-
-.statValueVolume {
-  color: #0aff9d;
-}
-
 .statLoader {
   display: inline-flex;
   align-items: center;
@@ -82,7 +77,9 @@
 }
 
 @keyframes statBounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.4;
   }
@@ -177,7 +174,9 @@
   display: inline-flex;
   gap: 0.4rem;
   align-items: center;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .backLink:hover {
@@ -259,7 +258,9 @@
   height: 14px;
   opacity: 0;
   color: rgba(255, 255, 255, 0.75);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   transform: translateX(-2px);
 }
 
@@ -296,35 +297,29 @@
   overflow: hidden;
   border-radius: 999px;
   padding: 0.65rem 1.8rem;
-  border: none;
-  color: #04120d;
-  letter-spacing: 0.16em;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: var(--fg);
+  letter-spacing: 0.1em;
   font-size: 0.82rem;
   text-transform: none;
-  font-weight: 700;
-  background: linear-gradient(135deg, rgba(13, 255, 180, 0.92), rgba(63, 255, 200, 0.92));
-  box-shadow:
-    0 18px 32px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(10, 255, 157, 0.45);
+  font-weight: 600;
+  background: transparent;
   transition:
     transform 0.2s ease,
-    box-shadow 0.25s ease,
-    filter 0.25s ease;
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .primaryButton:hover {
   transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow:
-    0 22px 38px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(10, 255, 157, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 1);
 }
 
 .primaryButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
 }
 
 .inlineNotice {

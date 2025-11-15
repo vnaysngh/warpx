@@ -82,27 +82,21 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-image:
-    radial-gradient(
-      circle at top left,
-      rgba(0, 212, 255, 0.15),
-      transparent 40%
-    ),
-    radial-gradient(
-      circle at 80% 20%,
-      rgba(123, 44, 191, 0.12),
-      transparent 45%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(255, 46, 151, 0.1),
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 20% 80%,
-      rgba(10, 255, 157, 0.08),
-      transparent 40%
-    );
+  background-image: url('/cover.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 39, 0.75);
+  pointer-events: none;
+  z-index: 0;
 }
 
 a {
@@ -125,4 +119,16 @@ button {
 
 main {
   flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure wallet modal appears above everything */
+w3m-modal,
+wcm-modal,
+wui-modal,
+appkit-modal,
+[id*="walletconnect"],
+[id*="appkit"] {
+  z-index: 99999 !important;
 }

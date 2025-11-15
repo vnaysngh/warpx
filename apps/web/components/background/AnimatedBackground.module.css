@@ -218,59 +218,22 @@
   }
 }
 
-/* Speed lines */
+/* Speed lines - disabled */
 .speedLines {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+  display: none;
 }
 
 .speedLine {
-  position: absolute;
-  left: -10%;
-  width: 120%;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--speed-blue) 20%,
-    var(--neon-cyan) 50%,
-    var(--speed-blue) 80%,
-    transparent 100%
-  );
-  opacity: 0;
-  animation: speedLineMove 3s ease-in-out infinite;
+  display: none;
 }
 
-@keyframes speedLineMove {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.6;
-  }
-  80% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-/* Floating shapes */
+/* Floating shapes - disabled */
 .floatingShapes {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  display: none;
 }
 
 .shape {
-  position: absolute;
-  opacity: 0.15;
-  animation: shapeFloat 25s ease-in-out infinite;
+  display: none;
 }
 
 .shape1 {
@@ -332,6 +295,18 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Animations paused globally */
+.orb,
+.particle,
+.gridOverlay,
+.meshGradient1,
+.meshGradient2,
+.meshGradient3,
+.speedLine,
+.shape {
+  animation: none !important;
 }
 
 /* Reduce motion */

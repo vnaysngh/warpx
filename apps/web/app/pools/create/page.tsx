@@ -9,6 +9,7 @@ import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
+import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
@@ -295,6 +296,7 @@ export default function CreatePoolPage() {
 
   return (
     <>
+      <AnimatedBackground variant="pools" />
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}
