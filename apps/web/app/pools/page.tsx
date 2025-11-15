@@ -243,6 +243,7 @@ export default function PoolsPage() {
   );
 
   const tvlLoading = pools.some((pool) => pool.isTvlLoading);
+  const volumeLoading = pools.some((pool) => pool.isVolumeLoading);
 
   const filteredPools = useMemo(() => {
     if (!pools.length) {
@@ -294,6 +295,44 @@ export default function PoolsPage() {
     };
   }, [filteredPools, tvlLoading]);
 
+  const totalVolumeSummary = useMemo(() => {
+    if (filteredPools.length === 0) {
+      return { value: null as string | null, loading: volumeLoading };
+    }
+
+    const poolsWithVolume = filteredPools.filter(
+      (pool) =>
+        typeof pool.totalVolumeValue === "number" &&
+        pool.totalVolumeValue !== null &&
+        pool.totalVolumeValue > 0
+    );
+
+    if (poolsWithVolume.length === 0) {
+      const anyLoading = filteredPools.some((pool) => pool.isVolumeLoading);
+      return { value: null, loading: volumeLoading || anyLoading };
+    }
+
+    const totalValue = poolsWithVolume.reduce(
+      (acc, pool) => acc + (pool.totalVolumeValue ?? 0),
+      0
+    );
+
+    if (totalValue <= 0) {
+      return { value: null, loading: false };
+    }
+
+    const othersLoading = filteredPools.some(
+      (pool) =>
+        (!pool.totalVolumeValue || pool.totalVolumeValue <= 0) &&
+        pool.isVolumeLoading
+    );
+
+    return {
+      value: `$${formatNumberWithGrouping(totalValue, 2)}`,
+      loading: volumeLoading || othersLoading
+    };
+  }, [filteredPools, volumeLoading]);
+
   useEffect(() => {
     if (!pools.length) {
       return;
@@ -328,15 +367,41 @@ export default function PoolsPage() {
       />
 
       <section className={styles.pageShell}>
-        {/*  <div className={styles.pageHeader}>
-          <div className={styles.headerTop}>
-            <h1 className={styles.title}>Pools</h1>
+        <div className={styles.statsRow}>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>Total Value Locked</div>
+            {totalTvlSummary.loading ? (
+              <div className={styles.statValue}>
+                <span className={styles.statLoader}>
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </div>
+            ) : (
+              <div className={`${styles.statValue} ${styles.statValueTvl}`}>
+                {totalTvlSummary.value || "$0.00"}
+              </div>
+            )}
           </div>
-          <p className={styles.description}>
-            Provide liquidity to trading pairs and earn fees from every swap.
-          </p>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>Total Trading Volume</div>
+            {totalVolumeSummary.loading ? (
+              <div className={styles.statValue}>
+                <span className={styles.statLoader}>
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </div>
+            ) : (
+              <div className={`${styles.statValue} ${styles.statValueVolume}`}>
+                {totalVolumeSummary.value || "$0.00"}
+              </div>
+            )}
+          </div>
         </div>
- */}
+
         <div className={styles.toolbarRow}>
           {hasMounted && isWalletConnected ? (
             <div
@@ -380,8 +445,6 @@ export default function PoolsPage() {
             error={poolsError}
             onRetry={handleRefreshPools}
             onSelectPool={handlePoolSelect}
-            totalTvl={totalTvlSummary.value}
-            totalTvlLoading={totalTvlSummary.loading}
           />
         </div>
       </section>

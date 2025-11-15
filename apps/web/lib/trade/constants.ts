@@ -5,7 +5,7 @@ import type {
 } from "./types";
 
 export const MEGAETH_CHAIN_ID = 6343n;
-export const DEFAULT_SLIPPAGE_BPS = 50n; // 0.50% default slippage tolerance
+export const DEFAULT_SLIPPAGE_BPS = 100n; // 1.00% default slippage tolerance
 export const ONE_BIPS = 10000n; // 10000 basis points = 100%
 export const MINIMUM_LIQUIDITY = 1000n; // Minimum liquidity burned
 export const FEES_DENOMINATOR = 1000n; // Standard Warp fee = 0.3% = 3/1000

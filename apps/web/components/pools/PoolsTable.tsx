@@ -51,6 +51,8 @@ type PoolsTableProps = {
   onSelectPool?: (pool: PoolsTableRow) => void;
   totalTvl?: string | null;
   totalTvlLoading?: boolean;
+  totalVolume?: string | null;
+  totalVolumeLoading?: boolean;
 };
 
 export function PoolsTable({
@@ -60,7 +62,9 @@ export function PoolsTable({
   onRetry,
   onSelectPool,
   totalTvl,
-  totalTvlLoading
+  totalTvlLoading,
+  totalVolume,
+  totalVolumeLoading
 }: PoolsTableProps) {
   const showSkeleton = loading && pools.length === 0 && !error;
   const showEmpty = !loading && pools.length === 0 && !error;
@@ -77,25 +81,7 @@ export function PoolsTable({
             <th>Pool</th>
             <th>Protocol</th>
             <th>Fee tier</th>
-            <th className={styles.tvlHeader}>
-              <span>TVL</span>
-              {totalTvl ? (
-                <span className={styles.totalTvlChip}>
-                  <span aria-hidden="true">Σ</span>
-                  {totalTvl}
-                </span>
-              ) : totalTvlLoading ? (
-                <span
-                  className={`${styles.totalTvlChip} ${styles.totalTvlChipLoading}`}
-                >
-                  <span className={styles.dots}>
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </span>
-              ) : null}
-            </th>
+            <th>TVL</th>
             <th>Volume</th>
           </tr>
         </thead>
