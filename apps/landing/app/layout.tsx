@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
-import { Mochiy_Pop_One } from "next/font/google";
+import { Poppins, Mochiy_Pop_One } from "next/font/google";
 import "@warpx/theme/globals.css";
 
+// Primary font - Poppins (everything except brand name)
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+  display: "swap"
+});
+
+// Brand font - Mochiy Pop One (WARPX logo only)
 const mochiyPopOne = Mochiy_Pop_One({
   subsets: ["latin"],
   weight: ["400"],
@@ -21,7 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={mochiyPopOne.variable}>
+    <html
+      lang="en"
+      className={`${poppins.variable} ${mochiyPopOne.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

@@ -74,7 +74,9 @@
   height: 2px;
   border-radius: 999px;
   background: currentColor;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .mobileMenuIcon::before {
@@ -102,7 +104,7 @@
   align-items: center;
   gap: 0.75rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   flex-shrink: 0;
   justify-self: start;
 }
@@ -117,12 +119,15 @@
   font-size: clamp(1.5rem, 2.8vw, 2rem);
   font-weight: 400;
   font-family: var(--font-mochiy, sans-serif);
+  letter-spacing: 0.05em;
+  text-transform: none;
 }
 
 .brandSub {
   font-size: 0.7rem;
   color: var(--fg-subtle);
   letter-spacing: 0.24em;
+  text-transform: none;
 }
 
 .navCenter {
@@ -144,9 +149,9 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--fg-subtle);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  text-transform: none;
   transition:
     color 0.15s ease,
     background 0.15s ease,
@@ -172,8 +177,8 @@
   gap: 0.6rem;
   flex-wrap: wrap;
   justify-content: flex-end;
-  text-transform: uppercase;
-  font-size: 0.75rem;
+  text-transform: none;
+  font-size: 0.85rem;
   letter-spacing: 0.12em;
   flex-shrink: 0;
   justify-self: end;
@@ -232,7 +237,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.12em;
 }
 
@@ -277,9 +282,9 @@
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.16em;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--fg);
   transition:
     border-color 0.2s ease,
@@ -334,9 +339,9 @@
 }
 
 .mobileWalletLabel {
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   letter-spacing: 0.22em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(255, 255, 255, 0.55);
 }
 
@@ -364,9 +369,9 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
   padding: 0.55rem 1.2rem;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg);
   text-decoration: none;
   transition:
@@ -390,10 +395,10 @@
 }
 
 .mobileWalletStatus {
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   letter-spacing: 0.1em;
   color: var(--accent);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .mobileWalletDisconnect {
@@ -401,9 +406,9 @@
   border: 1px solid rgba(255, 92, 92, 0.35);
   background: rgba(255, 92, 92, 0.12);
   color: #ff7c7c;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  text-transform: none;
   padding: 0.65rem 1rem;
   transition:
     background 0.2s ease,
@@ -459,10 +464,10 @@
   border: 1px solid rgba(10, 255, 157, 0.3);
   background: var(--accent-muted);
   color: var(--accent);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   letter-spacing: 0.15em;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -503,18 +508,46 @@
 }
 
 .walletDropdownLabel {
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
   margin-bottom: 0.35rem;
 }
 
+.walletDropdownAddressWithCopy {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  width: 100%;
+}
+
+.walletDropdownAddressWithCopy:hover {
+  opacity: 0.8;
+}
+
 .walletDropdownAddress {
-  font-size: 0.8rem;
-  font-family: monospace;
+  font-size: 0.9rem;
+  font-family: var(--font-poppins, sans-serif);
   color: var(--fg);
   letter-spacing: 0.05em;
+}
+
+.walletCopyIcon {
+  width: 14px;
+  height: 14px;
+  color: var(--fg-subtle);
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.walletDropdownAddressWithCopy:hover .walletCopyIcon {
+  color: var(--accent);
 }
 
 .walletDropdownItem {
@@ -525,7 +558,7 @@
   align-items: center;
   justify-content: space-between;
   color: var(--fg);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   border: none;
   background: transparent;
   transition: background 0.2s ease;
@@ -543,7 +576,7 @@
 }
 
 .walletDropdownCopied {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--accent);
   letter-spacing: 0.08em;
 }
@@ -576,9 +609,9 @@
   border: none;
   background: transparent;
   color: var(--fg-subtle);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   border-radius: 999px;
   padding: 0.6rem 1.4rem;
   transition:
@@ -611,9 +644,9 @@
 }
 
 .statusLabel {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
   margin-bottom: 0.35rem;
   display: block;
@@ -646,9 +679,9 @@
   padding: 0.5rem 1rem;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.06);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg);
 }
 
@@ -695,9 +728,9 @@
   justify-content: space-between;
   align-items: center;
   color: rgba(255, 255, 255, 0.58);
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .amountInput {
@@ -729,9 +762,9 @@
   padding: 0.4rem 0.8rem;
   background: rgba(255, 255, 255, 0.05);
   color: var(--fg);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
   cursor: pointer;
 }
 
@@ -751,7 +784,7 @@
 }
 
 .assetSelectorChevron {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   opacity: 0.7;
 }
 
@@ -779,7 +812,6 @@
 .cardTitle {
   font-size: 1.15rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   font-weight: 600;
 }
 
@@ -792,9 +824,9 @@
 }
 
 .quote {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
 }
 
@@ -810,9 +842,9 @@
   justify-content: center;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 0.75rem;
@@ -850,9 +882,9 @@
 }
 
 .label {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   letter-spacing: 0.18em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
 }
 
@@ -887,9 +919,9 @@
   border: 1px solid transparent;
   background: var(--gradient-speed);
   color: var(--bg);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   font-weight: 600;
   transition:
     transform 0.2s ease,
@@ -907,7 +939,9 @@
 
 .primaryButton:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: var(--glow-blue), 0 8px 20px rgba(0, 212, 255, 0.4);
+  box-shadow:
+    var(--glow-blue),
+    0 8px 20px rgba(0, 212, 255, 0.4);
 }
 
 .primaryButtonHighlight {
@@ -919,7 +953,9 @@
 
 .primaryButtonHighlight:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: var(--glow-blue), 0 12px 30px rgba(0, 212, 255, 0.5);
+  box-shadow:
+    var(--glow-blue),
+    0 12px 30px rgba(0, 212, 255, 0.5);
 }
 
 .secondaryButton {
@@ -928,9 +964,9 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   color: var(--fg);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .secondaryButton:disabled {
@@ -939,10 +975,10 @@
 }
 
 .lpBadge {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--fg-subtle);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .segmented {
@@ -960,9 +996,9 @@
   border: none;
   background: transparent;
   color: var(--fg-subtle);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  text-transform: none;
   border-radius: 999px;
   padding: 0.5rem 1.3rem;
   transition: all 0.2s ease;
@@ -975,7 +1011,7 @@
 }
 
 .helper {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--fg-subtle);
   letter-spacing: 0.05em;
 }
@@ -994,7 +1030,7 @@
   color: var(--accent);
   border-radius: 8px;
   padding: 0.25rem 0.65rem;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -1016,7 +1052,7 @@
   background: rgba(10, 255, 157, 0.08);
   color: var(--accent);
   padding: 0.85rem 1rem;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   letter-spacing: 0.08em;
 }
 
@@ -1027,7 +1063,7 @@
 }
 
 .mono {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   line-height: 1.55;
   background: rgba(0, 0, 0, 0.7);
   border-radius: 12px;
@@ -1044,9 +1080,9 @@
 }
 
 .utilityTitle {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
 }
 
@@ -1063,9 +1099,9 @@
 
 .footnote {
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
   margin-top: 1rem;
 }
@@ -1104,7 +1140,6 @@
 .dialogTitle {
   font-size: 0.9rem;
   letter-spacing: 0.18em;
-  text-transform: uppercase;
   color: var(--fg-subtle);
 }
 
@@ -1113,7 +1148,7 @@
   background: rgba(255, 255, 255, 0.06);
   border-radius: 999px;
   color: var(--fg);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.12em;
   padding: 0.35rem 0.75rem;
   cursor: pointer;
@@ -1126,7 +1161,7 @@
   background: rgba(0, 0, 0, 0.7);
   padding: 0.65rem 0.85rem;
   color: var(--fg);
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   letter-spacing: 0.08em;
 }
 
@@ -1183,14 +1218,14 @@
 }
 
 .dialogSymbol {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg);
 }
 
 .dialogAddress {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.45);
   border: none;
@@ -1219,7 +1254,9 @@
   height: 14px;
   opacity: 0;
   color: rgba(255, 255, 255, 0.75);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   transform: translateX(-2px);
 }
 
@@ -1237,7 +1274,7 @@
 
 .dialogEmpty {
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.5);
   padding: 1rem 0;
@@ -1424,7 +1461,7 @@
 .disclaimerTitle {
   font-size: 1.5rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   font-weight: 600;
   color: var(--fg);
   margin: 0;
@@ -1453,7 +1490,7 @@
   color: var(--accent);
   font-size: 0.85rem;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1480,9 +1517,9 @@
 }
 
 .footerText {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  /* text-transform: none; */
   color: var(--fg-subtle);
   margin: 0;
 }

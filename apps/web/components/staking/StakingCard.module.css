@@ -41,8 +41,8 @@
   border: 1px dashed rgba(255, 255, 255, 0.35);
   color: var(--fg);
   letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 0.65rem;
+  text-transform: none;
+  font-size: 0.75rem;
 }
 
 .experimentalBadge::before {
@@ -62,9 +62,9 @@
 }
 
 .eyebrow {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.18em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
 }
 
@@ -78,9 +78,9 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  text-transform: none;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -100,9 +100,9 @@
 }
 
 .statLabel {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--fg-subtle);
 }
 
@@ -130,7 +130,6 @@
 
 .actionLabel {
   font-size: 0.85rem;
-  text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--fg-subtle);
 }
@@ -163,9 +162,9 @@
 .maxButton {
   border-radius: 12px;
   padding: 0.6rem 0.9rem;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.1em;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.04);
 }
@@ -178,7 +177,7 @@
   font-size: 0.8rem;
   color: var(--fg-subtle);
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .rewardLogo {
@@ -220,7 +219,6 @@
 .statusText {
   font-size: 0.8rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .muted {

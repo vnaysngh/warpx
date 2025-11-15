@@ -21,7 +21,10 @@ import {
   TOKEN_CATALOG
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
-import { formatNumberWithGrouping, formatCompactNumber } from "@/lib/trade/math";
+import {
+  formatNumberWithGrouping,
+  formatCompactNumber
+} from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 
@@ -49,6 +52,12 @@ export default function PoolsPage() {
     const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
     return new JsonRpcProvider(rpcUrl);
   }, []);
+
+  useEffect(() => {
+    if (!isWalletConnected && showMyPositionsOnly) {
+      setShowMyPositionsOnly(false);
+    }
+  }, [isWalletConnected, showMyPositionsOnly]);
 
   useEffect(() => {
     setHasMounted(true);
@@ -258,11 +267,11 @@ export default function PoolsPage() {
   }, [pools, showMyPositionsOnly]);
 
   const totalTvlSummary = useMemo(() => {
-    if (filteredPools.length === 0) {
+    if (pools.length === 0) {
       return { value: null as string | null, loading: tvlLoading };
     }
 
-    const poolsWithValues = filteredPools.filter(
+    const poolsWithValues = pools.filter(
       (pool) =>
         typeof pool.totalLiquidityValue === "number" &&
         pool.totalLiquidityValue !== null &&
@@ -270,7 +279,7 @@ export default function PoolsPage() {
     );
 
     if (poolsWithValues.length === 0) {
-      const anyLoading = filteredPools.some((pool) => pool.isTvlLoading);
+      const anyLoading = pools.some((pool) => pool.isTvlLoading);
       return { value: null, loading: tvlLoading || anyLoading };
     }
 
@@ -283,7 +292,7 @@ export default function PoolsPage() {
       return { value: null, loading: false };
     }
 
-    const othersLoading = filteredPools.some(
+    const othersLoading = pools.some(
       (pool) =>
         (!pool.totalLiquidityValue || pool.totalLiquidityValue <= 0) &&
         pool.isTvlLoading
@@ -293,14 +302,14 @@ export default function PoolsPage() {
       value: `$${formatCompactNumber(totalValue, 2)}`,
       loading: tvlLoading || othersLoading
     };
-  }, [filteredPools, tvlLoading]);
+  }, [pools, tvlLoading]);
 
   const totalVolumeSummary = useMemo(() => {
-    if (filteredPools.length === 0) {
+    if (pools.length === 0) {
       return { value: null as string | null, loading: volumeLoading };
     }
 
-    const poolsWithVolume = filteredPools.filter(
+    const poolsWithVolume = pools.filter(
       (pool) =>
         typeof pool.totalVolumeValue === "number" &&
         pool.totalVolumeValue !== null &&
@@ -308,7 +317,7 @@ export default function PoolsPage() {
     );
 
     if (poolsWithVolume.length === 0) {
-      const anyLoading = filteredPools.some((pool) => pool.isVolumeLoading);
+      const anyLoading = pools.some((pool) => pool.isVolumeLoading);
       return { value: null, loading: volumeLoading || anyLoading };
     }
 
@@ -321,7 +330,7 @@ export default function PoolsPage() {
       return { value: null, loading: false };
     }
 
-    const othersLoading = filteredPools.some(
+    const othersLoading = pools.some(
       (pool) =>
         (!pool.totalVolumeValue || pool.totalVolumeValue <= 0) &&
         pool.isVolumeLoading
@@ -331,7 +340,7 @@ export default function PoolsPage() {
       value: `$${formatCompactNumber(totalValue, 2)}`,
       loading: volumeLoading || othersLoading
     };
-  }, [filteredPools, volumeLoading]);
+  }, [pools, volumeLoading]);
 
   useEffect(() => {
     if (!pools.length) {

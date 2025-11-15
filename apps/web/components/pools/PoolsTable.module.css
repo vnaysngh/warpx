@@ -21,12 +21,15 @@
 
 .table thead th {
   padding: 0.85rem 1.1rem;
-  text-align: left;
-  font-size: 0.7rem;
+  text-align: right;
+  font-size: 0.8rem;
   color: var(--fg-subtle);
   letter-spacing: 0.18em;
-  text-transform: uppercase;
   font-weight: 600;
+}
+
+.table thead th:first-child {
+  text-align: left;
 }
 
 .tvlHeader {
@@ -51,9 +54,9 @@
   border: 1px solid rgba(0, 212, 255, 0.45);
   color: #00d4ff;
   letter-spacing: 0.08em;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   box-shadow: 0 0 12px rgba(0, 212, 255, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
@@ -72,9 +75,9 @@
   border: 1px solid rgba(10, 255, 157, 0.45);
   color: #0aff9d;
   letter-spacing: 0.08em;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   box-shadow: 0 0 12px rgba(10, 255, 157, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
@@ -136,7 +139,7 @@
 }
 
 .totalTvlChip > span[aria-hidden="true"] {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   opacity: 0.85;
 }
 
@@ -160,9 +163,10 @@
 
 .table tbody td {
   padding: 1rem 1.1rem;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--fg);
   vertical-align: middle;
+  text-align: right;
 }
 
 .indexCell {
@@ -174,12 +178,14 @@
 
 .poolCell {
   min-width: 260px;
+  text-align: left;
 }
 
 .poolStack {
   display: flex;
   align-items: center;
   gap: 1rem;
+  text-align: left;
 }
 
 .tokenStack {
@@ -198,8 +204,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  text-transform: none;
   font-weight: 600;
   letter-spacing: 0.05em;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -233,10 +239,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .poolLabel {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   display: flex;
@@ -246,7 +254,7 @@
 
 .positionBadge {
   color: var(--accent);
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   line-height: 1;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -261,9 +269,11 @@
 }
 
 .poolAddress {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.35);
   letter-spacing: 0.08em;
+  font-family: var(--font-poppins, sans-serif);
+  text-transform: none;
 }
 
 .protocolCell,
@@ -272,8 +282,7 @@
 .rewardAprCell {
   width: 120px;
   color: var(--fg-subtle);
-  font-size: 0.78rem;
-  text-transform: uppercase;
+  font-size: 0.88rem;
   letter-spacing: 0.08em;
 }
 
@@ -283,19 +292,21 @@
   font-variant-numeric: tabular-nums;
   color: #00d4ff;
   font-weight: 600;
+  font-family: var(--font-poppins, sans-serif);
 }
 
 .volumeCell {
   width: 140px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-poppins, sans-serif);
 }
 
 .stateCell {
   padding: 2.5rem 1rem;
   text-align: center;
   color: var(--fg-subtle);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   letter-spacing: 0.08em;
 }
 
@@ -314,8 +325,8 @@
   background: rgba(10, 255, 157, 0.12);
   color: var(--accent);
   letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 0.7rem;
+  text-transform: none;
+  font-size: 0.8rem;
   font-weight: 600;
   transition:
     transform 0.2s ease,
@@ -409,7 +420,7 @@
 
   .table tbody td::before {
     content: attr(data-label);
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.16em;
     font-size: 0.62rem;
     color: rgba(255, 255, 255, 0.45);

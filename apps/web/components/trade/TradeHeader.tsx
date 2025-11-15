@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type RefObject, useEffect, useMemo, useState } from "react";
 import styles from "@/app/page.module.css";
+import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 
 type NavKey = "swap" | "pools" | "stake";
 
@@ -170,23 +171,22 @@ export function TradeHeader({
                 <div className={styles.walletDropdown}>
                   <div className={styles.walletDropdownHeader}>
                     <div className={styles.walletDropdownLabel}>Wallet</div>
-                    <div className={styles.walletDropdownAddress}>
-                      {shortAccountAddress}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={onCopyAddress}
-                    className={styles.walletDropdownItem}
-                    type="button"
-                  >
-                    <span>Copy address</span>
-                    {copyStatus === "copied" && (
-                      <span className={styles.walletDropdownCopied}>
-                        Copied!
+                    <button
+                      onClick={onCopyAddress}
+                      className={styles.walletDropdownAddressWithCopy}
+                      type="button"
+                      title={copyStatus === "copied" ? "Copied!" : "Copy address"}
+                    >
+                      <span className={styles.walletDropdownAddress}>
+                        {shortAccountAddress}
                       </span>
-                    )}
-                  </button>
+                      {copyStatus === "copied" ? (
+                        <CopySuccessIcon className={styles.walletCopyIcon} />
+                      ) : (
+                        <CopyIcon className={styles.walletCopyIcon} />
+                      )}
+                    </button>
+                  </div>
 
                   {address && (
                     <a
