@@ -438,13 +438,15 @@ export default function PoolsPage() {
           ) : (
             <span />
           )}
-          <button
-            type="button"
-            className={`${styles.primaryButton} ${styles.createButton}`}
-            onClick={handleCreatePool}
-          >
-            Create
-          </button>
+          {hasMounted && isWalletConnected && (
+            <button
+              type="button"
+              className={`${styles.primaryButton} ${styles.createButton}`}
+              onClick={handleCreatePool}
+            >
+              Create
+            </button>
+          )}
         </div>
 
         <div className={styles.tableSection}>
