@@ -1545,13 +1545,15 @@
 .disclaimerModal {
   width: min(520px, 100%);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: linear-gradient(
-    160deg,
-    rgba(18, 18, 18, 0.98) 0%,
-    rgba(7, 7, 7, 0.95) 100%
+    135deg,
+    rgba(45, 45, 70, 0.95) 0%,
+    rgba(30, 30, 50, 0.95) 100%
   );
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -1591,8 +1593,8 @@
   gap: 1rem;
   font-size: 0.95rem;
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.75);
-  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.01em;
 }
 
 .disclaimerContent p {
@@ -1602,12 +1604,12 @@
 .disclaimerButton {
   width: 100%;
   border-radius: 12px;
-  padding: 0.9rem 1.5rem;
-  border: 1px solid rgba(10, 255, 157, 0.4);
-  background: rgba(10, 255, 157, 0.18);
-  color: var(--accent);
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
+  padding: 1rem 1.5rem;
+  border: none;
+  background: #ffffff;
+  color: #000000;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
   text-transform: none;
   font-weight: 600;
   cursor: pointer;
@@ -1615,9 +1617,9 @@
 }
 
 .disclaimerButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 28px rgba(10, 255, 157, 0.3);
-  background: rgba(10, 255, 157, 0.24);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
 }
 
 .footer {
