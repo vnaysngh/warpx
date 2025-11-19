@@ -30,6 +30,10 @@ type SwapCardProps = {
   buttonLabel: string;
   buttonDisabled: boolean;
   onButtonClick: (() => void) | null;
+  transactionStatus: {
+    message: string;
+    type: "idle" | "pending" | "success" | "error";
+  } | null;
 };
 
 export function SwapCard({
@@ -53,7 +57,8 @@ export function SwapCard({
   slippage,
   buttonLabel,
   buttonDisabled,
-  onButtonClick
+  onButtonClick,
+  transactionStatus
 }: SwapCardProps) {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
 
@@ -223,6 +228,27 @@ export function SwapCard({
           onClick={() => onButtonClick?.()}
           disabled={buttonDisabled}
           type="button"
+          style={
+            transactionStatus?.type === "error"
+              ? {
+                  background: "rgba(255, 92, 92, 0.9)",
+                  borderColor: "rgba(255, 92, 92, 1)",
+                  color: "#ffffff",
+                  opacity: 1,
+                  cursor: "not-allowed",
+                  pointerEvents: "none"
+                }
+              : transactionStatus?.type === "success"
+                ? {
+                    background: "var(--accent)",
+                    borderColor: "var(--accent)",
+                    color: "#000000",
+                    opacity: 1,
+                    cursor: "not-allowed",
+                    pointerEvents: "none"
+                  }
+                : undefined
+          }
         >
           {buttonLabel}
         </button>

@@ -5,8 +5,8 @@ import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
   readContract,
-  waitForTransactionReceipt,
-  writeContract
+  writeContract,
+  waitForTransactionReceipt
 } from "wagmi/actions";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { warpRouterAbi } from "@/lib/abis/router";
@@ -29,7 +29,7 @@ import type {
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
+import { formatBalanceDisplay } from "@/lib/trade/format";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { buildToastVisuals } from "@/lib/toastVisuals";
@@ -56,8 +56,6 @@ type SwapContainerProps = {
   isAccountConnecting: boolean;
   ready: boolean;
   showError: (message: string, options?: ToastOptions) => void;
-  showSuccess: (message: string, options?: ToastOptions) => void;
-  showLoading: (message: string, options?: ToastOptions) => string;
   refreshNonce: number;
   onRequestRefresh: () => void;
   onConnect?: () => void;
@@ -99,8 +97,6 @@ export function SwapContainer({
   isAccountConnecting,
   ready,
   showError,
-  showSuccess,
-  showLoading,
   refreshNonce,
   onRequestRefresh,
   onConnect
@@ -121,6 +117,10 @@ export function SwapContainer({
   const [allowanceNonce, setAllowanceNonce] = useState(0);
   const [isCalculatingQuote, setIsCalculatingQuote] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transactionStatus, setTransactionStatus] = useState<{
+    message: string;
+    type: "idle" | "pending" | "success" | "error";
+  }>({ message: "", type: "idle" });
   const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
   const [isExactOutput, setIsExactOutput] = useState(false);
   const quoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -679,8 +679,9 @@ export function SwapContainer({
         throw new Error("Provide valid token and spender addresses.");
       }
 
-      showLoading("Confirm token approval in your wallet...", {
-        visuals: swapToastVisuals
+      setTransactionStatus({
+        message: "Confirm approval...",
+        type: "pending"
       });
 
       const txHash = await writeContract(wagmiConfig, {
@@ -692,20 +693,24 @@ export function SwapContainer({
         chainId: Number(MEGAETH_CHAIN_ID)
       });
 
-      showLoading("Token approval pending...", { visuals: swapToastVisuals });
-      await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+      await waitForTransactionReceipt(wagmiConfig, {
+        hash: txHash,
+        timeout: 10000 // 10 second timeout for MegaETH fast finality
+      });
 
       setNeedsApproval(false);
       setAllowanceNonce((n) => n + 1);
 
-      return txHash;
+      // Reset status - will be set again when swap starts
+      setTransactionStatus({
+        message: "",
+        type: "idle"
+      });
     },
     [
       routerAddress,
-      showLoading,
       swapForm.tokenIn,
-      swapInIsNative,
-      swapToastVisuals
+      swapInIsNative
     ]
   );
 
@@ -963,62 +968,31 @@ export function SwapContainer({
         }
       }
 
-      showLoading("Confirm swap in your wallet...", {
-        visuals: swapToastVisuals
+      setTransactionStatus({
+        message: "Confirm in wallet...",
+        type: "pending"
       });
 
-      const baseTxRequest = {
+      const txHash = await writeContract(wagmiConfig, {
         address: routerAddress as `0x${string}`,
         abi: warpRouterAbi,
         functionName,
-        args,
+        args: args as any,
+        value: txValue,
         account: ctx.account as `0x${string}`,
         chainId: Number(MEGAETH_CHAIN_ID)
-      };
+      });
 
-      const txRequestWithValue =
-        txValue && txValue > 0n
-          ? {
-              ...baseTxRequest,
-              value: txValue
-            }
-          : baseTxRequest;
+      setTransactionStatus({
+        message: "Swapping...",
+        type: "pending"
+      });
 
-      // Retry logic for rate limit errors
-      let txHash: `0x${string}` | undefined;
-      let retries = 3;
-      let lastError: Error | null = null;
+      await waitForTransactionReceipt(wagmiConfig, {
+        hash: txHash,
+        timeout: 10000 // 10 second timeout for MegaETH fast finality
+      });
 
-      while (retries > 0 && !txHash) {
-        try {
-          txHash = await writeContract(wagmiConfig, {
-            ...txRequestWithValue
-          } as Parameters<typeof writeContract>[1]);
-        } catch (error: any) {
-          lastError = error;
-          const errorMessage = error?.message || String(error);
-
-          // Check if it's a rate limit error
-          if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
-            retries--;
-            if (retries > 0) {
-              console.warn(`Rate limited, retrying... (${retries} attempts left)`);
-              // Wait with exponential backoff: 2s, 4s, 8s
-              await new Promise(resolve => setTimeout(resolve, 2000 * (4 - retries)));
-              continue;
-            }
-          }
-          // If not a rate limit error, or out of retries, throw immediately
-          throw error;
-        }
-      }
-
-      if (!txHash) {
-        throw lastError || new Error("Failed to execute swap transaction");
-      }
-
-      showLoading("Swap transaction pending...", { visuals: swapToastVisuals });
-      await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
       await refetchSwapInBalance();
       setSwapForm((prev) => ({
         ...prev,
@@ -1039,15 +1013,28 @@ export function SwapContainer({
       }
       setNeedsApproval(false);
       setCheckingAllowance(false);
-      showSuccess("Swap executed successfully.", {
-        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" },
-        visuals: swapToastVisuals
+
+      setTransactionStatus({
+        message: "Swap successful!",
+        type: "success"
       });
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
     } catch (err) {
       console.error("[swap] failed", err);
-      showError(parseErrorMessage(err), {
-        visuals: swapToastVisuals
+      const errorMsg = parseErrorMessage(err);
+      setTransactionStatus({
+        message: errorMsg,
+        type: "error"
       });
+
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
     } finally {
       setIsSubmitting(false);
     }
@@ -1057,8 +1044,6 @@ export function SwapContainer({
     refetchSwapInBalance,
     routerAddress,
     showError,
-    showLoading,
-    showSuccess,
     swapToastVisuals,
     swapForm,
     swapInDescriptor,
@@ -1086,9 +1071,6 @@ export function SwapContainer({
     try {
       setIsSubmitting(true);
       await requestRouterApproval(ctx.account as string);
-      showLoading("Approval confirmed, continuing…", {
-        visuals: swapToastVisuals
-      });
       setIsSubmitting(false);
       setTimeout(() => {
         handleSwap();
@@ -1096,9 +1078,16 @@ export function SwapContainer({
       return;
     } catch (err) {
       console.error("[swap] approval failed", err);
-      showError(parseErrorMessage(err), {
-        visuals: swapToastVisuals
+      const errorMsg = parseErrorMessage(err);
+      setTransactionStatus({
+        message: errorMsg,
+        type: "error"
       });
+
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
     } finally {
       setIsSubmitting(false);
     }
@@ -1108,10 +1097,8 @@ export function SwapContainer({
     requestRouterApproval,
     routerAddress,
     showError,
-    showLoading,
     swapForm.tokenIn,
-    swapInIsNative,
-    swapToastVisuals
+    swapInIsNative
   ]);
 
   const slippagePercentDisplay = useMemo(
@@ -1129,7 +1116,20 @@ export function SwapContainer({
   let swapButtonDisabled = false;
   let swapButtonAction: (() => void) | null = null;
 
-  if (!hasMounted) {
+  // Check transaction status FIRST - these override everything
+  if (transactionStatus.type === "pending") {
+    swapButtonLabel = transactionStatus.message;
+    swapButtonDisabled = true;
+    swapButtonAction = null;
+  } else if (transactionStatus.type === "success") {
+    swapButtonLabel = "Swap successful!";
+    swapButtonDisabled = true;
+    swapButtonAction = null;
+  } else if (transactionStatus.type === "error") {
+    swapButtonLabel = transactionStatus.message;
+    swapButtonDisabled = true;
+    swapButtonAction = null;
+  } else if (!hasMounted) {
     swapButtonLabel = "Connect Wallet";
     swapButtonDisabled = false;
     swapButtonAction = onConnect ?? null;
@@ -1241,6 +1241,7 @@ export function SwapContainer({
       buttonLabel={swapButtonLabel}
       buttonDisabled={swapButtonDisabled}
       onButtonClick={swapButtonAction}
+      transactionStatus={transactionStatus}
     />
   );
 }

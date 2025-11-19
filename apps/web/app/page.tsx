@@ -155,8 +155,6 @@ export default function Page() {
         isAccountConnecting={isAccountConnecting}
         ready={ready}
         showError={showError}
-        showSuccess={showSuccess}
-        showLoading={showLoading}
         refreshNonce={swapRefreshNonce}
         onRequestRefresh={bumpSwapRefresh}
         onConnect={handleConnectWallet}
