@@ -36,6 +36,10 @@ type LiquidityAddProps = {
   buttonLabel: string;
   buttonDisabled: boolean;
   buttonVariant?: "default" | "highlight";
+  transactionStatus: {
+    message: string;
+    type: "idle" | "pending" | "success" | "error";
+  };
 };
 
 type LiquidityRemoveProps = {
@@ -51,6 +55,10 @@ type LiquidityRemoveProps = {
   onRemoveLiquidity: () => void;
   isSubmitting: boolean;
   ready: boolean;
+  transactionStatus: {
+    message: string;
+    type: "idle" | "pending" | "success" | "error";
+  };
 };
 
 type LiquiditySectionProps = {
@@ -137,8 +145,24 @@ function LiquidityAddForm({
   buttonLabel,
   buttonDisabled,
   tokenSelectionEnabled,
-  buttonVariant = "default"
+  buttonVariant = "default",
+  transactionStatus
 }: LiquidityAddProps & { tokenSelectionEnabled: boolean; buttonVariant?: "default" | "highlight" }) {
+  // Check transaction status FIRST - override button label and disabled state
+  let finalButtonLabel = buttonLabel;
+  let finalButtonDisabled = buttonDisabled;
+
+  if (transactionStatus.type === "pending") {
+    finalButtonLabel = transactionStatus.message;
+    finalButtonDisabled = true;
+  } else if (transactionStatus.type === "success") {
+    finalButtonLabel = transactionStatus.message;
+    finalButtonDisabled = true;
+  } else if (transactionStatus.type === "error") {
+    finalButtonLabel = transactionStatus.message;
+    finalButtonDisabled = true;
+  }
+
   const primaryButtonClass = [
     styles.primaryButton,
     styles.primaryFull,
@@ -293,10 +317,31 @@ function LiquidityAddForm({
         <button
           className={primaryButtonClass}
           onClick={onPrimary}
-          disabled={buttonDisabled}
+          disabled={finalButtonDisabled}
           type="button"
+          style={
+            transactionStatus.type === "error"
+              ? {
+                  background: "rgba(255, 92, 92, 0.9)",
+                  borderColor: "rgba(255, 92, 92, 1)",
+                  color: "#ffffff",
+                  opacity: 1,
+                  cursor: "not-allowed",
+                  pointerEvents: "none"
+                }
+              : transactionStatus.type === "success"
+                ? {
+                    background: "var(--accent)",
+                    borderColor: "var(--accent)",
+                    color: "#000000",
+                    opacity: 1,
+                    cursor: "not-allowed",
+                    pointerEvents: "none"
+                  }
+                : undefined
+          }
         >
-          {buttonLabel}
+          {finalButtonLabel}
         </button>
       </div>
     </>
@@ -316,8 +361,28 @@ function LiquidityRemoveForm({
   onRemoveLiquidity,
   isSubmitting,
   ready,
-  tokenSelectionEnabled
+  tokenSelectionEnabled,
+  transactionStatus
 }: LiquidityRemoveProps & { tokenSelectionEnabled: boolean }) {
+  // Check transaction status FIRST - override button label and disabled state
+  let buttonLabel = isSubmitting ? "Removing..." : "Remove Liquidity";
+  let buttonDisabled = !ready ||
+    isSubmitting ||
+    !liquidityPairReserves ||
+    !lpTokenInfo ||
+    Number(lpTokenInfo.balance) === 0;
+
+  if (transactionStatus.type === "pending") {
+    buttonLabel = transactionStatus.message;
+    buttonDisabled = true;
+  } else if (transactionStatus.type === "success") {
+    buttonLabel = transactionStatus.message;
+    buttonDisabled = true;
+  } else if (transactionStatus.type === "error") {
+    buttonLabel = transactionStatus.message;
+    buttonDisabled = true;
+  }
+
   return (
     <>
       <div className={styles.swapPanel}>
@@ -578,16 +643,31 @@ function LiquidityRemoveForm({
         <button
           className={`${styles.primaryButton} ${styles.primaryFull}`}
           onClick={onRemoveLiquidity}
-          disabled={
-            !ready ||
-            isSubmitting ||
-            !liquidityPairReserves ||
-            !lpTokenInfo ||
-            Number(lpTokenInfo.balance) === 0
-          }
+          disabled={buttonDisabled}
           type="button"
+          style={
+            transactionStatus.type === "error"
+              ? {
+                  background: "rgba(255, 92, 92, 0.9)",
+                  borderColor: "rgba(255, 92, 92, 1)",
+                  color: "#ffffff",
+                  opacity: 1,
+                  cursor: "not-allowed",
+                  pointerEvents: "none"
+                }
+              : transactionStatus.type === "success"
+                ? {
+                    background: "var(--accent)",
+                    borderColor: "var(--accent)",
+                    color: "#000000",
+                    opacity: 1,
+                    cursor: "not-allowed",
+                    pointerEvents: "none"
+                  }
+                : undefined
+          }
         >
-          {isSubmitting ? "Removing..." : "Remove Liquidity"}
+          {buttonLabel}
         </button>
       </div>
     </>

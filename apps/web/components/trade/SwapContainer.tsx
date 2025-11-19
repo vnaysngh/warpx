@@ -33,6 +33,7 @@ import { formatBalanceDisplay } from "@/lib/trade/format";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { buildToastVisuals } from "@/lib/toastVisuals";
+import { useFirstTransactionCelebration } from "@/hooks/useFirstTransactionCelebration";
 type EnsureWalletContext = {
   walletAccount: string | null;
   ready: boolean;
@@ -122,6 +123,8 @@ export function SwapContainer({
     type: "idle" | "pending" | "success" | "error";
   }>({ message: "", type: "idle" });
   const swapEditingFieldRef = useRef<"amountIn" | "minOut" | null>(null);
+  const txStartTimeRef = useRef<number>(0);
+  const { shouldCelebrate, celebrate } = useFirstTransactionCelebration();
   const [isExactOutput, setIsExactOutput] = useState(false);
   const quoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reverseQuoteDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -983,6 +986,9 @@ export function SwapContainer({
         chainId: Number(MEGAETH_CHAIN_ID)
       });
 
+      // Start transaction timer AFTER user confirms in wallet
+      txStartTimeRef.current = performance.now();
+
       setTransactionStatus({
         message: "Swapping...",
         type: "pending"
@@ -992,6 +998,9 @@ export function SwapContainer({
         hash: txHash,
         timeout: 10000 // 10 second timeout for MegaETH fast finality
       });
+
+      // Calculate transaction time
+      const txDuration = Math.round(performance.now() - txStartTimeRef.current);
 
       await refetchSwapInBalance();
       setSwapForm((prev) => ({
@@ -1015,9 +1024,14 @@ export function SwapContainer({
       setCheckingAllowance(false);
 
       setTransactionStatus({
-        message: "Swap successful!",
+        message: `Swap completed in ${txDuration}ms!`,
         type: "success"
       });
+
+      // Trigger celebration if this is the first transaction
+      if (shouldCelebrate) {
+        celebrate();
+      }
 
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -1122,7 +1136,7 @@ export function SwapContainer({
     swapButtonDisabled = true;
     swapButtonAction = null;
   } else if (transactionStatus.type === "success") {
-    swapButtonLabel = "Swap successful!";
+    swapButtonLabel = transactionStatus.message;
     swapButtonDisabled = true;
     swapButtonAction = null;
   } else if (transactionStatus.type === "error") {

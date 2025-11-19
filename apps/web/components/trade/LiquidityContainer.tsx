@@ -34,6 +34,7 @@ import type { PoolDetailsData } from "@/hooks/usePoolDetails";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import { buildToastVisuals } from "@/lib/toastVisuals";
+import { useFirstTransactionCelebration } from "@/hooks/useFirstTransactionCelebration";
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
@@ -128,6 +129,12 @@ export function LiquidityContainer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
+  const [transactionStatus, setTransactionStatus] = useState<{
+    message: string;
+    type: "idle" | "pending" | "success" | "error";
+  }>({ message: "", type: "idle" });
+  const txStartTimeRef = useRef<number>(0);
+  const { shouldCelebrate, celebrate } = useFirstTransactionCelebration();
   const handleRemoveLiquidityPercentChange = useCallback((value: string) => {
     // Replace commas with periods first (international number format support)
     const proposed = value.replace(/,/g, ".");
@@ -1006,8 +1013,9 @@ export function LiquidityContainer({
         });
 
         if (toBigInt(allowance) < ercAmountWei) {
-          showLoading("Confirm token approval in your wallet...", {
-            visuals: addLiquidityToastVisuals
+          setTransactionStatus({
+            message: "Confirm approval...",
+            type: "pending"
           });
           const approveHash = await writeContract(wagmiConfig, {
             address: ercTokenAddress as `0x${string}`,
@@ -1017,10 +1025,14 @@ export function LiquidityContainer({
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
           });
-          showLoading("Token approval pending...", {
-            visuals: addLiquidityToastVisuals
+          setTransactionStatus({
+            message: "Approving...",
+            type: "pending"
           });
-          await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+          await waitForTransactionReceipt(wagmiConfig, {
+            hash: approveHash,
+            timeout: 10000
+          });
           if (liquidityTokenAIsNative) {
             setNeedsApprovalB(false);
           } else {
@@ -1028,9 +1040,11 @@ export function LiquidityContainer({
           }
         }
 
-        showLoading("Confirm add liquidity in your wallet...", {
-          visuals: addLiquidityToastVisuals
+        setTransactionStatus({
+          message: "Confirm in wallet...",
+          type: "pending"
         });
+
         const txHash = await writeContract(wagmiConfig, {
           address: routerAddress as `0x${string}`,
           abi: warpRouterAbi,
@@ -1047,10 +1061,18 @@ export function LiquidityContainer({
           chainId: Number(MEGAETH_CHAIN_ID),
           value: nativeAmountWei
         });
-        showLoading("Add liquidity transaction pending...", {
-          visuals: addLiquidityToastVisuals
+
+        // Start transaction timer AFTER user confirms in wallet
+        txStartTimeRef.current = performance.now();
+
+        setTransactionStatus({
+          message: "Adding liquidity...",
+          type: "pending"
         });
-        await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+        await waitForTransactionReceipt(wagmiConfig, {
+          hash: txHash,
+          timeout: 10000
+        });
         submittedTxHash = txHash;
       } else {
         const [allowanceA, allowanceB] = await Promise.all([
@@ -1077,8 +1099,9 @@ export function LiquidityContainer({
         ]);
 
         if (toBigInt(allowanceA) < amountAWei) {
-          showLoading("Confirm token approval in your wallet...", {
-            visuals: addLiquidityToastVisuals
+          setTransactionStatus({
+            message: "Confirm approval...",
+            type: "pending"
           });
           const approveAHash = await writeContract(wagmiConfig, {
             address: tokenA as `0x${string}`,
@@ -1088,16 +1111,21 @@ export function LiquidityContainer({
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
           });
-          showLoading("Token approval pending...", {
-            visuals: addLiquidityToastVisuals
+          setTransactionStatus({
+            message: "Approving...",
+            type: "pending"
           });
-          await waitForTransactionReceipt(wagmiConfig, { hash: approveAHash });
+          await waitForTransactionReceipt(wagmiConfig, {
+            hash: approveAHash,
+            timeout: 10000
+          });
           setNeedsApprovalA(false);
         }
 
         if (toBigInt(allowanceB) < amountBWei) {
-          showLoading("Confirm token approval in your wallet...", {
-            visuals: addLiquidityToastVisuals
+          setTransactionStatus({
+            message: "Confirm approval...",
+            type: "pending"
           });
           const approveBHash = await writeContract(wagmiConfig, {
             address: tokenB as `0x${string}`,
@@ -1107,16 +1135,22 @@ export function LiquidityContainer({
             account: ctx.account as `0x${string}`,
             chainId: Number(MEGAETH_CHAIN_ID),
           });
-          showLoading("Token approval pending...", {
-            visuals: addLiquidityToastVisuals
+          setTransactionStatus({
+            message: "Approving...",
+            type: "pending"
           });
-          await waitForTransactionReceipt(wagmiConfig, { hash: approveBHash });
+          await waitForTransactionReceipt(wagmiConfig, {
+            hash: approveBHash,
+            timeout: 10000
+          });
           setNeedsApprovalB(false);
         }
 
-        showLoading("Confirm add liquidity in your wallet...", {
-          visuals: addLiquidityToastVisuals
+        setTransactionStatus({
+          message: "Confirm in wallet...",
+          type: "pending"
         });
+
         const txHash = await writeContract(wagmiConfig, {
           address: routerAddress as `0x${string}`,
           abi: warpRouterAbi,
@@ -1134,12 +1168,23 @@ export function LiquidityContainer({
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
         });
-        showLoading("Add liquidity transaction pending...", {
-          visuals: addLiquidityToastVisuals
+
+        // Start transaction timer AFTER user confirms in wallet
+        txStartTimeRef.current = performance.now();
+
+        setTransactionStatus({
+          message: "Adding liquidity...",
+          type: "pending"
         });
-        await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+        await waitForTransactionReceipt(wagmiConfig, {
+          hash: txHash,
+          timeout: 10000
+        });
         submittedTxHash = txHash;
       }
+
+      // Calculate transaction time
+      const txDuration = Math.round(performance.now() - txStartTimeRef.current);
 
       await refreshBalances();
       setLiquidityForm(LIQUIDITY_DEFAULT);
@@ -1153,21 +1198,36 @@ export function LiquidityContainer({
       setNeedsApprovalA(false);
       setNeedsApprovalB(false);
       setLiquidityAllowanceNonce((n) => n + 1);
-      showSuccess("Liquidity added successfully.", {
-        link: submittedTxHash
-          ? {
-              href: buildExplorerTxUrl(submittedTxHash),
-              label: "View on explorer"
-            }
-          : undefined,
-        visuals: addLiquidityToastVisuals
+
+      setTransactionStatus({
+        message: `Liquidity added in ${txDuration}ms!`,
+        type: "success"
       });
+
+      // Trigger celebration if this is the first transaction
+      if (shouldCelebrate) {
+        celebrate();
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
+
       return true;
     } catch (err) {
       console.error("[liquidity] add failed", err);
-      showError(parseErrorMessage(err), {
-        visuals: addLiquidityToastVisuals
+      const errorMsg = parseErrorMessage(err);
+      setTransactionStatus({
+        message: errorMsg,
+        type: "error"
       });
+
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
+
       return false;
     } finally {
       setIsSubmitting(false);
@@ -1258,8 +1318,9 @@ export function LiquidityContainer({
       });
 
       if (toBigInt(allowance) < liquidityToRemove) {
-        showLoading("Confirm token approval in your wallet...", {
-          visuals: removeLiquidityToastVisuals
+        setTransactionStatus({
+          message: "Confirm approval...",
+          type: "pending"
         });
         const approveHash = await writeContract(wagmiConfig, {
           address: pairAddress as `0x${string}`,
@@ -1269,13 +1330,21 @@ export function LiquidityContainer({
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
         });
-        showLoading("Token approval pending...", { visuals: removeLiquidityToastVisuals });
-        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+        setTransactionStatus({
+          message: "Approving...",
+          type: "pending"
+        });
+        await waitForTransactionReceipt(wagmiConfig, {
+          hash: approveHash,
+          timeout: 10000
+        });
       }
 
-      showLoading("Confirm remove liquidity in your wallet...", {
-        visuals: removeLiquidityToastVisuals
+      setTransactionStatus({
+        message: "Confirm in wallet...",
+        type: "pending"
       });
+
       const deadline = BigInt(nowPlusMinutes(10));
 
       const txRequest =
@@ -1317,10 +1386,21 @@ export function LiquidityContainer({
         txRequest as Parameters<typeof writeContract>[1]
       );
 
-      showLoading("Remove liquidity transaction pending...", {
-        visuals: removeLiquidityToastVisuals
+      // Start transaction timer AFTER user confirms in wallet
+      txStartTimeRef.current = performance.now();
+
+      setTransactionStatus({
+        message: "Removing liquidity...",
+        type: "pending"
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+      await waitForTransactionReceipt(wagmiConfig, {
+        hash: txHash,
+        timeout: 10000
+      });
+
+      // Calculate transaction time
+      const txDuration = Math.round(performance.now() - txStartTimeRef.current);
+
       await refreshBalances();
       setLiquidityPairReserves(null);
       setLiquidityReservesRefreshNonce((n) => n + 1);
@@ -1333,16 +1413,35 @@ export function LiquidityContainer({
       setNeedsApprovalB(false);
       setLiquidityAllowanceNonce((n) => n + 1);
       onSwapRefresh();
-      showSuccess("Liquidity removed successfully.", {
-        link: { href: buildExplorerTxUrl(txHash), label: "View on explorer" },
-        visuals: removeLiquidityToastVisuals
+
+      setTransactionStatus({
+        message: `Liquidity removed in ${txDuration}ms!`,
+        type: "success"
       });
+
+      // Trigger celebration if this is the first transaction
+      if (shouldCelebrate) {
+        celebrate();
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
+
       setRemoveLiquidityPercent("25");
     } catch (err) {
       console.error("[liquidity] remove failed", err);
-      showError(parseErrorMessage(err), {
-        visuals: removeLiquidityToastVisuals
+      const errorMsg = parseErrorMessage(err);
+      setTransactionStatus({
+        message: errorMsg,
+        type: "error"
       });
+
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setTransactionStatus({ message: "", type: "idle" });
+      }, 3000);
     } finally {
       setIsSubmitting(false);
     }
@@ -1499,8 +1598,9 @@ export function LiquidityContainer({
       }
       try {
         const parsedAmount = MaxUint256;
-        showLoading("Confirm token approval in your wallet...", {
-          visuals: addLiquidityToastVisuals
+        setTransactionStatus({
+          message: "Confirm approval...",
+          type: "pending"
         });
         const txHash = await writeContract(wagmiConfig, {
           address: tokenAddress as `0x${string}`,
@@ -1510,9 +1610,13 @@ export function LiquidityContainer({
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
         });
-        showLoading("Token approval pending...", { visuals: addLiquidityToastVisuals });
+        setTransactionStatus({
+          message: "Approving...",
+          type: "pending"
+        });
         await waitForTransactionReceipt(wagmiConfig, {
-          hash: txHash
+          hash: txHash,
+          timeout: 10000
         });
 
         if (
@@ -1528,15 +1632,27 @@ export function LiquidityContainer({
           setNeedsApprovalB(false);
         }
         setLiquidityAllowanceNonce((n) => n + 1);
-        showLoading("Approval confirmed, continuing…", {
-          visuals: addLiquidityToastVisuals
+
+        // Reset status for next transaction
+        setTransactionStatus({
+          message: "",
+          type: "idle"
         });
+
         return true;
       } catch (err) {
         console.error("[liquidity] approval failed", err);
-        showError(parseErrorMessage(err), {
-          visuals: addLiquidityToastVisuals
+        const errorMsg = parseErrorMessage(err);
+        setTransactionStatus({
+          message: errorMsg,
+          type: "error"
         });
+
+        // Clear error message after 3 seconds
+        setTimeout(() => {
+          setTransactionStatus({ message: "", type: "idle" });
+        }, 3000);
+
         return false;
       } finally {
         // no-op; outer flow controls submitting state
@@ -1650,7 +1766,8 @@ export function LiquidityContainer({
           onPrimary: handleLiquidityAction,
           buttonLabel: liquidityButtonLabel,
           buttonDisabled: liquidityButtonDisabled,
-          buttonVariant: addLiquidityOverride?.variant ?? "default"
+          buttonVariant: addLiquidityOverride?.variant ?? "default",
+          transactionStatus
         }}
         removeProps={{
           liquidityTokenA,
@@ -1664,7 +1781,8 @@ export function LiquidityContainer({
           onOpenTokenDialog: handleOpenTokenDialog,
           onRemoveLiquidity: handleRemoveLiquidity,
           isSubmitting,
-          ready
+          ready,
+          transactionStatus
         }}
         tokenSelectionEnabled={allowTokenSelection}
         allowRemove={enableRemoveLiquidity}
