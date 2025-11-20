@@ -1,24 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "@/app/page.module.css";
 
 const DISCLAIMER_KEY = "warpx-disclaimer-accepted";
 
 export function DisclaimerModal() {
-  // Lazy initialize state from localStorage to avoid effect
-  const [isOpen, setIsOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
+  // Always start with false to ensure server/client match
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Check localStorage after mount to prevent hydration mismatch
+  useEffect(() => {
+    setHasMounted(true);
     const hasAccepted = localStorage.getItem(DISCLAIMER_KEY);
-    return !hasAccepted;
-  });
+    if (!hasAccepted) {
+      setIsOpen(true);
+    }
+  }, []);
 
   const handleAccept = () => {
     localStorage.setItem(DISCLAIMER_KEY, "true");
     setIsOpen(false);
   };
 
-  if (!isOpen) return null;
+  // Don't render until after mount to prevent hydration mismatch
+  if (!hasMounted || !isOpen) return null;
 
   return (
     <div className={styles.modalBackdrop}>

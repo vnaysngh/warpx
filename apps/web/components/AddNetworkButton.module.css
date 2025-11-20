@@ -1,0 +1,53 @@
+.addNetworkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-poppins, sans-serif);
+}
+
+.addNetworkButton:hover:not(:disabled) {
+  background: rgba(123, 97, 255, 0.15);
+  border-color: rgba(123, 97, 255, 0.4);
+  color: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.addNetworkButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.addNetworkButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.addNetworkButton svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.addNetworkButton:hover:not(:disabled) svg {
+  transform: rotate(90deg);
+}
+
+@media (max-width: 600px) {
+  .addNetworkButton {
+    font-size: 0.75rem;
+    padding: 0.45rem 0.85rem;
+  }
+
+  .addNetworkButton svg {
+    width: 14px;
+    height: 14px;
+  }
+}

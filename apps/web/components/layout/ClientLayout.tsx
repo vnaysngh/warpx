@@ -2,9 +2,50 @@
 
 import { TradeHeaderWrapper } from "@/components/trade/TradeHeaderWrapper";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
+import { useToasts } from "@/hooks/useToasts";
+import { useCallback } from "react";
 import styles from "@/app/page.module.css";
 
+const MEGAETH_TESTNET = {
+  chainId: "0x18C7", // 6343 in hex
+  chainName: "MegaETH Testnet 2",
+  nativeCurrency: {
+    name: "Ether",
+    symbol: "ETH",
+    decimals: 18
+  },
+  rpcUrls: ["https://timothy.megaeth.com/rpc"],
+  blockExplorerUrls: ["https://megaeth-testnet-v2.blockscout.com/"]
+};
+
 export function ClientLayout({ children }: { children: React.ReactNode }) {
+  const { showError, showSuccess } = useToasts();
+
+  const addNetwork = useCallback(async () => {
+    if (!window.ethereum) {
+      showError(
+        "No wallet detected. Please install MetaMask or another Web3 wallet."
+      );
+      return;
+    }
+
+    try {
+      await (window.ethereum.request as any)({
+        method: "wallet_addEthereumChain",
+        params: [MEGAETH_TESTNET]
+      });
+      showSuccess("MegaETH Testnet added to your wallet!");
+    } catch (error: any) {
+      console.error("[ClientLayout] Failed to add network", error);
+
+      if (error.code === 4001) {
+        showError("Request rejected. Please try again.");
+      } else {
+        showError(error.message || "Failed to add network");
+      }
+    }
+  }, [showError, showSuccess]);
+
   return (
     <main className={styles.app}>
       <div className={styles.shell}>
@@ -13,9 +54,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
         <footer className={styles.footer}>
           <div className={styles.footerContent}>
-            <p className={styles.footerText}>
-              Built on MegaETH Testnet • Early Access
-            </p>
+            <div className={styles.footerLeft}>
+              <p className={styles.footerText}>
+                Built on MegaETH Testnet •{" "}
+                <button onClick={addNetwork} className={styles.footerLink}>
+                  Add Network
+                </button>
+              </p>
+            </div>
             <div className={styles.socialLinks}>
               <a
                 href="https://discord.gg/E7sZCw2gMS"
