@@ -2,6 +2,7 @@
 
 import type { TokenDescriptor } from "@/lib/trade/types";
 import { FEES_DENOMINATOR, FEES_NUMERATOR } from "@/lib/trade/constants";
+import { formatCompactNumber } from "@/lib/trade/math";
 import styles from "./PoolsTable.module.css";
 
 const DEFAULT_FEE_PERCENT_DISPLAY = (
@@ -14,6 +15,12 @@ const getDisplaySymbol = (token: TokenDescriptor): string => {
   if (token.isNative || token.symbol.toUpperCase() === "WMETH") {
     return "ETH";
   }
+
+  // Handle tokens like XBTC -> xBTC (lowercase 'x' prefix)
+  if (token.symbol.length > 1 && token.symbol[0] === 'X' && token.symbol[1] === token.symbol[1].toUpperCase()) {
+    return 'x' + token.symbol.slice(1);
+  }
+
   return token.symbol;
 };
 
@@ -53,6 +60,7 @@ type PoolsTableProps = {
   totalTvlLoading?: boolean;
   totalVolume?: string | null;
   totalVolumeLoading?: boolean;
+  showUserPositions?: boolean;
 };
 
 export function PoolsTable({
@@ -64,7 +72,8 @@ export function PoolsTable({
   totalTvl,
   totalTvlLoading,
   totalVolume,
-  totalVolumeLoading
+  totalVolumeLoading,
+  showUserPositions = false
 }: PoolsTableProps) {
   const showSkeleton = loading && pools.length === 0 && !error;
   const showEmpty = !loading && pools.length === 0 && !error;
@@ -81,15 +90,21 @@ export function PoolsTable({
             <th>Pool</th>
             <th>Protocol</th>
             <th>Fee tier</th>
-            <th>TVL</th>
-            <th>Volume</th>
+            {showUserPositions ? (
+              <th>Your Position</th>
+            ) : (
+              <>
+                <th>TVL</th>
+                <th>Volume</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
           {showSkeleton &&
             Array.from({ length: 5 }).map((_, index) => (
               <tr key={`skeleton-${index}`} className={styles.skeletonRow}>
-                <td colSpan={5}>
+                <td colSpan={showUserPositions ? 4 : 5}>
                   <div className={styles.skeletonLine} />
                 </td>
               </tr>
@@ -97,119 +112,155 @@ export function PoolsTable({
 
           {!showSkeleton &&
             !showError &&
-            pools.map((pool) => (
-              <tr
-                key={pool.pairAddress}
-                className={styles.dataRow}
-                onClick={() => onSelectPool?.(pool)}
-                role={onSelectPool ? "button" : undefined}
-                tabIndex={onSelectPool ? 0 : undefined}
-                onKeyDown={(event) => {
-                  if (!onSelectPool) return;
-                  if (
-                    event.key === "Enter" ||
-                    event.key === " " ||
-                    event.key === "Spacebar"
-                  ) {
-                    event.preventDefault();
-                    onSelectPool(pool);
-                  }
-                }}
-              >
-                {/*   <td className={styles.indexCell} data-label="#">
+            pools.map((pool) => {
+              // Calculate user position value for this pool
+              let userPositionValue: string | null = null;
+              if (
+                showUserPositions &&
+                pool.userLpBalanceRaw &&
+                pool.totalSupply &&
+                pool.totalSupply > 0n &&
+                pool.totalLiquidityValue
+              ) {
+                const userShare =
+                  Number(pool.userLpBalanceRaw) / Number(pool.totalSupply);
+                const positionValue = userShare * pool.totalLiquidityValue;
+                userPositionValue = formatCompactNumber(positionValue, 2);
+              }
+
+              return (
+                <tr
+                  key={pool.pairAddress}
+                  className={styles.dataRow}
+                  onClick={() => onSelectPool?.(pool)}
+                  role={onSelectPool ? "button" : undefined}
+                  tabIndex={onSelectPool ? 0 : undefined}
+                  onKeyDown={(event) => {
+                    if (!onSelectPool) return;
+                    if (
+                      event.key === "Enter" ||
+                      event.key === " " ||
+                      event.key === "Spacebar"
+                    ) {
+                      event.preventDefault();
+                      onSelectPool(pool);
+                    }
+                  }}
+                >
+                  {/*   <td className={styles.indexCell} data-label="#">
                   {pool.id}
                 </td> */}
-                <td className={styles.poolCell} data-label="Pool">
-                  <div className={styles.poolStack}>
-                    <div className={styles.tokenStack}>
-                      {pool.token0.logo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={pool.token0.logo}
-                          alt={pool.token0.symbol}
-                          className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
-                          style={{ objectFit: "cover" }}
-                        />
-                      ) : (
-                        <span
-                          className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
-                        >
-                          {pool.token0.symbol.slice(0, 3).toUpperCase()}
-                        </span>
-                      )}
-                      {pool.token1.logo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={pool.token1.logo}
-                          alt={pool.token1.symbol}
-                          className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
-                          style={{ objectFit: "cover" }}
-                        />
-                      ) : (
-                        <span
-                          className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
-                        >
-                          {pool.token1.symbol.slice(0, 3).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <div className={styles.poolMeta}>
-                      <div className={styles.poolLabel}>
-                        {getDisplaySymbol(pool.token0)}/{getDisplaySymbol(pool.token1)}
-                        {pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n ? (
+                  <td className={styles.poolCell} data-label="Pool">
+                    <div className={styles.poolStack}>
+                      <div className={styles.tokenStack}>
+                        {pool.token0.logo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={pool.token0.logo}
+                            alt={pool.token0.symbol}
+                            className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
                           <span
-                            className={styles.positionBadge}
-                            title="You have a position in this pool"
+                            className={`${styles.tokenBadge} ${styles.tokenBadgePrimary}`}
                           >
-                            ●
+                            {pool.token0.symbol.slice(0, 3).toUpperCase()}
                           </span>
-                        ) : null}
+                        )}
+                        {pool.token1.logo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={pool.token1.logo}
+                            alt={pool.token1.symbol}
+                            className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span
+                            className={`${styles.tokenBadge} ${styles.tokenBadgeSecondary}`}
+                          >
+                            {pool.token1.symbol.slice(0, 3).toUpperCase()}
+                          </span>
+                        )}
                       </div>
-                      <div className={styles.poolAddress}>
-                        {pool.pairAddress.slice(0, 6)}…
-                        {pool.pairAddress.slice(-4)}
+                      <div className={styles.poolMeta}>
+                        <div className={styles.poolLabel}>
+                          {getDisplaySymbol(pool.token0)}/
+                          {getDisplaySymbol(pool.token1)}
+                          {pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n ? (
+                            <span
+                              className={styles.positionBadge}
+                              title="You have a position in this pool"
+                            >
+                              ●
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className={styles.poolAddress}>
+                          {pool.pairAddress.slice(0, 6)}…
+                          {pool.pairAddress.slice(-4)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className={styles.protocolCell} data-label="Protocol">
-                  v2
-                </td>
-                <td className={styles.feeCell} data-label="Fee tier">
-                  {DEFAULT_FEE_PERCENT_DISPLAY}%
-                </td>
-                <td className={styles.tvlCell} data-label="TVL">
-                  {pool.isTvlLoading ? (
-                    <span className={styles.loaderDots}>
-                      <span />
-                      <span />
-                      <span />
-                    </span>
-                  ) : pool.totalLiquidityFormatted ? (
-                    `$${pool.totalLiquidityFormatted}`
+                  </td>
+                  <td className={styles.protocolCell} data-label="Protocol">
+                    v2
+                  </td>
+                  <td className={styles.feeCell} data-label="Fee tier">
+                    {DEFAULT_FEE_PERCENT_DISPLAY}%
+                  </td>
+                  {showUserPositions ? (
+                    <td className={styles.tvlCell} data-label="Your Position">
+                      {pool.isTvlLoading ? (
+                        <span className={styles.loaderDots}>
+                          <span />
+                          <span />
+                          <span />
+                        </span>
+                      ) : userPositionValue ? (
+                        `$${userPositionValue}`
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   ) : (
-                    "—"
+                    <>
+                      <td className={styles.tvlCell} data-label="TVL">
+                        {pool.isTvlLoading ? (
+                          <span className={styles.loaderDots}>
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        ) : pool.totalLiquidityFormatted ? (
+                          `$${pool.totalLiquidityFormatted}`
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className={styles.volumeCell} data-label="Volume">
+                        {pool.isVolumeLoading ? (
+                          <span className={styles.loaderDots}>
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        ) : pool.totalVolumeFormatted ? (
+                          `$${pool.totalVolumeFormatted}`
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </>
                   )}
-                </td>
-                <td className={styles.volumeCell} data-label="Volume">
-                  {pool.isVolumeLoading ? (
-                    <span className={styles.loaderDots}>
-                      <span />
-                      <span />
-                      <span />
-                    </span>
-                  ) : pool.totalVolumeFormatted ? (
-                    `$${pool.totalVolumeFormatted}`
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
 
           {!showSkeleton && showEmpty && (
             <tr>
-              <td colSpan={5} className={styles.stateCell}>
+              <td colSpan={showUserPositions ? 4 : 5} className={styles.stateCell}>
                 <div className={styles.stateContent}>
                   <p
                     style={{
@@ -231,7 +282,7 @@ export function PoolsTable({
 
           {showError && (
             <tr>
-              <td colSpan={5} className={styles.stateCell}>
+              <td colSpan={showUserPositions ? 4 : 5} className={styles.stateCell}>
                 <div className={styles.stateContent}>
                   <span>{error}</span>
                   <button

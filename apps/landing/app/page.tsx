@@ -44,18 +44,43 @@ export default function LandingPage() {
               </Link>
             </div>
             <div className={styles.heroGraphic} aria-hidden="true">
-              <div className={styles.heroHalo} />
-              <div className={styles.heroPulse} />
-              <div className={styles.heroOrbit}>
-                <span className={`${styles.heroToken} ${styles.tokenA}`} />
-                <span className={`${styles.heroToken} ${styles.tokenB}`} />
-                <span className={`${styles.heroToken} ${styles.tokenC}`} />
-              </div>
-              <div className={styles.heroOrbitSecondary} />
-              <div className={styles.heroCore}>
-                <span>WARP</span>
-                <span className={styles.heroPairDivider}>×</span>
-                <span>MegaETH</span>
+              <div className={styles.speedCard}>
+                <div className={styles.speedHeader}>
+                  <span>Transaction finality</span>
+                </div>
+
+                <div className={styles.speedLane}>
+                  <div className={styles.laneLabel}>Other chains</div>
+                  <div className={styles.laneTrack}>
+                    <div
+                      className={`${styles.laneMeter} ${styles.laneMeterSlow}`}
+                    />
+                    <div
+                      className={`${styles.laneGlow} ${styles.laneGlowSlow}`}
+                    />
+                    <div className={styles.laneTime}>12–15s</div>
+                  </div>
+                </div>
+
+                <div className={`${styles.speedLane} ${styles.speedLaneMega}`}>
+                  <div className={styles.laneLabel}>MegaETH</div>
+                  <div className={styles.laneTrack}>
+                    <div
+                      className={`${styles.laneMeter} ${styles.laneMeterFast}`}
+                    />
+                    <div
+                      className={`${styles.laneGlow} ${styles.laneGlowFast}`}
+                    />
+                    <div className={styles.laneTime}>10ms</div>
+                  </div>
+                </div>
+
+                <div className={styles.speedFooter}>
+                  <span>MegaETH keeps deterministic 10ms blocks</span>
+                  <span className={styles.speedFootNote}>
+                    WarpX routes settle instantly
+                  </span>
+                </div>
               </div>
             </div>
           </section>

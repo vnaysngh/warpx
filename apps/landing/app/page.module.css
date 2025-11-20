@@ -3,6 +3,9 @@
   display: flex;
   flex-direction: column;
   gap: 48px;
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
 }
 
 .shell {
@@ -62,9 +65,9 @@
 .ctaButton {
   padding: 10px 20px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 212, 255, 0.4);
-  background: var(--gradient-speed);
-  color: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--rabbit-white);
+  color: #010213;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -73,15 +76,19 @@
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
-    background 0.3s ease;
+    background 0.3s ease,
+    color 0.3s ease;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 30px rgba(0, 0, 0, 0.05);
 }
 
 .ctaButton:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 12px 28px rgba(0, 212, 255, 0.4),
-    0 0 40px rgba(0, 212, 255, 0.2);
-  filter: brightness(1.1);
+    0 14px 32px rgba(0, 0, 0, 0.35),
+    0 0 35px rgba(0, 0, 0, 0.08);
+  background: #f8f8ff;
 }
 
 .hero {
@@ -123,132 +130,183 @@
   width: fit-content;
   padding: 14px 32px;
   border-radius: 999px;
-  background: var(--gradient-speed);
-  color: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--rabbit-white);
+  color: #010213;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-size: 14px;
   font-family: var(--font-poppins, sans-serif);
   box-shadow:
-    0 12px 38px rgba(0, 212, 255, 0.4),
-    0 0 60px rgba(10, 255, 157, 0.2);
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 0 60px rgba(0, 0, 0, 0.12);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
-    filter 0.2s ease;
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .ctaPrimary:hover {
   transform: translateY(-2px);
   box-shadow:
-    0 18px 54px rgba(0, 212, 255, 0.5),
-    0 0 80px rgba(10, 255, 157, 0.3);
-  filter: brightness(1.1);
+    0 20px 48px rgba(0, 0, 0, 0.4),
+    0 0 70px rgba(0, 0, 0, 0.15);
+  background: #f5f5ff;
 }
 
 .heroGraphic {
   position: relative;
-  width: clamp(240px, 32vw, 320px);
-  aspect-ratio: 1;
+  width: clamp(280px, 36vw, 360px);
   justify-self: end;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
-.heroHalo {
+.speedCard {
+  width: 100%;
+  padding: 28px 24px;
+  border-radius: 30px;
+  background: linear-gradient(155deg, rgba(54, 16, 52, 0.95), rgba(21, 7, 33, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 25px 60px rgba(17, 3, 20, 0.8),
+    inset 0 0 40px rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.speedCard::after {
+  content: "";
   position: absolute;
-  inset: -22%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at center,
-    rgba(0, 212, 255, 0.28),
-    rgba(10, 255, 157, 0.15) 40%,
-    transparent 70%
-  );
-  filter: blur(18px);
-  opacity: 0.8;
+  inset: auto -20px -40px auto;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(255, 110, 120, 0.35), transparent 70%);
+  filter: blur(12px);
+  opacity: 0.4;
+  pointer-events: none;
 }
 
-.heroPulse {
-  position: absolute;
-  inset: 8%;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 212, 255, 0.25);
-  animation: hero-pulse 6s ease-in-out infinite;
-  box-shadow: inset 0 0 20px rgba(0, 212, 255, 0.1);
-}
-
-.heroOrbit {
-  position: absolute;
-  inset: 18%;
-  border-radius: 50%;
-  border: 1px dashed rgba(0, 212, 255, 0.35);
-  animation: hero-spin 18s linear infinite;
-}
-
-.heroOrbitSecondary {
-  position: absolute;
-  inset: 32%;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  animation: hero-spin-reverse 12s linear infinite;
-}
-
-.heroToken {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--speed-blue);
-  box-shadow: 0 0 18px rgba(0, 212, 255, 0.6);
-}
-
-.tokenA {
-  top: -7px;
-  left: 50%;
-  transform: translate(-50%, 0);
-}
-
-.tokenB {
-  right: -7px;
-  top: 50%;
-  transform: translate(0, -50%);
-}
-
-.tokenC {
-  bottom: -7px;
-  left: 50%;
-  transform: translate(-50%, 0);
-  background: var(--neon-cyan);
-  box-shadow: 0 0 16px rgba(10, 255, 157, 0.6);
-}
-
-.heroCore {
-  position: absolute;
-  inset: 40%;
-  border-radius: 16px;
-  background: rgba(20, 27, 61, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.speedHeader {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 0.6rem;
-  line-height: 1;
-  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--fg);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 24px rgba(0, 212, 255, 0.15);
-  white-space: nowrap;
-  padding: 2px 4px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.heroPairDivider {
-  color: var(--speed-blue);
-  font-weight: 700;
+.speedLane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.speedLaneMega {
+  position: relative;
+}
+
+.speedLaneMega::before {
+  content: "";
+  position: absolute;
+  inset: -18px 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(10, 255, 157, 0.4), rgba(255, 255, 255, 0));
+}
+
+.laneLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--fg-subtle);
+}
+
+.laneTrack {
+  position: relative;
+  height: 54px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.laneMeter {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--lane-width, 100%);
+  border-radius: inherit;
+  opacity: 0.9;
+}
+
+.laneMeterSlow {
+  --lane-width: 90%;
+  background: linear-gradient(90deg, #ff9d2f, #ff5e78);
+}
+
+.laneMeterFast {
+  --lane-width: 22%;
+  background: linear-gradient(90deg, #00d4ff, #0aff9d);
+}
+
+.laneGlow {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 32%;
+  border-radius: 20px;
+  filter: blur(6px);
+  opacity: 0.6;
+  animation: laneFlow 5s ease-in-out infinite;
+}
+
+.laneGlowSlow {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0));
+}
+
+.laneGlowFast {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0));
+  animation-duration: 3s;
+}
+
+.laneTime {
+  position: relative;
+  margin-left: auto;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #010213;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.speedFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--fg-subtle);
+}
+
+.speedFootNote {
+  color: var(--fg);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .footer {
@@ -329,8 +387,8 @@
   }
 
   .heroGraphic {
-    width: clamp(220px, 60vw, 300px);
-    margin-top: 8px;
+    width: min(100%, 340px);
+    margin: 8px auto 0;
   }
 
   .ctaPrimary {
@@ -348,34 +406,42 @@
   }
 }
 
-@keyframes hero-spin {
-  to {
-    transform: rotate(360deg);
+@media (max-width: 640px) {
+  .speedCard {
+    padding: 20px 18px;
+    gap: 16px;
+  }
+
+  .speedHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .laneTime {
+    font-size: 0.68rem;
   }
 }
 
-@keyframes hero-spin-reverse {
-  to {
-    transform: rotate(-360deg);
+@keyframes laneFlow {
+  0% {
+    transform: translateX(-20%);
+    opacity: 0;
   }
-}
-
-@keyframes hero-pulse {
-  0%,
+  20% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.6;
+  }
   100% {
-    transform: scale(0.94);
-    opacity: 0.4;
-  }
-  50% {
-    transform: scale(1.04);
-    opacity: 0.75;
+    transform: translateX(160%);
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .heroPulse,
-  .heroOrbit,
-  .heroOrbitSecondary {
+  .laneGlow {
     animation: none;
   }
 }

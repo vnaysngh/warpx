@@ -192,7 +192,9 @@ export default function PoolsPage() {
         isTvlLoading: pool.isTvlLoading,
         isVolumeLoading: pool.isVolumeLoading,
         totalVolumeFormatted: pool.totalVolumeFormatted,
-        totalVolumeValue: pool.totalVolumeValue
+        totalVolumeValue: pool.totalVolumeValue,
+        totalLiquidityFormatted: pool.totalLiquidityFormatted,
+        totalLiquidityValue: pool.totalLiquidityValue
       };
     });
   }, [poolsData, balancesData]);
@@ -456,6 +458,7 @@ export default function PoolsPage() {
             error={poolsError}
             onRetry={handleRefreshPools}
             onSelectPool={handlePoolSelect}
+            showUserPositions={showMyPositionsOnly}
           />
         </div>
       </section>
