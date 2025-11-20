@@ -52,6 +52,13 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     address: "0x07b1EDd4a0D76D07C5A91B9159D13Cb51C8e4E42",
     decimals: 6,
     logo: "/logos/wusd.png"
+  },
+  {
+    symbol: "xBTC",
+    name: "xBTC",
+    address: "0x463151b80DFf738Bb02BA3B4C9Bd788daeEc751c",
+    decimals: 6,
+    logo: "/logos/xbtc.png"
   }
   // {
   //   symbol: "GTE",
