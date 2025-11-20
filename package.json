@@ -19,6 +19,7 @@
     "add-wusd-eth-liquidity": "hardhat run scripts/add-wusd-eth-liquidity.ts --network megaethTestnet",
     "deploy-xbtc": "hardhat run scripts/deploy-xbtc.ts --network megaethTestnet",
     "check-gte-price": "hardhat run scripts/check-gte-price.ts --network megaethTestnet",
+    "set-factory-fee-to": "hardhat run scripts/set-factory-fee-to.ts --network megaethTestnet",
     "test:core:factory": "hardhat test packages/core/test/WarpFactory.spec.ts",
     "test:core:pair": "hardhat test packages/core/test/WarpPair.spec.ts",
     "test:core:erc20": "hardhat test packages/core/test/WarpERC20.spec.ts",

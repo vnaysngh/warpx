@@ -329,6 +329,19 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
     const hasVolumeValue = Number.isFinite(volumeUsd) && volumeUsd > 0;
     const totalVolumeValue = hasVolumeValue ? volumeUsd : null;
 
+    // Parse totalSupply from the pair data
+    const totalSupplyStr = pairs.find(p => p.id.toLowerCase() === pool.pairAddress.toLowerCase())?.totalSupply;
+    let totalSupply: bigint | undefined;
+    if (totalSupplyStr) {
+      try {
+        // Parse as float then convert to wei (18 decimals)
+        const totalSupplyFloat = Number.parseFloat(totalSupplyStr);
+        totalSupply = BigInt(Math.floor(totalSupplyFloat * 1e18));
+      } catch (err) {
+        console.warn("[usePools] Failed to parse totalSupply for", pool.pairAddress);
+      }
+    }
+
     return {
       id: pool.id,
       pairAddress: pool.pairAddress,
@@ -347,7 +360,8 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
       isTvlLoading: !hasUsdValue && showGlobalPriceLoading,
       isVolumeLoading: !hasVolumeValue && showGlobalPriceLoading,
       reserve0Exact: pool.reserve0Exact,
-      reserve1Exact: pool.reserve1Exact
+      reserve1Exact: pool.reserve1Exact,
+      totalSupply
     };
   });
 

@@ -181,20 +181,11 @@ export default function PoolsPage() {
 
     return poolsData.map((pool) => {
       const balance = balancesData?.get(pool.pairAddress.toLowerCase());
+
       return {
         ...pool,
         userLpBalance: balance && balance > 0n ? balance.toString() : undefined,
-        userLpBalanceRaw: balance && balance > 0n ? balance : undefined,
-        reserves: pool.reserves,
-        totalSupply: pool.totalSupply,
-        reserve0Exact: pool.reserve0Exact,
-        reserve1Exact: pool.reserve1Exact,
-        isTvlLoading: pool.isTvlLoading,
-        isVolumeLoading: pool.isVolumeLoading,
-        totalVolumeFormatted: pool.totalVolumeFormatted,
-        totalVolumeValue: pool.totalVolumeValue,
-        totalLiquidityFormatted: pool.totalLiquidityFormatted,
-        totalLiquidityValue: pool.totalLiquidityValue
+        userLpBalanceRaw: balance && balance > 0n ? balance : undefined
       };
     });
   }, [poolsData, balancesData]);

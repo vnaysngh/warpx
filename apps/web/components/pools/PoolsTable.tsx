@@ -113,19 +113,22 @@ export function PoolsTable({
           {!showSkeleton &&
             !showError &&
             pools.map((pool) => {
-              // Calculate user position value for this pool
+              // Calculate user position value using same method as TVL (Moralis prices)
               let userPositionValue: string | null = null;
               if (
                 showUserPositions &&
                 pool.userLpBalanceRaw &&
+                pool.userLpBalanceRaw > 0n &&
                 pool.totalSupply &&
                 pool.totalSupply > 0n &&
-                pool.totalLiquidityValue
+                pool.totalLiquidityValue &&
+                pool.totalLiquidityValue > 0
               ) {
-                const userShare =
-                  Number(pool.userLpBalanceRaw) / Number(pool.totalSupply);
-                const positionValue = userShare * pool.totalLiquidityValue;
-                userPositionValue = formatCompactNumber(positionValue, 2);
+                // User share = user LP tokens / total LP supply
+                const userShare = Number(pool.userLpBalanceRaw) / Number(pool.totalSupply);
+                // Position value = user share × total pool liquidity (calculated with Moralis prices)
+                const positionValueUSD = userShare * pool.totalLiquidityValue;
+                userPositionValue = formatCompactNumber(positionValueUSD, 2);
               }
 
               return (
