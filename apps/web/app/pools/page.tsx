@@ -27,6 +27,8 @@ import {
 } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
 import { AnimatedBackground } from "@/components/background/AnimatedBackground";
+import { PoolsCharts } from "@/components/pools/PoolsCharts";
+import { usePoolsChartData } from "@/hooks/usePoolsChartData";
 
 export default function PoolsPage() {
   const { address, chain, status } = useAccount();
@@ -42,6 +44,9 @@ export default function PoolsPage() {
   const { toasts, removeToast, showError, showSuccess } = useToasts();
   const { deployment } = useDeploymentManifest();
   const wrappedNativeAddress = deployment?.wmegaeth ?? null;
+
+  // Fetch chart data to get latest 24h volume
+  const { data: chartData } = usePoolsChartData({ days: 30 });
 
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [showMyPositionsOnly, setShowMyPositionsOnly] = useState(false);
@@ -298,42 +303,23 @@ export default function PoolsPage() {
   }, [pools, tvlLoading]);
 
   const totalVolumeSummary = useMemo(() => {
-    if (pools.length === 0) {
+    // Use latest day's volume from chart data (24h volume)
+    if (!chartData || chartData.length === 0) {
       return { value: null as string | null, loading: volumeLoading };
     }
 
-    const poolsWithVolume = pools.filter(
-      (pool) =>
-        typeof pool.totalVolumeValue === "number" &&
-        pool.totalVolumeValue !== null &&
-        pool.totalVolumeValue > 0
-    );
+    // Get the most recent day's volume
+    const latestDayVolume = chartData[chartData.length - 1]?.volume ?? 0;
 
-    if (poolsWithVolume.length === 0) {
-      const anyLoading = pools.some((pool) => pool.isVolumeLoading);
-      return { value: null, loading: volumeLoading || anyLoading };
-    }
-
-    const totalValue = poolsWithVolume.reduce(
-      (acc, pool) => acc + (pool.totalVolumeValue ?? 0),
-      0
-    );
-
-    if (totalValue <= 0) {
+    if (latestDayVolume <= 0) {
       return { value: null, loading: false };
     }
 
-    const othersLoading = pools.some(
-      (pool) =>
-        (!pool.totalVolumeValue || pool.totalVolumeValue <= 0) &&
-        pool.isVolumeLoading
-    );
-
     return {
-      value: `$${formatCompactNumber(totalValue, 2)}`,
-      loading: volumeLoading || othersLoading
+      value: `$${formatCompactNumber(latestDayVolume, 2)}`,
+      loading: false
     };
-  }, [pools, volumeLoading]);
+  }, [chartData, volumeLoading]);
 
   useEffect(() => {
     if (!pools.length) {
@@ -369,42 +355,52 @@ export default function PoolsPage() {
       />
 
       <section className={styles.pageShell}>
-        <div className={styles.statsRow}>
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Total Value Locked</div>
-            {totalTvlSummary.loading ? (
-              <div className={styles.statValue}>
-                <span className={styles.statLoader}>
-                  <span />
-                  <span />
-                  <span />
-                </span>
+        <div className={styles.statsChartsContainer} suppressHydrationWarning>
+          <div className={styles.statsRow}>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>
+                <span className={styles.statLabelFull}>Total Value Locked</span>
+                <span className={styles.statLabelShort}>TVL</span>
               </div>
-            ) : (
-              <div className={`${styles.statValue} ${styles.statValueTvl}`}>
-                {totalTvlSummary.value || "$0.00"}
+              {totalTvlSummary.loading ? (
+                <div className={styles.statValue}>
+                  <span className={styles.statLoader}>
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </div>
+              ) : (
+                <div className={`${styles.statValue} ${styles.statValueTvl}`}>
+                  {totalTvlSummary.value || "$0.00"}
+                </div>
+              )}
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>
+                <span className={styles.statLabelFull}>24h Trading Volume</span>
+                <span className={styles.statLabelShort}>24h Volume</span>
               </div>
-            )}
+              {totalVolumeSummary.loading ? (
+                <div className={styles.statValue}>
+                  <span className={styles.statLoader}>
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </div>
+              ) : (
+                <div className={`${styles.statValue} ${styles.statValueVolume}`}>
+                  {totalVolumeSummary.value || "$0.00"}
+                </div>
+              )}
+            </div>
           </div>
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Total Trading Volume</div>
-            {totalVolumeSummary.loading ? (
-              <div className={styles.statValue}>
-                <span className={styles.statLoader}>
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </div>
-            ) : (
-              <div className={`${styles.statValue} ${styles.statValueVolume}`}>
-                {totalVolumeSummary.value || "$0.00"}
-              </div>
-            )}
-          </div>
+
+          <PoolsCharts />
         </div>
 
-        <div className={styles.toolbarRow}>
+        <div className={styles.toolbarRow} suppressHydrationWarning>
           {hasMounted && isWalletConnected ? (
             <div
               className={`${pageStyles.segmented} ${styles.toolbarSegmented}`}
@@ -429,7 +425,7 @@ export default function PoolsPage() {
               </button>
             </div>
           ) : (
-            <span />
+            <div />
           )}
           {hasMounted && isWalletConnected && (
             <button

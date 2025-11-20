@@ -6,7 +6,7 @@ import { type RefObject, useEffect, useMemo, useState } from "react";
 import styles from "@/app/page.module.css";
 import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 
-type NavKey = "swap" | "pools" | "stake";
+type NavKey = "swap" | "pools" | "faucet" | "stake";
 
 type TradeHeaderProps = {
   manifestTag: string;
@@ -26,9 +26,10 @@ type TradeHeaderProps = {
   activeNav?: NavKey;
 };
 
-const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string }> = [
+const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string; external?: boolean }> = [
   { key: "swap", label: "Swap", href: "/" },
-  { key: "pools", label: "Pools", href: "/pools" }
+  { key: "pools", label: "Pools", href: "/pools" },
+  { key: "faucet", label: "Faucet", href: "https://docs.megaeth.com/faucet", external: true }
   // { key: "stake", label: "Stake", href: "/stake" }
 ];
 
@@ -125,17 +126,31 @@ export function TradeHeader({
         </div>
 
         <nav className={styles.navCenter} aria-label="Main navigation">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={`${styles.navLink} ${
-                resolvedActiveNav === item.key ? styles.navLinkActive : ""
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.external ? (
+              <a
+                key={item.key}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${styles.navLink} ${
+                  resolvedActiveNav === item.key ? styles.navLinkActive : ""
+                }`}
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={`${styles.navLink} ${
+                  resolvedActiveNav === item.key ? styles.navLinkActive : ""
+                }`}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </nav>
         <div className={styles.navRight}>
           {showWalletActions ? (
@@ -284,20 +299,37 @@ export function TradeHeader({
             </div>
 
             <nav className={styles.mobileNav} aria-label="Mobile navigation">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={`mobile-${item.key}`}
-                  href={item.href}
-                  className={`${styles.mobileNavLink} ${
-                    resolvedActiveNav === item.key
-                      ? styles.mobileNavLinkActive
-                      : ""
-                  }`}
-                  onClick={closeMobileMenu}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {NAV_ITEMS.map((item) =>
+                item.external ? (
+                  <a
+                    key={`mobile-${item.key}`}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${styles.mobileNavLink} ${
+                      resolvedActiveNav === item.key
+                        ? styles.mobileNavLinkActive
+                        : ""
+                    }`}
+                    onClick={closeMobileMenu}
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={`mobile-${item.key}`}
+                    href={item.href}
+                    className={`${styles.mobileNavLink} ${
+                      resolvedActiveNav === item.key
+                        ? styles.mobileNavLinkActive
+                        : ""
+                    }`}
+                    onClick={closeMobileMenu}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              )}
             </nav>
 
             <div className={styles.mobileMenuDivider} />
