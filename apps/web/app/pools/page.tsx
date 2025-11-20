@@ -437,7 +437,7 @@ export default function PoolsPage() {
               className={`${styles.primaryButton} ${styles.createButton}`}
               onClick={handleCreatePool}
             >
-              Create
+              Launch Pool
             </button>
           )}
         </div>
