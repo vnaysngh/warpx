@@ -74,6 +74,24 @@ export function PoolsCharts() {
   const hasData = formattedData.length > 0;
   const chartKey = activeChart === "tvl" ? "tvl" : "volume";
 
+  // Calculate domain and ticks for proper y-axis scaling
+  const yAxisConfig = useMemo(() => {
+    if (!hasData) return { domain: [0, 100] as [number, number], ticks: [0, 25, 50, 75, 100] };
+
+    const values = formattedData.map((d) => d[chartKey]);
+    const maxValue = Math.max(...values);
+
+    // Add 10% padding to top
+    const max = Math.ceil(maxValue * 1.1);
+
+    // Generate 5 evenly spaced ticks
+    const tickCount = 5;
+    const tickInterval = max / (tickCount - 1);
+    const ticks = Array.from({ length: tickCount }, (_, i) => Math.round(i * tickInterval));
+
+    return { domain: [0, max] as [number, number], ticks };
+  }, [formattedData, chartKey, hasData]);
+
   // Prevent hydration mismatch by only rendering after mount
   if (!hasMounted) {
     return (
@@ -193,14 +211,7 @@ export function PoolsCharts() {
                   tickLine={false}
                   axisLine={false}
                 />
-                <YAxis
-                  tickFormatter={(value) => `$${formatCompactNumber(value, 0)}`}
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  tick={{ fill: "rgba(255, 255, 255, 0.5)", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={60}
-                />
+                <YAxis hide domain={yAxisConfig.domain} />
                 <Tooltip
                   content={<CustomTooltip chartType="tvl" />}
                   cursor={{ stroke: "rgba(123, 97, 255, 0.3)", strokeWidth: 1 }}
@@ -257,14 +268,7 @@ export function PoolsCharts() {
                   tickLine={false}
                   axisLine={false}
                 />
-                <YAxis
-                  tickFormatter={(value) => `$${formatCompactNumber(value, 0)}`}
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  tick={{ fill: "rgba(255, 255, 255, 0.5)", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={60}
-                />
+                <YAxis hide domain={yAxisConfig.domain} />
                 <Tooltip
                   content={<CustomTooltip chartType="volume" />}
                   cursor={{ fill: "rgba(123, 97, 255, 0.15)" }}
