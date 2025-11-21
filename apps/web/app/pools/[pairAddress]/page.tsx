@@ -479,6 +479,8 @@ export default function PoolLiquidityPage() {
         onSelectCustomToken={handleSelectCustomToken}
         isFetchingCustomToken={isFetchingCustomToken}
         prefetchedTokenDetails={prefetchedTokenDetails}
+        walletAccount={walletAccount}
+        provider={readProvider}
       />
     </>
   );

@@ -364,6 +364,8 @@ export default function CreatePoolPage() {
         onSelectCustomToken={handleSelectCustomToken}
         isFetchingCustomToken={isFetchingCustomToken}
         prefetchedTokenDetails={prefetchedTokenDetails}
+        walletAccount={walletAccount}
+        provider={readProvider}
       />
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
