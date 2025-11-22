@@ -26,10 +26,20 @@ type TradeHeaderProps = {
   activeNav?: NavKey;
 };
 
-const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string; external?: boolean }> = [
+const NAV_ITEMS: Array<{
+  key: NavKey;
+  label: string;
+  href: string;
+  external?: boolean;
+}> = [
   { key: "swap", label: "Swap", href: "/" },
   { key: "pools", label: "Pools", href: "/pools" },
-  { key: "faucet", label: "Faucet", href: "https://docs.megaeth.com/faucet", external: true }
+  {
+    key: "faucet",
+    label: "Faucet",
+    href: "https://docs.megaeth.com/faucet",
+    external: true
+  }
   // { key: "stake", label: "Stake", href: "/stake" }
 ];
 
@@ -221,7 +231,7 @@ export function TradeHeader({
 
                   {address && (
                     <a
-                      href={`https://www.mtrkr.xyz/wallet/${address}`}
+                      href={`https://megaeth-testnet-v2.blockscout.com/address/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.walletDropdownItem}
@@ -361,7 +371,7 @@ export function TradeHeader({
 
                   {address && (
                     <a
-                      href={`https://www.mtrkr.xyz/wallet/${address}`}
+                      href={`https://megaeth-testnet-v2.blockscout.com/address/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.mobileWalletActionLink}
