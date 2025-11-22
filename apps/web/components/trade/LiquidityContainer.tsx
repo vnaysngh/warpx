@@ -22,19 +22,21 @@ import {
   LIQUIDITY_DEFAULT,
   MEGAETH_CHAIN_ID
 } from "@/lib/trade/constants";
-import { formatNumber, getLiquidityRemoveAmounts } from "@/lib/trade/math";
+import { getLiquidityRemoveAmounts } from "@/lib/trade/math";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type {
   LiquidityFormState,
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import { formatBalanceDisplay, buildExplorerTxUrl } from "@/lib/trade/format";
+import { buildExplorerTxUrl } from "@/lib/trade/format";
 import type { PoolDetailsData } from "@/hooks/usePoolDetails";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import { buildToastVisuals } from "@/lib/toastVisuals";
 import { useFirstTransactionCelebration } from "@/hooks/useFirstTransactionCelebration";
+import { useLocalization } from "@/lib/format/LocalizationContext";
+import { NumberType } from "@/lib/format/formatNumbers";
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
@@ -106,6 +108,10 @@ export function LiquidityContainer({
   enableRemoveLiquidity = true,
   addLiquidityOverride = null
 }: LiquidityContainerProps) {
+  const {
+    formatNumber: formatDisplayNumber,
+    formatBalanceDisplay
+  } = useLocalization();
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [liquidityForm, setLiquidityForm] =
     useState<LiquidityFormState>(LIQUIDITY_DEFAULT);
@@ -703,14 +709,14 @@ export function LiquidityContainer({
             liquidityTokenB.decimals ?? 18
           );
           setUserPooledAmounts({
-            amountA: formatNumber(
-              pooledAFormatted,
-              Math.min(6, liquidityTokenA.decimals ?? 18)
-            ),
-            amountB: formatNumber(
-              pooledBFormatted,
-              Math.min(6, liquidityTokenB.decimals ?? 18)
-            )
+            amountA: formatDisplayNumber({
+              input: pooledAFormatted,
+              type: NumberType.TokenNonTx
+            }),
+            amountB: formatDisplayNumber({
+              input: pooledBFormatted,
+              type: NumberType.TokenNonTx
+            })
           });
 
           const expectedAFormatted = formatUnits(
@@ -722,14 +728,14 @@ export function LiquidityContainer({
             liquidityTokenB.decimals ?? 18
           );
           setExpectedRemoveAmounts({
-            amountA: formatNumber(
-              expectedAFormatted,
-              Math.min(6, liquidityTokenA.decimals ?? 18)
-            ),
-            amountB: formatNumber(
-              expectedBFormatted,
-              Math.min(6, liquidityTokenB.decimals ?? 18)
-            )
+            amountA: formatDisplayNumber({
+              input: expectedAFormatted,
+              type: NumberType.TokenTx
+            }),
+            amountB: formatDisplayNumber({
+              input: expectedBFormatted,
+              type: NumberType.TokenTx
+            })
           });
         }
       } catch (err) {
@@ -755,7 +761,8 @@ export function LiquidityContainer({
     liquidityTokenB?.decimals,
     liquidityTokenA,
     liquidityTokenB,
-    readProvider
+    readProvider,
+    formatDisplayNumber
   ]);
 
   const liquidityTokensReady =
@@ -822,10 +829,10 @@ export function LiquidityContainer({
                 (amountAWei * liquidityPairReserves.reserveBWei) /
                 liquidityPairReserves.reserveAWei;
               const amountBRaw = formatUnits(amountBWei, decimalsB);
-              updated.amountB = formatNumber(
-                amountBRaw,
-                Math.min(6, decimalsB)
-              );
+              updated.amountB = formatDisplayNumber({
+                input: amountBRaw,
+                type: NumberType.TokenTx
+              });
               updated.amountBExact = amountBRaw;
             }
           } catch (err) {
@@ -838,7 +845,7 @@ export function LiquidityContainer({
         return updated;
       });
     },
-    [liquidityPairReserves, liquidityTokenA, liquidityTokenB]
+    [liquidityPairReserves, liquidityTokenA, liquidityTokenB, formatDisplayNumber]
   );
 
   const applyLiquidityAmountB = useCallback(
@@ -896,10 +903,10 @@ export function LiquidityContainer({
                 (amountBWei * liquidityPairReserves.reserveAWei) /
                 liquidityPairReserves.reserveBWei;
               const amountARaw = formatUnits(amountAWei, decimalsA);
-              updated.amountA = formatNumber(
-                amountARaw,
-                Math.min(6, decimalsA)
-              );
+              updated.amountA = formatDisplayNumber({
+                input: amountARaw,
+                type: NumberType.TokenTx
+              });
               updated.amountAExact = amountARaw;
             }
           } catch (err) {

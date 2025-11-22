@@ -1238,7 +1238,7 @@
 }
 
 .dialog {
-  width: min(420px, 100%);
+  width: min(520px, calc(100% - 32px));
   border-radius: 24px;
   border: 1.5px solid rgba(255, 255, 255, 0.15);
   background: linear-gradient(135deg, #2a2440 0%, #221c35 50%, #1a1528 100%);

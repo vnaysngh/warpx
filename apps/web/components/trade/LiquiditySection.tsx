@@ -3,8 +3,9 @@ import type {
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import { formatNumber, formatPercent } from "@/lib/trade/math";
 import styles from "@/app/page.module.css";
+import { useLocalization } from "@/lib/format/LocalizationContext";
+import { NumberType } from "@/lib/format/formatNumbers";
 
 type LiquidityMode = "add" | "remove";
 
@@ -360,6 +361,10 @@ function LiquidityRemoveForm({
   tokenSelectionEnabled,
   transactionStatus
 }: LiquidityRemoveProps & { tokenSelectionEnabled: boolean }) {
+  const {
+    formatNumber: formatDisplayNumber,
+    formatPercent
+  } = useLocalization();
   // Check transaction status FIRST - override button label and disabled state
   let buttonLabel = isSubmitting ? "Removing..." : "Remove Liquidity";
   let buttonDisabled = !ready ||
@@ -473,7 +478,10 @@ function LiquidityRemoveForm({
               >
                 <span style={{ opacity: 0.7 }}>Your LP Tokens</span>
                 <span style={{ fontWeight: 500 }}>
-                  {formatNumber(lpTokenInfo.balance)}
+                  {formatDisplayNumber({
+                    input: lpTokenInfo.balance,
+                    type: NumberType.TokenNonTx
+                  })}
                 </span>
               </div>
               <div
@@ -486,7 +494,7 @@ function LiquidityRemoveForm({
               >
                 <span style={{ opacity: 0.7 }}>Your Pool Share</span>
                 <span style={{ fontWeight: 500 }}>
-                  {formatPercent(lpTokenInfo.poolShare)}%
+                  {formatPercent(Number(lpTokenInfo.poolShare))}
                 </span>
               </div>
               {userPooledAmounts && (

@@ -26,6 +26,7 @@ type SwapCardProps = {
   minReceived: string | null;
   summaryMessage: string | null;
   priceImpact: number | null;
+  priceImpactDisplay: string | null;
   slippage: string | null;
   buttonLabel: string;
   buttonDisabled: boolean;
@@ -54,6 +55,7 @@ export function SwapCard({
   minReceived,
   summaryMessage,
   priceImpact,
+  priceImpactDisplay,
   slippage,
   buttonLabel,
   buttonDisabled,
@@ -316,14 +318,14 @@ export function SwapCard({
                       }}
                     >
                       {priceImpact > 0 ? "+" : ""}
-                      {priceImpact.toFixed(2)}%
+                      {priceImpactDisplay ?? "-"}
                     </span>
                   </div>
                 )}
                 {slippage && (
                   <div className={styles.swapDetailRow}>
                     <span className={styles.swapDetailLabel}>Slippage</span>
-                    <span className={styles.swapDetailValue}>{slippage}%</span>
+                    <span className={styles.swapDetailValue}>{slippage}</span>
                   </div>
                 )}
                 <div className={styles.swapDetailRow}>

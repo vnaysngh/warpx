@@ -24,7 +24,6 @@ import {
   MEGAETH_CHAIN_ID,
   SWAP_DEFAULT
 } from "@/lib/trade/constants";
-import { formatNumber } from "@/lib/trade/math";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type {
   Quote,
@@ -33,11 +32,12 @@ import type {
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import { formatBalanceDisplay } from "@/lib/trade/format";
 import { isValidNumericInput, normalizeNumericInput } from "@/lib/utils/input";
 import type { ToastOptions } from "@/hooks/useToasts";
 import { buildToastVisuals } from "@/lib/toastVisuals";
 import { useFirstTransactionCelebration } from "@/hooks/useFirstTransactionCelebration";
+import { useLocalization } from "@/lib/format/LocalizationContext";
+import { NumberType } from "@/lib/format/formatNumbers";
 type EnsureWalletContext = {
   walletAccount: string | null;
   ready: boolean;
@@ -106,6 +106,11 @@ export function SwapContainer({
   onRequestRefresh,
   onConnect
 }: SwapContainerProps) {
+  const {
+    formatNumber: formatDisplayNumber,
+    formatPercent,
+    formatBalanceDisplay
+  } = useLocalization();
   const [swapForm, setSwapForm] = useState<SwapFormState>({
     ...SWAP_DEFAULT,
     tokenIn: selectedIn?.address ?? "",
@@ -546,14 +551,17 @@ export function SwapContainer({
         }
 
         const outputExact = formatUnits(amountOutWei, decimalsOut);
-        const limitedOut = formatNumber(outputExact, Math.min(6, decimalsOut));
+        const limitedOut = formatDisplayNumber({
+          input: outputExact,
+          type: NumberType.TokenTx
+        });
 
         const minOutWei =
           (amountOutWei * (10000n - DEFAULT_SLIPPAGE_BPS)) / 10000n;
-        const limitedMinOut = formatNumber(
-          formatUnits(minOutWei, decimalsOut),
-          Math.min(6, decimalsOut)
-        );
+        const limitedMinOut = formatDisplayNumber({
+          input: formatUnits(minOutWei, decimalsOut),
+          type: NumberType.TokenTx
+        });
 
         setSwapQuote({ amount: limitedOut, symbol: symbolOut });
         setSwapForm((prev) => ({
@@ -589,7 +597,8 @@ export function SwapContainer({
     swapInIsNative,
     swapOutIsNative,
     wrappedNativeAddress,
-    calculatePriceImpact
+    calculatePriceImpact,
+    formatDisplayNumber
   ]);
 
   useEffect(() => {
@@ -675,14 +684,14 @@ export function SwapContainer({
         const maxInputWei =
           (amountNeededWei * (10000n + DEFAULT_SLIPPAGE_BPS)) / 10000n;
 
-        const limitedIn = formatNumber(
-          formatUnits(amountNeededWei, decimalsIn),
-          Math.min(6, decimalsIn)
-        );
-        const limitedMaxInput = formatNumber(
-          formatUnits(maxInputWei, decimalsIn),
-          Math.min(6, decimalsIn)
-        );
+        const limitedIn = formatDisplayNumber({
+          input: formatUnits(amountNeededWei, decimalsIn),
+          type: NumberType.TokenTx
+        });
+        const limitedMaxInput = formatDisplayNumber({
+          input: formatUnits(maxInputWei, decimalsIn),
+          type: NumberType.TokenTx
+        });
 
         if (swapEditingFieldRef.current === "minOut") {
           setReverseQuote({ amount: limitedIn, symbolIn, symbolOut });
@@ -720,7 +729,8 @@ export function SwapContainer({
     swapInIsNative,
     swapOutIsNative,
     wrappedNativeAddress,
-    showError
+    showError,
+    formatDisplayNumber
   ]);
 
   useEffect(() => {
@@ -1305,8 +1315,8 @@ export function SwapContainer({
   ]);
 
   const slippagePercentDisplay = useMemo(
-    () => (Number(DEFAULT_SLIPPAGE_BPS) / 100).toFixed(2).replace(/\.?0+$/, ""),
-    []
+    () => formatPercent(Number(DEFAULT_SLIPPAGE_BPS) / 100),
+    [formatPercent]
   );
 
   const swapFormReady =
@@ -1391,22 +1401,10 @@ export function SwapContainer({
       // Calculate exchange rate (1 unit of input = X units of output)
       const rate = amountOutNum / amountInNum;
 
-      // Format rate based on magnitude
-      let formattedRate: string;
-      if (rate >= 1) {
-        // For rates >= 1, show 2-4 decimal places
-        formattedRate = rate.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 4
-        });
-      } else {
-        // For rates < 1, show more precision
-        formattedRate = rate.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 6
-        });
-      }
-
+      const formattedRate = formatDisplayNumber({
+        input: rate,
+        type: NumberType.TokenTx
+      });
       return `1 ${selectedIn.symbol} = ${formattedRate} ${selectedOut.symbol}`;
     } catch (err) {
       return null;
@@ -1418,14 +1416,19 @@ export function SwapContainer({
     swapForm.amountInExact,
     swapForm.minOut,
     selectedIn,
-    selectedOut
+    selectedOut,
+    formatDisplayNumber
   ]);
 
   const receiveAmountValue =
     swapEditingFieldRef.current === "minOut"
       ? swapForm.minOut
       : (swapQuote?.amount ?? "");
-  const minReceivedDisplay = swapForm.minOut || null;
+  const minReceivedDisplay = swapForm.minOut
+    ? formatDisplayNumber({ input: swapForm.minOut, type: NumberType.TokenTx })
+    : null;
+  const priceImpactDisplay =
+    priceImpact === null ? null : formatPercent(priceImpact);
 
   return (
     <SwapCard
@@ -1446,6 +1449,7 @@ export function SwapContainer({
       minReceived={minReceivedDisplay}
       summaryMessage={swapSummaryMessage}
       priceImpact={priceImpact}
+      priceImpactDisplay={priceImpactDisplay}
       slippage={slippagePercentDisplay}
       buttonLabel={swapButtonLabel}
       buttonDisabled={swapButtonDisabled}

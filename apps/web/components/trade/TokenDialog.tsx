@@ -5,7 +5,7 @@ import type { TokenDescriptor, TokenDialogSlot } from "@/lib/trade/types";
 import styles from "@/app/page.module.css";
 import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
-import { formatTokenBalance } from "@/lib/trade/format";
+import { useLocalization } from "@/lib/format/LocalizationContext";
 
 type TokenDialogProps = {
   open: boolean;
@@ -45,6 +45,7 @@ export function TokenDialog({
   walletAccount = null,
   provider
 }: TokenDialogProps) {
+  const { formatTokenBalance } = useLocalization();
   // Create a list that includes both filtered tokens and the custom token (if any)
   const tokensToFetch = useMemo(() => {
     const tokens = [...filteredTokens];
