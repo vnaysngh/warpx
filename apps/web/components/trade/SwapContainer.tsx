@@ -692,6 +692,11 @@ export function SwapContainer({
             amountInExact: null,
             maxInput: limitedMaxInput
           }));
+          // DON'T switch to amountIn - keep it as minOut to prevent forward quote from overwriting
+
+          // Calculate price impact for reverse quote
+          const impact = await calculatePriceImpact(amountNeededWei, path);
+          setPriceImpact(impact);
         }
         setIsCalculatingQuote(false);
       } catch (err) {
@@ -1367,13 +1372,17 @@ export function SwapContainer({
   }
 
   const swapSummaryMessage = useMemo(() => {
-    if (!swapQuote || !swapForm.amountIn || !selectedIn || !selectedOut) {
+    // Works with both forward quote (swapQuote) and reverse quote (reverseQuote)
+    const hasQuote = swapQuote || reverseQuote;
+    if (!hasQuote || !swapForm.amountIn || !swapForm.minOut || !selectedIn || !selectedOut) {
       return null;
     }
 
     try {
       const amountInNum = Number(swapForm.amountInExact ?? swapForm.amountIn);
-      const amountOutNum = Number(swapQuote.amount);
+      const amountOutNum = swapQuote
+        ? Number(swapQuote.amount)
+        : Number(swapForm.minOut);
 
       if (amountInNum <= 0 || amountOutNum <= 0) {
         return null;
@@ -1404,8 +1413,10 @@ export function SwapContainer({
     }
   }, [
     swapQuote,
+    reverseQuote,
     swapForm.amountIn,
     swapForm.amountInExact,
+    swapForm.minOut,
     selectedIn,
     selectedOut
   ]);
