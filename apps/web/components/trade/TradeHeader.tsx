@@ -128,11 +128,11 @@ export function TradeHeader({
           >
             <span className={styles.mobileMenuIcon} aria-hidden="true" />
           </button>
-          <div className={styles.brand}>
+          <Link href="/" className={styles.brand}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="WarpX" className={styles.logo} />
             <span className={styles.brandMain}>WarpX</span>
-          </div>
+          </Link>
         </div>
 
         <nav className={styles.navCenter} aria-label="Main navigation">
@@ -291,13 +291,13 @@ export function TradeHeader({
             onClick={(event) => event.stopPropagation()}
           >
             <div className={styles.mobileMenuHeader}>
-              <div className={styles.mobileMenuBrand}>
+              <Link href="/" className={styles.mobileMenuBrand} onClick={closeMobileMenu}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo.png" alt="WarpX" className={styles.logo} />
                 <div className={styles.mobileMenuTitle}>
                   <span className={styles.brandMain}>WarpX</span>
                 </div>
-              </div>
+              </Link>
               <button
                 type="button"
                 className={styles.mobileMenuClose}
