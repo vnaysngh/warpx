@@ -2,28 +2,28 @@
   color-scheme: dark;
 
   /* Base backgrounds - deeper, richer */
-  --bg: #0A0E27;
-  --bg-panel: #141B3D;
-  --bg-subtle: #1A2250;
-  --bg-elevated: #1F2859;
+  --bg: #0a0e27;
+  --bg-panel: #141b3d;
+  --bg-subtle: #1a2250;
+  --bg-elevated: #1f2859;
 
   /* Foregrounds */
-  --fg: #FEFEFE;
-  --fg-subtle: #B8C1E8;
-  --fg-muted: #7D8AB8;
+  --fg: #fefefe;
+  --fg-subtle: #b8c1e8;
+  --fg-muted: #7d8ab8;
 
   /* Brand colors - MegaETH inspired */
-  --speed-blue: #00D4FF;
-  --neon-cyan: #0AFF9D;
-  --carrot-orange: #FF6B35;
-  --neon-pink: #FF2E97;
-  --deep-purple: #7B2CBF;
-  --rabbit-white: #FEFEFE;
+  --speed-blue: #00d4ff;
+  --neon-cyan: #0aff9d;
+  --carrot-orange: #ff6b35;
+  --neon-pink: #ff2e97;
+  --deep-purple: #7b2cbf;
+  --rabbit-white: #fefefe;
 
   /* Primary accent (keep compatibility) */
   --accent: var(--speed-blue);
   --accent-muted: rgba(0, 212, 255, 0.12);
-  --accent-hover: #00E5FF;
+  --accent-hover: #00e5ff;
 
   /* Secondary accents */
   --accent-secondary: var(--neon-pink);
@@ -31,10 +31,26 @@
   --accent-success: var(--neon-cyan);
 
   /* Gradients */
-  --gradient-speed: linear-gradient(135deg, var(--speed-blue) 0%, var(--neon-cyan) 100%);
-  --gradient-energy: linear-gradient(135deg, var(--carrot-orange) 0%, var(--neon-pink) 100%);
-  --gradient-premium: linear-gradient(135deg, var(--deep-purple) 0%, var(--speed-blue) 100%);
-  --gradient-rabbit: linear-gradient(135deg, #FEFEFE 0%, var(--speed-blue) 100%);
+  --gradient-speed: linear-gradient(
+    135deg,
+    var(--speed-blue) 0%,
+    var(--neon-cyan) 100%
+  );
+  --gradient-energy: linear-gradient(
+    135deg,
+    var(--carrot-orange) 0%,
+    var(--neon-pink) 100%
+  );
+  --gradient-premium: linear-gradient(
+    135deg,
+    var(--deep-purple) 0%,
+    var(--speed-blue) 100%
+  );
+  --gradient-rabbit: linear-gradient(
+    135deg,
+    #fefefe 0%,
+    var(--speed-blue) 100%
+  );
 
   /* UI elements */
   --border: rgba(255, 255, 255, 0.1);
@@ -54,12 +70,18 @@
 
   /* Status colors */
   --success: var(--neon-cyan);
-  --error: #FF4757;
+  --error: #ff4757;
   --warning: var(--carrot-orange);
   --info: var(--speed-blue);
 
   /* Typography */
-  font-family: var(--font-poppins), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    var(--font-poppins),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 *,
@@ -82,7 +104,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-image: url('/cover.png');
+  background-image: url("/cover.webp");
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -91,7 +113,7 @@ body {
 }
 
 body::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   background: rgba(10, 14, 39, 0.75);
