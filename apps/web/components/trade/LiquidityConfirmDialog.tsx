@@ -1,6 +1,7 @@
-import { formatUnits, parseUnits } from "ethers";
+import { parseUnits } from "ethers";
 import type { LiquidityFormState, TokenDescriptor } from "@/lib/trade/types";
-import { formatNumber, getLiquidityMinted } from "@/lib/trade/math";
+import { getLiquidityMinted } from "@/lib/trade/math";
+import { formatTokenAmount, formatNumber, NumberType } from "@/lib/format/formatNumbers";
 import styles from "@/app/page.module.css";
 
 type ReserveInfo = {
@@ -29,8 +30,9 @@ const computeLpTokens = (
   tokenA: TokenDescriptor | null,
   tokenB: TokenDescriptor | null,
   reserves: ReserveInfo | null
-) => {
-  if (!reserves || !tokenA?.decimals || !tokenB?.decimals) return null;
+): string => {
+  if (!reserves || !tokenA?.decimals || !tokenB?.decimals) return '-';
+
   try {
     const amountAInput =
       form.amountAExact && form.amountAExact.length > 0
@@ -52,11 +54,11 @@ const computeLpTokens = (
       reserves.totalSupplyWei
     );
 
-    const lpTokensFormatted = formatUnits(lpTokensWei, 18);
-    return lpTokensWei > 0n ? formatNumber(lpTokensFormatted, 6) : "0";
+    // Use Uniswap-style formatting with proper handling of small values
+    return formatTokenAmount(lpTokensWei, 18, NumberType.LPToken);
   } catch (error) {
     console.warn("[liquidity] failed to compute LP tokens", error);
-    return "0";
+    return '-';
   }
 };
 
@@ -65,14 +67,15 @@ const computeRate = (
   denominator: TokenDescriptor | null,
   numeratorReserve: bigint,
   denominatorReserve: bigint
-) => {
+): string => {
   if (!numerator?.decimals || !denominator?.decimals) return "—";
   if (denominatorReserve === 0n || numeratorReserve === 0n) return "—";
 
   const oneUnit = parseUnits("1", numerator.decimals);
   const rateWei = (oneUnit * denominatorReserve) / numeratorReserve;
-  const formatted = formatUnits(rateWei, denominator.decimals);
-  return formatNumber(formatted, Math.min(6, denominator.decimals));
+
+  // Use Uniswap-style formatting for token amounts
+  return formatTokenAmount(rateWei, denominator.decimals, NumberType.TokenNonTx);
 };
 
 export function LiquidityConfirmDialog({
@@ -208,7 +211,7 @@ export function LiquidityConfirmDialog({
                     {liquidityTokenA?.symbol ?? "Token A"}
                   </span>
                   <span style={{ fontWeight: 600 }}>
-                    {formatNumber(liquidityForm.amountA, 6)}
+                    {formatNumber({ input: liquidityForm.amountA, type: NumberType.TokenTx })}
                   </span>
                 </div>
                 <div
@@ -225,7 +228,7 @@ export function LiquidityConfirmDialog({
                     {liquidityTokenB?.symbol ?? "Token B"}
                   </span>
                   <span style={{ fontWeight: 600 }}>
-                    {formatNumber(liquidityForm.amountB, 6)}
+                    {formatNumber({ input: liquidityForm.amountB, type: NumberType.TokenTx })}
                   </span>
                 </div>
               </div>
