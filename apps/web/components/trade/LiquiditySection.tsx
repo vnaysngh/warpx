@@ -226,9 +226,7 @@ function LiquidityAddForm({
             <span className={styles.helper}>
               Balance:{" "}
               {liquidityTokenA
-                ? `${formatBalance(tokenABalanceFormatted)}${
-                    tokenASymbol ? ` ${tokenASymbol}` : ""
-                  }`
+                ? formatBalance(tokenABalanceFormatted)
                 : "—"}
             </span>
             {liquidityTokenA && tokenABalanceFormatted && (
@@ -295,9 +293,7 @@ function LiquidityAddForm({
             <span className={styles.helper}>
               Balance:{" "}
               {liquidityTokenB
-                ? `${formatBalance(tokenBBalanceFormatted)}${
-                    tokenBSymbol ? ` ${tokenBSymbol}` : ""
-                  }`
+                ? formatBalance(tokenBBalanceFormatted)
                 : "—"}
             </span>
             {liquidityTokenB && tokenBBalanceFormatted && (

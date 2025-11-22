@@ -326,7 +326,7 @@ async function fetchPoolsData(params: UsePoolsParams): Promise<PoolData[]> {
 
     const hasUsdValue = Number.isFinite(totalUsd) && totalUsd > 0;
     const totalLiquidityValue = hasUsdValue ? totalUsd : null;
-    const hasVolumeValue = Number.isFinite(volumeUsd) && volumeUsd > 0;
+    const hasVolumeValue = Number.isFinite(volumeUsd);
     const totalVolumeValue = hasVolumeValue ? volumeUsd : null;
 
     // Parse totalSupply from the pair data
