@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JsonRpcProvider } from "ethers";
 import { formatUnits, parseUnits, MaxUint256 } from "ethers";
+import { CurrencyAmount } from "@megaeth/warp-sdk-core";
+import { Route, Trade } from "@megaeth/warp-v2-sdk";
 import type { Address } from "viem";
 import { useBalance } from "wagmi";
 import {
@@ -13,10 +15,12 @@ import { warpRouterAbi } from "@/lib/abis/router";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
+import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 import { SwapCard } from "./SwapCard";
 import {
   DEFAULT_SLIPPAGE_BPS,
   DEFAULT_TOKEN_DECIMALS,
+  TOKEN_CATALOG,
   MEGAETH_CHAIN_ID,
   SWAP_DEFAULT
 } from "@/lib/trade/constants";
@@ -133,6 +137,8 @@ export function SwapContainer({
     in: string | null;
     out: string | null;
   }>({ in: null, out: null });
+  const tokenMetadataCacheRef = useRef<Map<string, TokenDescriptor>>(new Map());
+  const factoryAddressRef = useRef<string | null>(null);
 
   const ensureWallet = useMemo(
     () =>
@@ -195,6 +201,170 @@ export function SwapContainer({
   const swapToastVisuals = useMemo(
     () => buildToastVisuals("swap", selectedIn, selectedOut),
     [selectedIn, selectedOut]
+  );
+
+  useEffect(() => {
+    factoryAddressRef.current = null;
+  }, [routerAddress]);
+
+  const resolveTokenDescriptor = useCallback(
+    async (address: string): Promise<TokenDescriptor | null> => {
+      if (!address) {
+        return null;
+      }
+
+      const normalized = address.toLowerCase();
+      if (tokenMetadataCacheRef.current.has(normalized)) {
+        return tokenMetadataCacheRef.current.get(normalized)!;
+      }
+
+      const matchFromDescriptor = (
+        descriptor?: TokenDescriptor | null
+      ): TokenDescriptor | null => {
+        if (!descriptor) {
+          return null;
+        }
+        if (descriptor.address.toLowerCase() === normalized) {
+          return descriptor;
+        }
+        if (
+          descriptor.wrappedAddress &&
+          descriptor.wrappedAddress.toLowerCase() === normalized
+        ) {
+          return {
+            ...descriptor,
+            address: descriptor.wrappedAddress,
+            isNative: false
+          };
+        }
+        return null;
+      };
+
+      const selectionMatch =
+        matchFromDescriptor(selectedIn) ?? matchFromDescriptor(selectedOut);
+      if (selectionMatch) {
+        tokenMetadataCacheRef.current.set(normalized, selectionMatch);
+        return selectionMatch;
+      }
+
+      for (const catalogToken of TOKEN_CATALOG) {
+        const catalogMatch = matchFromDescriptor(catalogToken);
+        if (catalogMatch) {
+          tokenMetadataCacheRef.current.set(normalized, catalogMatch);
+          return catalogMatch;
+        }
+      }
+
+      try {
+        const tokenContract = getToken(address, readProvider);
+        const [decimals, symbol, name] = await Promise.all([
+          tokenContract.decimals(),
+          tokenContract.symbol().catch(() => ""),
+          tokenContract.name().catch(() => "")
+        ]);
+
+        const descriptor: TokenDescriptor = {
+          address,
+          decimals,
+          symbol: symbol || "TKN",
+          name: name || address
+        };
+        tokenMetadataCacheRef.current.set(normalized, descriptor);
+        return descriptor;
+      } catch (error) {
+        console.error(`Failed to load token metadata for ${address}`, error);
+        return null;
+      }
+    },
+    [readProvider, selectedIn, selectedOut]
+  );
+
+  const getFactoryAddress = useCallback(async () => {
+    if (!routerAddress) {
+      return null;
+    }
+
+    if (factoryAddressRef.current) {
+      return factoryAddressRef.current;
+    }
+
+    try {
+      const factoryAddress = (await readContract(wagmiConfig, {
+        address: routerAddress as `0x${string}`,
+        abi: warpRouterAbi,
+        functionName: "factory",
+        chainId: Number(MEGAETH_CHAIN_ID)
+      })) as `0x${string}`;
+      factoryAddressRef.current = factoryAddress;
+      return factoryAddress;
+    } catch (error) {
+      console.error("Failed to fetch factory address:", error);
+      return null;
+    }
+  }, [routerAddress]);
+
+  const calculatePriceImpact = useCallback(
+    async (amountInWei: bigint, path: `0x${string}`[]) => {
+      if (!path.length || path.length < 2) {
+        return null;
+      }
+
+      const factoryAddress = await getFactoryAddress();
+      if (!factoryAddress) {
+        return null;
+      }
+
+      try {
+        const descriptors: TokenDescriptor[] = [];
+        for (const tokenAddress of path) {
+          const descriptor = await resolveTokenDescriptor(tokenAddress);
+          if (!descriptor) {
+            return null;
+          }
+          descriptors.push(descriptor);
+        }
+
+        const sdkTokens = descriptors.map(toSdkToken);
+        const pairs = [];
+        for (let i = 0; i < sdkTokens.length - 1; i += 1) {
+          const pair = await fetchPair(
+            sdkTokens[i],
+            sdkTokens[i + 1],
+            readProvider,
+            factoryAddress
+          );
+          if (!pair) {
+            return null;
+          }
+          pairs.push(pair);
+        }
+
+        if (!pairs.length) {
+          return null;
+        }
+
+        const route = new Route(
+          pairs,
+          sdkTokens[0],
+          sdkTokens[sdkTokens.length - 1]
+        );
+        const inputAmount = CurrencyAmount.fromRawAmount(
+          sdkTokens[0],
+          amountInWei
+        );
+        const trade = Trade.exactIn(route, inputAmount);
+        const percentString = trade.priceImpact.multiply(100).toFixed(4);
+        const impactPercent = Number(percentString);
+        if (Number.isNaN(impactPercent)) {
+          return null;
+        }
+        return impactPercent;
+      } catch (error) {
+        console.error("Price impact calculation failed:", error);
+        return null;
+      }
+    },
+    [getFactoryAddress, readProvider, resolveTokenDescriptor]
   );
 
   const parsedSwapAmountWei = useMemo(() => {
@@ -273,9 +443,11 @@ export function SwapContainer({
     setCheckingAllowance(false);
     setIsCalculatingQuote(false);
     setIsExactOutput(false);
+    setPriceImpact(null);
   }, [selectedIn?.address, selectedOut?.address]);
 
   useEffect(() => {
+    let isCancelled = false;
     if (quoteDebounceTimerRef.current) {
       clearTimeout(quoteDebounceTimerRef.current);
     }
@@ -291,6 +463,7 @@ export function SwapContainer({
       setSwapQuote(null);
       setSwapForm((prev) => ({ ...prev, minOut: "" }));
       setIsCalculatingQuote(false);
+      setPriceImpact(null);
       return;
     }
 
@@ -299,6 +472,7 @@ export function SwapContainer({
 
       if (!amountInForQuote || Number(amountInForQuote) <= 0) {
         setIsCalculatingQuote(false);
+        setPriceImpact(null);
         return;
       }
 
@@ -310,6 +484,7 @@ export function SwapContainer({
         const amountInWei = parseUnits(amountInForQuote, decimalsIn);
         if (amountInWei <= 0n) {
           setIsCalculatingQuote(false);
+          setPriceImpact(null);
           return;
         }
 
@@ -317,6 +492,7 @@ export function SwapContainer({
           setIsCalculatingQuote(false);
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
+          setPriceImpact(null);
           return;
         }
 
@@ -332,6 +508,7 @@ export function SwapContainer({
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
           setSwapHasLiquidity(false);
+          setPriceImpact(null);
           return;
         }
 
@@ -340,7 +517,6 @@ export function SwapContainer({
           outputAddress as `0x${string}`
         ];
 
-        // OPTIMIZATION: Only fetch quote (1 RPC call) - skip price impact to reduce load
         const amounts = (await readContract(wagmiConfig, {
           address: routerAddress as `0x${string}`,
           abi: warpRouterAbi,
@@ -356,6 +532,7 @@ export function SwapContainer({
           setSwapQuote(null);
           setSwapForm((prev) => ({ ...prev, minOut: "" }));
           setSwapHasLiquidity(false);
+          setPriceImpact(null);
           return;
         }
 
@@ -363,8 +540,10 @@ export function SwapContainer({
         // Price impact warnings are shown in the UI, but swaps are never blocked
         setSwapHasLiquidity(true);
 
-        // Price impact calculation disabled to reduce RPC calls
-        setPriceImpact(null);
+        const impact = await calculatePriceImpact(amountInWei, path);
+        if (!isCancelled) {
+          setPriceImpact(impact);
+        }
 
         const outputExact = formatUnits(amountOutWei, decimalsOut);
         const limitedOut = formatNumber(outputExact, Math.min(6, decimalsOut));
@@ -396,6 +575,7 @@ export function SwapContainer({
     }, 500);
 
     return () => {
+      isCancelled = true;
       if (quoteDebounceTimerRef.current) {
         clearTimeout(quoteDebounceTimerRef.current);
       }
@@ -408,7 +588,8 @@ export function SwapContainer({
     selectedOut,
     swapInIsNative,
     swapOutIsNative,
-    wrappedNativeAddress
+    wrappedNativeAddress,
+    calculatePriceImpact
   ]);
 
   useEffect(() => {
@@ -619,6 +800,7 @@ export function SwapContainer({
       amountInExact: swapInBalanceFormatted
     }));
     swapEditingFieldRef.current = "amountIn";
+    setPriceImpact(null);
   }, [swapInBalanceFormatted]);
 
   const handleSwapAmountInChange = useCallback(
@@ -667,6 +849,7 @@ export function SwapContainer({
         ...prev,
         minOut: normalized
       }));
+      setPriceImpact(null);
     },
     [swapOutDecimals]
   );
@@ -1016,6 +1199,7 @@ export function SwapContainer({
       setIsCalculatingQuote(false);
       setSwapHasLiquidity(null);
       setIsExactOutput(false);
+      setPriceImpact(null);
       onRequestRefresh();
       if (!swapInIsNative) {
         setAllowanceNonce((n) => n + 1);

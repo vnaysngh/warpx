@@ -61,7 +61,8 @@ export function SwapCard({
   transactionStatus
 }: SwapCardProps) {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
-
+  const priceImpactMagnitude =
+    typeof priceImpact === "number" ? Math.abs(priceImpact) : null;
   return (
     <section className={styles.card}>
       <div className={styles.swapPanel}>
@@ -271,7 +272,9 @@ export function SwapCard({
                     fill="none"
                     className={styles.swapSummaryChevron}
                     style={{
-                      transform: isDetailsExpanded ? "rotate(180deg)" : "rotate(0deg)"
+                      transform: isDetailsExpanded
+                        ? "rotate(180deg)"
+                        : "rotate(0deg)"
                     }}
                   >
                     <path
@@ -294,6 +297,29 @@ export function SwapCard({
                     {minReceived} {selectedOut.symbol}
                   </span>
                 </div>
+                {priceImpact !== null && (
+                  <div className={styles.swapDetailRow}>
+                    <span className={styles.swapDetailLabel}>Price impact</span>
+                    <span
+                      className={styles.swapDetailValue}
+                      style={{
+                        color:
+                          priceImpactMagnitude !== null &&
+                          priceImpactMagnitude >= 5
+                            ? "#ff4d4d"
+                            : priceImpactMagnitude !== null &&
+                                priceImpactMagnitude >= 3
+                              ? "#ff9500"
+                              : priceImpact !== null && priceImpact > 0
+                                ? "#4ade80"
+                                : "inherit"
+                      }}
+                    >
+                      {priceImpact > 0 ? "+" : ""}
+                      {priceImpact.toFixed(2)}%
+                    </span>
+                  </div>
+                )}
                 {slippage && (
                   <div className={styles.swapDetailRow}>
                     <span className={styles.swapDetailLabel}>Slippage</span>
@@ -309,20 +335,20 @@ export function SwapCard({
           </>
         )}
 
-        {priceImpact !== null && priceImpact > 0.01 && (
+        {priceImpactMagnitude !== null && priceImpactMagnitude >= 3 && (
           <div
             className={styles.exchangeRate}
             style={{
               color:
-                priceImpact >= 5
+                priceImpactMagnitude >= 5
                   ? "#ff4d4d"
-                  : priceImpact >= 3
-                    ? "#ff9500"
-                    : "#888",
-              fontWeight: priceImpact >= 3 ? "500" : "400"
+                  : "#ff9500",
+              fontWeight: "500"
             }}
           >
-            Price impact: {priceImpact.toFixed(2)}%{priceImpact >= 5 && " ⚠️"}
+            Price impact: {priceImpact! > 0 ? "+" : ""}
+            {priceImpact!.toFixed(2)}%
+            {priceImpactMagnitude >= 5 && " ⚠️"}
           </div>
         )}
       </div>
