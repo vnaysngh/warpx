@@ -1339,11 +1339,28 @@ export function SwapContainer({
     [formatPercent]
   );
 
+  const isAmountInComplete = useMemo(() => {
+    const value = swapForm.amountInExact ?? swapForm.amountIn;
+    if (!value || value === "." || value.endsWith(".")) {
+      return false;
+    }
+    return Number(value) > 0;
+  }, [swapForm.amountIn, swapForm.amountInExact]);
+
+  const isMinOutComplete = useMemo(() => {
+    if (!isExactOutput) return true;
+    const value = swapForm.minOut;
+    if (!value || value === "." || value.endsWith(".")) {
+      return false;
+    }
+    return Number(value) > 0;
+  }, [isExactOutput, swapForm.minOut]);
+
   const swapFormReady =
     isAddress(swapForm.tokenIn) &&
     isAddress(swapForm.tokenOut) &&
-    !!swapForm.amountIn &&
-    Number(swapForm.amountIn) > 0;
+    isAmountInComplete &&
+    isMinOutComplete;
 
   let swapButtonLabel = "Swap";
   let swapButtonDisabled = false;
