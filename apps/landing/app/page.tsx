@@ -94,7 +94,15 @@ export default function LandingPage() {
         <footer className={styles.footer}>
           <div className={styles.footerContent}>
             <p className={styles.footerText}>
-              Built on MegaETH Testnet • Early Access
+              Built on MegaETH Testnet • Early Access •{" "}
+              <a
+                href="https://docs.warpx.exchange/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.footerLink}
+              >
+                Docs
+              </a>
             </p>
             <div className={styles.socialLinks}>
               <a

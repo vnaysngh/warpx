@@ -59,7 +59,16 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 Built on MegaETH Testnet •{" "}
                 <button onClick={addNetwork} className={styles.footerLink}>
                   Add Network
-                </button>
+                </button>{" "}
+                •{" "}
+                <a
+                  href="https://docs.warpx.exchange/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.footerLink}
+                >
+                  Docs
+                </a>
               </p>
             </div>
             <div className={styles.socialLinks}>

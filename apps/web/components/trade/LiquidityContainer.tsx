@@ -765,6 +765,23 @@ export function LiquidityContainer({
     formatDisplayNumber
   ]);
 
+  const isAmountComplete = (value: string | null | undefined) => {
+    if (!value) return false;
+    if (value === "." || value.endsWith(".")) return false;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0;
+  };
+
+  const liquidityAmountAComplete = useMemo(() => {
+    const source = liquidityForm.amountAExact ?? liquidityForm.amountA;
+    return isAmountComplete(source);
+  }, [liquidityForm.amountA, liquidityForm.amountAExact]);
+
+  const liquidityAmountBComplete = useMemo(() => {
+    const source = liquidityForm.amountBExact ?? liquidityForm.amountB;
+    return isAmountComplete(source);
+  }, [liquidityForm.amountB, liquidityForm.amountBExact]);
+
   const liquidityTokensReady =
     isAddress(liquidityTokenAAddress) &&
     isAddress(liquidityTokenBAddress) &&
@@ -772,7 +789,7 @@ export function LiquidityContainer({
       liquidityTokenBAddress.toLowerCase();
 
   const liquidityAmountsReady =
-    !!liquidityForm.amountA && !!liquidityForm.amountB;
+    liquidityAmountAComplete && liquidityAmountBComplete;
 
   const applyLiquidityAmountA = useCallback(
     (value: string, exactValue?: string | null) => {
