@@ -675,9 +675,10 @@ export function SwapContainer({
           setReverseQuote(null);
           setSwapForm((prev) => ({
             ...prev,
-            amountIn: "",
-            amountInExact: null
+            maxInput: ""
           }));
+          setSwapHasLiquidity(false);
+          setPriceImpact(null);
           return;
         }
 
@@ -707,11 +708,18 @@ export function SwapContainer({
           const impact = await calculatePriceImpact(amountNeededWei, path);
           setPriceImpact(impact);
         }
+        setSwapHasLiquidity(true);
         setIsCalculatingQuote(false);
       } catch (err) {
         // Any error from getAmountsIn is treated as insufficient liquidity
         // This is an expected state, not an error, so we silently handle it
         setReverseQuote(null);
+        setSwapForm((prev) => ({
+          ...prev,
+          maxInput: ""
+        }));
+        setSwapHasLiquidity(false);
+        setPriceImpact(null);
         setIsCalculatingQuote(false);
       }
     }, 500);
@@ -860,10 +868,26 @@ export function SwapContainer({
 
       swapEditingFieldRef.current = "minOut";
       setIsExactOutput(true);
-      setSwapForm((prev) => ({
-        ...prev,
-        minOut: normalized
-      }));
+      setSwapForm((prev) => {
+        if (!normalized) {
+          // Clearing the receive side should clear the sell side as well
+          return {
+            ...prev,
+            minOut: "",
+            amountIn: "",
+            amountInExact: null,
+            maxInput: ""
+          };
+        }
+        return {
+          ...prev,
+          minOut: normalized
+        };
+      });
+      if (!normalized) {
+        setReverseQuote(null);
+        setSwapHasLiquidity(null);
+      }
       setPriceImpact(null);
     },
     [swapOutDecimals]
@@ -908,11 +932,7 @@ export function SwapContainer({
         type: "idle"
       });
     },
-    [
-      routerAddress,
-      swapForm.tokenIn,
-      swapInIsNative
-    ]
+    [routerAddress, swapForm.tokenIn, swapInIsNative]
   );
 
   const ensureSufficientAllowance = useCallback(
@@ -934,7 +954,7 @@ export function SwapContainer({
       await requestRouterApproval(account);
 
       // Wait briefly for the approval to be indexed
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Verify approval using wagmi instead of ethers for better reliability
       try {
@@ -1384,7 +1404,13 @@ export function SwapContainer({
   const swapSummaryMessage = useMemo(() => {
     // Works with both forward quote (swapQuote) and reverse quote (reverseQuote)
     const hasQuote = swapQuote || reverseQuote;
-    if (!hasQuote || !swapForm.amountIn || !swapForm.minOut || !selectedIn || !selectedOut) {
+    if (
+      !hasQuote ||
+      !swapForm.amountIn ||
+      !swapForm.minOut ||
+      !selectedIn ||
+      !selectedOut
+    ) {
       return null;
     }
 
