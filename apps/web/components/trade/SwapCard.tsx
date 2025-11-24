@@ -7,6 +7,7 @@ import type {
   TokenDialogSlot
 } from "@/lib/trade/types";
 import styles from "@/app/page.module.css";
+import { formatValueWithLocale } from "@/lib/utils/input";
 
 type SwapCardProps = {
   swapForm: SwapFormState;
@@ -35,6 +36,7 @@ type SwapCardProps = {
     message: string;
     type: "idle" | "pending" | "success" | "error";
   } | null;
+  locale: string;
 };
 
 export function SwapCard({
@@ -60,11 +62,17 @@ export function SwapCard({
   buttonLabel,
   buttonDisabled,
   onButtonClick,
-  transactionStatus
+  transactionStatus,
+  locale
 }: SwapCardProps) {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const priceImpactMagnitude =
     typeof priceImpact === "number" ? Math.abs(priceImpact) : null;
+
+  // Format values with locale-specific decimal separator for display
+  // Following Uniswap's approach: show comma for de-DE, but store period internally
+  const displayAmountIn = formatValueWithLocale(swapForm.amountIn, locale);
+  const displayReceiveValue = formatValueWithLocale(receiveValue, locale);
   return (
     <section className={styles.card}>
       <div className={styles.swapPanel}>
@@ -110,7 +118,7 @@ export function SwapCard({
               minLength={1}
               maxLength={79}
               spellCheck="false"
-              value={swapForm.amountIn}
+              value={displayAmountIn}
               onChange={(event) => onAmountInChange(event.target.value)}
             />
           </div>
@@ -214,11 +222,11 @@ export function SwapCard({
               autoComplete="off"
               autoCorrect="off"
               pattern="^[0-9]*[.,]?[0-9]*$"
-              placeholder={swapQuote ? swapQuote.amount : "0.0"}
+              placeholder={swapQuote ? formatValueWithLocale(swapQuote.amount, locale) : "0.0"}
               minLength={1}
               maxLength={79}
               spellCheck="false"
-              value={receiveValue}
+              value={displayReceiveValue}
               onChange={(event) => onMinOutChange(event.target.value)}
             />
           </div>

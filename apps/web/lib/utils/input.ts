@@ -1,4 +1,24 @@
 /**
+ * Check if a locale uses comma as decimal separator
+ * Based on Uniswap's implementation
+ */
+export function localeUsesComma(locale: string): boolean {
+  const decimalSeparator = new Intl.NumberFormat(locale).format(1.1)[1];
+  return decimalSeparator === ',';
+}
+
+/**
+ * Format value with locale-specific decimal separator for display
+ * Converts period to comma for locales that use comma
+ */
+export function formatValueWithLocale(value: string, locale: string): string {
+  if (localeUsesComma(locale)) {
+    return value.replace(/\./g, ',');
+  }
+  return value;
+}
+
+/**
  * Helper function to escape regex special characters
  * This is used to safely test user input against regex patterns
  */

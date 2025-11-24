@@ -109,7 +109,8 @@ export function SwapContainer({
   const {
     formatNumber: formatDisplayNumber,
     formatPercent,
-    formatBalanceDisplay
+    formatBalanceDisplay,
+    locale
   } = useLocalization();
   const [swapForm, setSwapForm] = useState<SwapFormState>({
     ...SWAP_DEFAULT,
@@ -630,7 +631,9 @@ export function SwapContainer({
       const symbolOut = selectedOut?.symbol ?? "TOKEN";
 
       try {
-        const desiredOutWei = parseUnits(swapForm.minOut, decimalsOut);
+        // Convert any commas to periods before parsing (Uniswap approach)
+        const normalizedMinOut = swapForm.minOut.replace(/,/g, '.');
+        const desiredOutWei = parseUnits(normalizedMinOut, decimalsOut);
         if (desiredOutWei <= 0n) {
           setIsCalculatingQuote(false);
           return;
@@ -1043,7 +1046,9 @@ export function SwapContainer({
         }
       }
 
-      const minOutWei = parseUnits(minOut, decimalsOut);
+      // Convert any commas to periods before parsing (Uniswap approach)
+      const normalizedMinOut = minOut.replace(/,/g, '.');
+      const minOutWei = parseUnits(normalizedMinOut, decimalsOut);
       if (minOutWei <= 0n) {
         showError("Enter a valid minimum output amount.");
         setIsSubmitting(false);
@@ -1498,6 +1503,7 @@ export function SwapContainer({
       buttonDisabled={swapButtonDisabled}
       onButtonClick={swapButtonAction}
       transactionStatus={transactionStatus}
+      locale={locale}
     />
   );
 }
