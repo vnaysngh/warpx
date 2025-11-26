@@ -3,7 +3,6 @@ import type {
   TokenDescriptor,
   TokenDialogSlot
 } from "@/lib/trade/types";
-import styles from "@/app/page.module.css";
 import { useLocalization } from "@/lib/format/LocalizationContext";
 import { NumberType, formatTokenAmount } from "@/lib/format/formatNumbers";
 import { parseUnits } from "ethers";
@@ -179,8 +178,12 @@ function LiquidityAddForm({
   liquidityPairReserves,
   lpTokenInfo,
   transactionStatus
-}: LiquidityAddProps & { tokenSelectionEnabled: boolean; buttonVariant?: "default" | "highlight" }) {
-  const { formatNumber: formatDisplayNumber, formatPercent } = useLocalization();
+}: LiquidityAddProps & {
+  tokenSelectionEnabled: boolean;
+  buttonVariant?: "default" | "highlight";
+}) {
+  const { formatNumber: formatDisplayNumber, formatPercent } =
+    useLocalization();
 
   // Calculate exchange rate (reserveB / reserveA)
   const exchangeRate =
@@ -239,17 +242,6 @@ function LiquidityAddForm({
     }
   })();
 
-  // Calculate TVL (reserveA + reserveB values - placeholder, needs price data)
-  const tvlDisplay = liquidityPairReserves
-    ? `${formatDisplayNumber({
-        input: liquidityPairReserves.reserveA,
-        type: NumberType.TokenNonTx
-      })} ${tokenASymbol} + ${formatDisplayNumber({
-        input: liquidityPairReserves.reserveB,
-        type: NumberType.TokenNonTx
-      })} ${tokenBSymbol}`
-    : "—";
-
   // Check transaction status FIRST - override button label and disabled state
   let finalButtonLabel = buttonLabel;
   let finalButtonDisabled = buttonDisabled;
@@ -265,16 +257,50 @@ function LiquidityAddForm({
     finalButtonDisabled = true;
   }
 
-  const primaryButtonClass = [
-    styles.primaryButton,
-    styles.primaryFull,
-    buttonVariant === "highlight" ? styles.primaryButtonHighlight : ""
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
     <div className="space-y-4">
+      {/* Token selection row (only when enabled, e.g. create pool page) */}
+      {tokenSelectionEnabled && (
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={() => onOpenTokenDialog("liquidityA")}
+            className="h-10 w-full border border-border bg-card/70 px-3 flex items-center justify-between font-mono text-xs uppercase tracking-[0.25em] hover:border-primary/60 hover:bg-card/90 transition-colors"
+          >
+            <span className="text-muted-foreground">Token A</span>
+            <span className="flex items-center gap-2 text-foreground font-bold">
+              {liquidityTokenA?.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={liquidityTokenA.logo}
+                  alt={tokenASymbol ?? "Token A"}
+                  className="h-5 w-5 rounded-full border border-border object-cover"
+                />
+              ) : null}
+              <span>{tokenASymbol ?? "Select"}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenTokenDialog("liquidityB")}
+            className="h-10 w-full border border-border bg-card/70 px-3 flex items-center justify-between font-mono text-xs uppercase tracking-[0.25em] hover:border-primary/60 hover:bg-card/90 transition-colors"
+          >
+            <span className="text-muted-foreground">Token B</span>
+            <span className="flex items-center gap-2 text-foreground font-bold">
+              {liquidityTokenB?.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={liquidityTokenB.logo}
+                  alt={tokenBSymbol ?? "Token B"}
+                  className="h-5 w-5 rounded-full border border-border object-cover"
+                />
+              ) : null}
+              <span>{tokenBSymbol ?? "Select"}</span>
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Token Inputs - Side by Side */}
       <div className="grid grid-cols-2 gap-4">
         {/* Token A */}
@@ -339,9 +365,7 @@ function LiquidityAddForm({
           <div className="text-xs text-muted-foreground font-mono mb-1">
             RATE
           </div>
-          <div className="text-sm font-mono font-bold">
-            1 {tokenASymbol}
-          </div>
+          <div className="text-sm font-mono font-bold">1 {tokenASymbol}</div>
           <div className="text-xs text-foreground font-mono">
             {exchangeRate} {tokenBSymbol}
           </div>
@@ -353,18 +377,14 @@ function LiquidityAddForm({
           <div className="text-sm font-mono font-bold text-primary">
             {lpTokensDisplay}
           </div>
-          <div className="text-xs text-foreground font-mono">
-            to receive
-          </div>
+          <div className="text-xs text-foreground font-mono">to receive</div>
         </div>
         <div className="bg-card p-3 border border-border">
           <div className="text-xs text-muted-foreground font-mono mb-1">
             GAS
           </div>
           <div className="text-sm font-mono font-bold">&lt; $0.01</div>
-          <div className="text-xs text-foreground font-mono">
-            on MegaETH
-          </div>
+          <div className="text-xs text-foreground font-mono">on MegaETH</div>
         </div>
       </div>
 
@@ -406,13 +426,12 @@ function LiquidityRemoveForm({
   tokenSelectionEnabled,
   transactionStatus
 }: LiquidityRemoveProps & { tokenSelectionEnabled: boolean }) {
-  const {
-    formatNumber: formatDisplayNumber,
-    formatPercent
-  } = useLocalization();
+  const { formatNumber: formatDisplayNumber, formatPercent } =
+    useLocalization();
   // Check transaction status FIRST - override button label and disabled state
   let buttonLabel = isSubmitting ? "Removing..." : "Remove Liquidity";
-  let buttonDisabled = !ready ||
+  let buttonDisabled =
+    !ready ||
     isSubmitting ||
     !liquidityPairReserves ||
     !lpTokenInfo ||
@@ -441,21 +460,18 @@ function LiquidityRemoveForm({
             {formatDisplayNumber({
               input: lpTokenInfo.balance,
               type: NumberType.TokenNonTx
-            })} LP
+            })}{" "}
+            LP
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm font-mono">
             <div>
-              <div className="text-muted-foreground text-xs mb-1">
-                Token 0
-              </div>
+              <div className="text-muted-foreground text-xs mb-1">Token 0</div>
               <div className="font-bold">
                 {userPooledAmounts.amountA} {liquidityTokenA?.symbol}
               </div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs mb-1">
-                Token 1
-              </div>
+              <div className="text-muted-foreground text-xs mb-1">Token 1</div>
               <div className="font-bold">
                 {userPooledAmounts.amountB} {liquidityTokenB?.symbol}
               </div>
@@ -476,7 +492,9 @@ function LiquidityRemoveForm({
           min="1"
           max="100"
           value={removeLiquidityPercent}
-          onChange={(event) => onRemoveLiquidityPercentChange(event.target.value)}
+          onChange={(event) =>
+            onRemoveLiquidityPercentChange(event.target.value)
+          }
           className="w-full h-2 mb-4 appearance-none cursor-pointer"
           style={{
             background: `linear-gradient(to right, hsl(336 70% 65%) 0%, hsl(336 70% 65%) ${removeLiquidityPercent}%, hsl(0 0% 16%) ${removeLiquidityPercent}%, hsl(0 0% 16%) 100%)`

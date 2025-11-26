@@ -83,10 +83,19 @@ export default function CreatePoolPage() {
 
   useEffect(() => {
     setHasMounted(true);
-    // Initialize tokenB to null on mount only
-    setLiquidityTokenB(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const [hasClearedTokenB, setHasClearedTokenB] = useState(false);
+
+  useEffect(() => {
+    if (hasClearedTokenB) return;
+    if (liquidityTokenB !== null) {
+      setLiquidityTokenB(null);
+    }
+    setHasClearedTokenB(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liquidityTokenB, hasClearedTokenB]);
 
   useEffect(() => {
     if (!tokenDialogOpen) return;

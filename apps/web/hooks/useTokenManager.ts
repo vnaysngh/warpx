@@ -279,22 +279,40 @@ export function useTokenManager(
         setTokenList((prev) => {
           const merged = new Map<string, TokenDescriptor>();
 
-          const addToken = (entry: TokenDescriptor | TokenManifestEntry) => {
+          const addOrMergeToken = (
+            entry: TokenDescriptor | TokenManifestEntry
+          ) => {
             const descriptor = mapTokenEntry(
               entry,
               nativeSymbol,
               wrappedNativeAddress
             );
-            if (!descriptor) return;
+            if (!descriptor?.address) return;
+
             const key = descriptor.address.toLowerCase();
-            if (!merged.has(key)) {
+            const existing = merged.get(key);
+
+            if (!existing) {
               merged.set(key, descriptor);
+              return;
             }
+
+            // Merge, letting manifest / later sources fill in missing visuals
+            merged.set(key, {
+              ...existing,
+              ...descriptor,
+              logo: descriptor.logo ?? existing.logo
+            });
           };
 
-          prev.forEach(addToken);
-          TOKEN_CATALOG.forEach((token) => addToken(token as TokenDescriptor));
-          manifest.tokens?.forEach((token) => addToken(token));
+          // Start from previous list to preserve any runtime-added tokens
+          prev.forEach((token) => addOrMergeToken(token));
+          // Ensure catalog tokens are present
+          TOKEN_CATALOG.forEach((token) =>
+            addOrMergeToken(token as TokenDescriptor)
+          );
+          // Let manifest tokens override / enrich existing entries (e.g. add logos)
+          manifest.tokens?.forEach((token) => addOrMergeToken(token));
 
           const tokensArray = Array.from(merged.values());
           tokensArray.sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -409,7 +427,6 @@ export function useTokenManager(
     const nextOutAddr = nextSelectedOut?.address?.toLowerCase() ?? null;
     const nextAAddr = nextTokenA?.address?.toLowerCase() ?? null;
     const nextBAddr = nextTokenB?.address?.toLowerCase() ?? null;
-
     // Sync selected tokens when token list changes - intentional state updates
     if (lastAddrs.selectedIn !== nextInAddr) {
       setSelectedIn(nextSelectedIn);
@@ -427,6 +444,9 @@ export function useTokenManager(
     if (lastAddrs.liquidityB !== nextBAddr && nextTokenB) {
       setLiquidityTokenB(nextTokenB);
       lastSetAddresses.current.liquidityB = nextBAddr;
+    } else if (!nextTokenB) {
+      setLiquidityTokenB(null);
+      lastSetAddresses.current.liquidityB = null;
     }
   }, [tokenList]);
 

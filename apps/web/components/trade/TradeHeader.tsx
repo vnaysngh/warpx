@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type RefObject, useState } from "react";
 import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
-import { Radio, Activity } from "lucide-react";
+import { Radio, Activity, ArrowRight } from "lucide-react";
 
 type NavKey = "swap" | "pools" | "analytics";
 
@@ -81,7 +81,7 @@ export function TradeHeader({
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-8 h-8 bg-primary text-black flex items-center justify-center font-bold font-display text-xl skew-x-[-10deg] group-hover:skew-x-0 transition-transform">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-black.png" alt="WarpX" className="w-5 h-5" />
+              <img src="/logo-black.png" alt="WarpX" className="w-6 h-6" />
             </div>
             <div className="flex flex-col">
               <span className="font-display font-bold text-lg leading-none tracking-tight">
@@ -124,36 +124,32 @@ export function TradeHeader({
                 [ {shortAccountAddress} ]
               </button>
               {isWalletMenuOpen && (
-                <div className="absolute right-0 top-12 w-56 rounded border border-border bg-surface-alt p-4 text-sm shadow-hud">
+                <div className="absolute right-0 top-12 w-56 rounded border border-border bg-surface-alt text-sm shadow-hud overflow-hidden">
                   <button
                     type="button"
                     onClick={onCopyAddress}
-                    className="flex w-full items-center justify-between rounded border border-border px-3 py-2 text-xs text-muted-foreground"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left font-mono text-sm text-white hover:bg-white/5 transition-colors"
                   >
-                    <span>{shortAccountAddress}</span>
                     {copyStatus === "copied" ? (
                       <CopySuccessIcon className="h-4 w-4 text-primary" />
                     ) : (
-                      <CopyIcon className="h-4 w-4 text-muted-foreground" />
+                      <CopyIcon className="h-4 w-4 text-white/70" />
                     )}
+                    <span>
+                      {copyStatus === "copied" ? "Copied!" : "Copy Address"}
+                    </span>
                   </button>
-                  {address && (
-                    <a
-                      href={`https://megaeth-testnet-v2.blockscout.com/address/${address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 block text-xs text-primary underline-offset-4 hover:underline"
-                    >
-                      View on explorer
-                    </a>
-                  )}
+                  <div className="h-px bg-border/60" />
                   <button
                     type="button"
                     onClick={onDisconnect}
                     disabled={isDisconnecting}
-                    className="mt-4 w-full border border-border px-3 py-2 text-xs text-white/80 transition hover:border-primary"
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left font-mono text-sm text-red-500 hover:bg-white/5 transition-colors disabled:text-muted-foreground"
                   >
-                    {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+                    <ArrowRight className="h-4 w-4" />
+                    <span>
+                      {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+                    </span>
                   </button>
                 </div>
               )}
@@ -218,22 +214,33 @@ export function TradeHeader({
                 <span>LATENCY: 0.8ms</span>
               </div>
             </div> */}
-            {showWalletActions ? (
+            {showWalletActions && hasMounted ? (
               <div className="space-y-3">
+                <div className="border border-primary/60 bg-primary/10 px-4 py-3 font-mono text-sm text-primary">
+                  {shortAccountAddress}
+                </div>
                 <button
                   type="button"
-                  onClick={onWalletButtonClick}
-                  className="w-full border border-border px-4 py-2 text-left font-mono text-xs uppercase tracking-[0.3em]"
+                  onClick={onCopyAddress}
+                  className="flex items-center gap-2 border border-border px-4 py-3 font-mono text-sm text-white hover:bg-white/5 transition-colors w-full justify-between"
                 >
-                  {shortAccountAddress}
+                  <span>Copy Address</span>
+                  {copyStatus === "copied" ? (
+                    <CopySuccessIcon className="h-4 w-4 text-primary" />
+                  ) : (
+                    <CopyIcon className="h-4 w-4 text-white/70" />
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={onDisconnect}
                   disabled={isDisconnecting}
-                  className="w-full border border-border px-4 py-2 text-left text-xs"
+                  className="flex items-center gap-2 border border-border px-4 py-3 font-mono text-sm text-red-500 hover:bg-white/5 transition-colors w-full"
                 >
-                  {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+                  <ArrowRight className="h-4 w-4" />
+                  <span>
+                    {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+                  </span>
                 </button>
               </div>
             ) : (

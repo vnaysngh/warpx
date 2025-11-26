@@ -21,7 +21,7 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-8 h-8 bg-[hsl(var(--primary))] text-black flex items-center justify-center font-bold font-display text-xl skew-x-[-10deg] group-hover:skew-x-0 transition-transform">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-black.png" alt="WarpX" className="w-5 h-5" />
+              <img src="/logo-black.png" alt="WarpX" className="w-6 h-6" />
             </div>
             <div className="flex flex-col">
               <span className="font-display font-bold text-lg leading-none tracking-tight">

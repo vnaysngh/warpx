@@ -278,11 +278,11 @@ export function LiquidityContainer({
     token: TokenDescriptor | null,
     fetchedSymbol: string | undefined
   ) => {
-    if (!token) return fetchedSymbol ?? null;
+    if (!token) return null;
     if (token.isNative) {
       return token.symbol ?? fetchedSymbol ?? null;
     }
-    return fetchedSymbol ?? token.symbol ?? null;
+    return token.symbol ?? fetchedSymbol ?? null;
   };
 
   const tokenASymbol = resolveDisplaySymbol(
