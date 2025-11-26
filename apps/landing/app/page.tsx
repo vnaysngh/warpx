@@ -153,7 +153,7 @@ export default function LandingPage() {
                     rel="noopener noreferrer"
                   >
                     <button className="h-16 px-10 border-2 border-white/20 text-lg font-bold font-mono uppercase rounded-none hover:bg-white hover:text-black tracking-wider transition-all">
-                      PROTOCOL DOCS
+                      DOCS
                     </button>
                   </a>
                 </div>
