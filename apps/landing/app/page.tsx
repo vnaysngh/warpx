@@ -162,7 +162,7 @@ export default function LandingPage() {
           </div>
 
           {/* System Status - Bottom Right */}
-          <div className="absolute bottom-12 right-12 text-right hidden md:block">
+          {/*  <div className="absolute bottom-12 right-12 text-right hidden md:block">
             <div className="font-mono text-xs text-[hsl(var(--muted-foreground))] mb-2">
               SYSTEM STATUS
             </div>
@@ -183,7 +183,7 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
       </main>
 

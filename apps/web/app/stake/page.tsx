@@ -42,8 +42,12 @@ export default function AnalyticsPage() {
     if (!poolsData || poolsData.length === 0) return [];
 
     const sorted = [...poolsData]
-      .filter((pool) => pool.totalLiquidityValue && pool.totalLiquidityValue > 0)
-      .sort((a, b) => (b.totalLiquidityValue ?? 0) - (a.totalLiquidityValue ?? 0))
+      .filter(
+        (pool) => pool.totalLiquidityValue && pool.totalLiquidityValue > 0
+      )
+      .sort(
+        (a, b) => (b.totalLiquidityValue ?? 0) - (a.totalLiquidityValue ?? 0)
+      )
       .slice(0, 4);
 
     const total = sorted.reduce(
@@ -54,12 +58,13 @@ export default function AnalyticsPage() {
     return sorted.map((pool) => ({
       name: `${pool.token0.symbol}-${pool.token1.symbol}`,
       value: pool.totalLiquidityValue ?? 0,
-      percentage: total > 0 ? ((pool.totalLiquidityValue ?? 0) / total) * 100 : 0
+      percentage:
+        total > 0 ? ((pool.totalLiquidityValue ?? 0) / total) * 100 : 0
     }));
   }, [poolsData]);
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-7xl">
+    <div className="container mx-auto px-4 py-4 max-w-7xl">
       <div className="mb-12">
         <h1 className="text-4xl font-display font-bold mb-2 uppercase">
           ANALYTICS
@@ -86,9 +91,23 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
                     <defs>
-                      <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(336, 70%, 65%)" stopOpacity={0.8} />
-                        <stop offset="100%" stopColor="hsl(336, 70%, 65%)" stopOpacity={0.1} />
+                      <linearGradient
+                        id="tvlGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="hsl(336, 70%, 65%)"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="hsl(336, 70%, 65%)"
+                          stopOpacity={0.1}
+                        />
                       </linearGradient>
                     </defs>
                     <XAxis
@@ -105,7 +124,9 @@ export default function AnalyticsPage() {
                       tickLine={false}
                     />
                     <YAxis
-                      tickFormatter={(value) => `$${formatCompactNumber(value, 1)}`}
+                      tickFormatter={(value) =>
+                        `$${formatCompactNumber(value, 1)}`
+                      }
                       stroke="hsl(var(--muted-foreground))"
                       tick={{ fontSize: 10 }}
                       axisLine={false}
@@ -171,7 +192,9 @@ export default function AnalyticsPage() {
                       tickLine={false}
                     />
                     <YAxis
-                      tickFormatter={(value) => `$${formatCompactNumber(value, 1)}`}
+                      tickFormatter={(value) =>
+                        `$${formatCompactNumber(value, 1)}`
+                      }
                       stroke="hsl(var(--muted-foreground))"
                       tick={{ fontSize: 10 }}
                       axisLine={false}

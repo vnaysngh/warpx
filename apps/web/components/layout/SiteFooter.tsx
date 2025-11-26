@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { Github, Twitter, MessageCircle } from "lucide-react";
+import { Twitter, MessageCircle, Send } from "lucide-react";
+import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { useToasts } from "@/hooks/useToasts";
 
 const MEGAETH_TESTNET = {
@@ -18,19 +19,19 @@ const MEGAETH_TESTNET = {
 
 const socialLinks = [
   {
-    href: "#",
+    href: "https://discord.gg/E7sZCw2gMS",
     label: "Discord",
-    icon: MessageCircle
+    icon: DiscordIcon
   },
   {
-    href: "#",
-    label: "GitHub",
-    icon: Github
-  },
-  {
-    href: "#",
+    href: "https://x.com/warpexchange",
     label: "Twitter",
     icon: Twitter
+  },
+  {
+    href: "https://t.me/+_300oWZNXkdjNzhl",
+    label: "Telegram",
+    icon: Send
   }
 ];
 

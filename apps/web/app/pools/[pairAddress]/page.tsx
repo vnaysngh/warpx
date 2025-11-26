@@ -446,7 +446,7 @@ export default function PoolLiquidityPage() {
         isSwitching={isSwitchingChain || poolDetailsLoading}
       />
 
-      <div className="container mx-auto px-4 py-12 max-w-6xl">
+      <div className="container mx-auto px-4 py-4 max-w-6xl">
         {/* Header */}
         <div className="mb-12 flex items-center gap-8 pb-8 border-b border-border">
           <button

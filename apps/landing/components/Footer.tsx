@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { Github, Twitter, MessageCircle } from "lucide-react";
+import { Twitter, Send } from "lucide-react";
+import { DiscordIcon } from "./DiscordIcon";
 
 const MEGAETH_TESTNET = {
   chainId: "0x18C7",
@@ -16,9 +17,9 @@ const MEGAETH_TESTNET = {
 };
 
 const socialLinks = [
-  { href: "#", label: "Discord", icon: MessageCircle },
-  { href: "#", label: "GitHub", icon: Github },
-  { href: "#", label: "Twitter", icon: Twitter }
+  { href: "https://discord.gg/E7sZCw2gMS", label: "Discord", icon: DiscordIcon },
+  { href: "https://x.com/warpexchange", label: "Twitter", icon: Twitter },
+  { href: "https://t.me/+_300oWZNXkdjNzhl", label: "Telegram", icon: Send }
 ];
 
 export function Footer() {

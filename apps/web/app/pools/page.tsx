@@ -365,7 +365,7 @@ export default function PoolsPage() {
   }, [pools]);
 
   return (
-    <div className="container mx-auto px-4 py-8 sm:py-12 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 sm:py-4 max-w-7xl">
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}
@@ -378,7 +378,7 @@ export default function PoolsPage() {
             LIQUIDITY MATRIX
           </h1>
           <p className="font-mono text-muted-foreground text-xs sm:text-sm">
-            DEPLOY CAPITAL. EARN YIELD.
+            DEPLOY CAPITAL. EARN FEES.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full md:w-auto">
