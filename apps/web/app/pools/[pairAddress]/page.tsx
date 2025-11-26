@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
 import { useAccount, useSwitchChain } from "wagmi";
+import { ArrowLeft } from "lucide-react";
 import styles from "../page.module.css";
 import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
@@ -14,10 +15,13 @@ import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
 import { usePoolDetails } from "@/hooks/usePoolDetails";
+import { usePools } from "@/hooks/usePools";
 import { megaethTestnet } from "@/lib/chains";
 import {
   MEGAETH_CHAIN_ID,
-  DEFAULT_TOKEN_DECIMALS
+  DEFAULT_TOKEN_DECIMALS,
+  FEES_DENOMINATOR,
+  FEES_NUMERATOR
 } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import type { TokenDescriptor } from "@/lib/trade/types";
@@ -35,8 +39,20 @@ const getDisplaySymbol = (token: TokenDescriptor): string => {
   if (token.isNative || token.symbol.toUpperCase() === "WMETH") {
     return "ETH";
   }
+  if (
+    token.symbol.length > 1 &&
+    token.symbol[0] === "X" &&
+    token.symbol[1] === token.symbol[1].toUpperCase()
+  ) {
+    return `x${token.symbol.slice(1)}`;
+  }
   return token.symbol;
 };
+
+const FEE_PERCENT = (
+  (Number(FEES_DENOMINATOR - FEES_NUMERATOR) / Number(FEES_DENOMINATOR)) *
+  100
+).toFixed(2);
 
 const orderTokensForDisplay = <T extends TokenDescriptor>(
   tokenA: T,
@@ -146,6 +162,22 @@ export default function PoolLiquidityPage() {
   });
 
   const [hasMounted, setHasMounted] = useState(false);
+
+  // Fetch pools data from indexer for TVL and other metrics
+  const { data: poolsData } = usePools({
+    tokenList,
+    factoryAddress: deployment?.factory ?? null,
+    wrappedNativeAddress: wrappedNativeAddress,
+    provider: readProvider
+  });
+
+  // Find the current pool from the pools data
+  const currentPoolData = useMemo(() => {
+    if (!poolsData || !pairAddress) return null;
+    return poolsData.find(
+      (pool) => pool.pairAddress.toLowerCase() === pairAddress.toLowerCase()
+    );
+  }, [poolsData, pairAddress]);
 
   // Use optimized multicall hook to fetch pool details
   const {
@@ -398,6 +430,14 @@ export default function PoolLiquidityPage() {
     [pairAddress]
   );
 
+  const tvlDisplay = useMemo(() => {
+    // Use indexed pool data for TVL (already formatted)
+    if (currentPoolData?.totalLiquidityFormatted) {
+      return `$${currentPoolData.totalLiquidityFormatted}`;
+    }
+    return "—";
+  }, [currentPoolData]);
+
   return (
     <>
       <NetworkBanner
@@ -406,60 +446,91 @@ export default function PoolLiquidityPage() {
         isSwitching={isSwitchingChain || poolDetailsLoading}
       />
 
-      <section className={styles.pageShell}>
-        <div className={styles.pageHeader}>
-          <div className={styles.headerTop}>
-            <nav className={styles.breadcrumb} aria-label="Breadcrumb">
-              <button
-                type="button"
-                className={styles.breadcrumbLink}
-                onClick={handleBackToPools}
-              >
-                Pools
-              </button>
-              <span className={styles.breadcrumbDivider}>›</span>
-              <span className={styles.breadcrumbPair}>
+      <div className="container mx-auto px-4 py-12 max-w-6xl">
+        {/* Header */}
+        <div className="mb-12 flex items-center gap-8 pb-8 border-b border-border">
+          <button
+            onClick={handleBackToPools}
+            className="rounded-none h-10 w-10 hover:bg-white/5 text-foreground flex items-center justify-center transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
+          <div className="flex-1">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="flex -space-x-3">
+                {liquidityTokenA?.logo && (
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={liquidityTokenA.logo}
+                      alt={getDisplaySymbol(liquidityTokenA)}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                {liquidityTokenB?.logo && (
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={liquidityTokenB.logo}
+                      alt={getDisplaySymbol(liquidityTokenB)}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+              <h1 className="text-4xl font-display font-bold uppercase">
                 {breadcrumbPairLabel ?? "Pool"}
-              </span>
-              {breadcrumbAddress ? (
-                <CopyAddressButton
-                  value={pairAddress ?? ""}
-                  displayValue={breadcrumbAddress}
-                  className={styles.breadcrumbAddress}
-                />
-              ) : null}
-            </nav>
+              </h1>
+              {/* <span className="text-xs bg-primary text-black px-3 py-1 font-mono font-bold">
+                LIVE
+              </span> */}
+            </div>
+
+            <div className="flex gap-8 text-xs font-mono text-muted-foreground">
+              <div>
+                <span className="text-muted-foreground">TVL</span>{" "}
+                <span className="text-foreground ml-2">{tvlDisplay}</span>
+              </div>
+              {/* <div>
+                <span className="text-muted-foreground">APR</span>{" "}
+                <span className="text-primary ml-2">{FEE_PERCENT}%</span>
+              </div> */}
+              <div>
+                <span className="text-muted-foreground">FEE</span>{" "}
+                <span className="text-foreground ml-2">{FEE_PERCENT}%</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className={styles.detailSection}>
-          <LiquidityContainer
-            key={`liquidity-${deployment?.router ?? "default"}-${pairAddress ?? "unknown"}`}
-            liquidityTokenA={liquidityTokenA}
-            liquidityTokenB={liquidityTokenB}
-            onOpenTokenDialog={openTokenDialog}
-            routerAddress={deployment?.router ?? ""}
-            wrappedNativeAddress={deployment?.wmegaeth}
-            pairAddress={pairAddress ?? ""}
-            pairToken0={pairTokenAddresses.token0}
-            pairToken1={pairTokenAddresses.token1}
-            readProvider={readProvider}
-            walletAccount={walletAccount}
-            chainId={chainId}
-            hasMounted={hasMounted}
-            isWalletConnected={isWalletConnected}
-            isAccountConnecting={isAccountConnecting}
-            ready={ready}
-            showError={showError}
-            showSuccess={showSuccess}
-            showLoading={showLoading}
-            onSwapRefresh={handleSwapRefresh}
-            allowTokenSelection={false}
-            poolDetails={poolDetails}
-            onConnect={handleConnectWallet}
-          />
-        </div>
-      </section>
+        <LiquidityContainer
+          key={`liquidity-${deployment?.router ?? "default"}-${pairAddress ?? "unknown"}`}
+          liquidityTokenA={liquidityTokenA}
+          liquidityTokenB={liquidityTokenB}
+          onOpenTokenDialog={openTokenDialog}
+          routerAddress={deployment?.router ?? ""}
+          wrappedNativeAddress={deployment?.wmegaeth}
+          pairAddress={pairAddress ?? ""}
+          pairToken0={pairTokenAddresses.token0}
+          pairToken1={pairTokenAddresses.token1}
+          readProvider={readProvider}
+          walletAccount={walletAccount}
+          chainId={chainId}
+          hasMounted={hasMounted}
+          isWalletConnected={isWalletConnected}
+          isAccountConnecting={isAccountConnecting}
+          ready={ready}
+          showError={showError}
+          showSuccess={showSuccess}
+          showLoading={showLoading}
+          onSwapRefresh={handleSwapRefresh}
+          allowTokenSelection={false}
+          poolDetails={poolDetails}
+          onConnect={handleConnectWallet}
+        />
+      </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
 

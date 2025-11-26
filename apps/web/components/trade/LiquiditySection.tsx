@@ -5,7 +5,9 @@ import type {
 } from "@/lib/trade/types";
 import styles from "@/app/page.module.css";
 import { useLocalization } from "@/lib/format/LocalizationContext";
-import { NumberType } from "@/lib/format/formatNumbers";
+import { NumberType, formatTokenAmount } from "@/lib/format/formatNumbers";
+import { parseUnits } from "ethers";
+import { getLiquidityMinted } from "@/lib/trade/math";
 
 type LiquidityMode = "add" | "remove";
 
@@ -37,6 +39,8 @@ type LiquidityAddProps = {
   buttonLabel: string;
   buttonDisabled: boolean;
   buttonVariant?: "default" | "highlight";
+  liquidityPairReserves: ReserveInfo | null;
+  lpTokenInfo: { balance: string; poolShare: string } | null;
   transactionStatus: {
     message: string;
     type: "idle" | "pending" | "success" | "error";
@@ -90,23 +94,48 @@ export function LiquiditySection({
   };
 
   return (
-    <section className={styles.card}>
+    <section>
       {allowRemove ? (
-        <div className={styles.cardHeader}>
-          <div className={styles.segmented}>
+        <div className="mb-12">
+          <div className="flex gap-1 border-b border-border pb-4">
             <button
               type="button"
-              className={`${styles.segment} ${effectiveMode === "add" ? styles.segmentActive : ""}`}
+              className={`px-6 py-2 font-mono text-sm uppercase tracking-wider font-bold transition-all border border-transparent ${
+                effectiveMode === "add"
+                  ? "bg-primary text-black"
+                  : "bg-card hover:bg-card/80 text-muted-foreground"
+              }`}
               onClick={() => handleModeChange("add")}
             >
-              Add
+              <svg
+                className="w-4 h-4 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2" />
+                <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2" />
+              </svg>
+              Add Liquidity
             </button>
             <button
               type="button"
-              className={`${styles.segment} ${effectiveMode === "remove" ? styles.segmentActive : ""}`}
+              className={`px-6 py-2 font-mono text-sm uppercase tracking-wider font-bold transition-all border border-transparent ${
+                effectiveMode === "remove"
+                  ? "bg-primary text-black"
+                  : "bg-card hover:bg-card/80 text-muted-foreground"
+              }`}
               onClick={() => handleModeChange("remove")}
             >
-              Remove
+              <svg
+                className="w-4 h-4 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2" />
+              </svg>
+              Remove Liquidity
             </button>
           </div>
         </div>
@@ -147,8 +176,80 @@ function LiquidityAddForm({
   buttonDisabled,
   tokenSelectionEnabled,
   buttonVariant = "default",
+  liquidityPairReserves,
+  lpTokenInfo,
   transactionStatus
 }: LiquidityAddProps & { tokenSelectionEnabled: boolean; buttonVariant?: "default" | "highlight" }) {
+  const { formatNumber: formatDisplayNumber, formatPercent } = useLocalization();
+
+  // Calculate exchange rate (reserveB / reserveA)
+  const exchangeRate =
+    liquidityPairReserves &&
+    liquidityPairReserves.reserveAWei > 0n &&
+    liquidityPairReserves.reserveBWei > 0n
+      ? formatDisplayNumber({
+          input: (
+            Number(liquidityPairReserves.reserveBWei) /
+            Number(liquidityPairReserves.reserveAWei)
+          ).toString(),
+          type: NumberType.TokenNonTx
+        })
+      : "—";
+
+  // Calculate LP tokens to be minted
+  const lpTokensDisplay = (() => {
+    if (!liquidityPairReserves || !liquidityTokenA || !liquidityTokenB) {
+      return "—";
+    }
+
+    try {
+      const amountAInput =
+        liquidityForm.amountAExact && liquidityForm.amountAExact.length > 0
+          ? liquidityForm.amountAExact
+          : liquidityForm.amountA || "0";
+      const amountBInput =
+        liquidityForm.amountBExact && liquidityForm.amountBExact.length > 0
+          ? liquidityForm.amountBExact
+          : liquidityForm.amountB || "0";
+
+      if (
+        !amountAInput ||
+        amountAInput === "0" ||
+        !amountBInput ||
+        amountBInput === "0"
+      ) {
+        return "—";
+      }
+
+      const amountAWei = parseUnits(amountAInput, liquidityTokenA.decimals);
+      const amountBWei = parseUnits(amountBInput, liquidityTokenB.decimals);
+
+      const lpTokensWei = getLiquidityMinted(
+        amountAWei,
+        amountBWei,
+        liquidityPairReserves.reserveAWei,
+        liquidityPairReserves.reserveBWei,
+        liquidityPairReserves.totalSupplyWei
+      );
+
+      return formatTokenAmount(lpTokensWei, 18, NumberType.LPToken);
+    } catch (error) {
+      console.warn("[liquidity] failed to compute LP tokens", error);
+      return "—";
+    }
+  })();
+
+  // Calculate TVL (reserveA + reserveB values - placeholder, needs price data)
+  const tvlDisplay = liquidityPairReserves
+    ? `${formatDisplayNumber({
+        input: liquidityPairReserves.reserveA,
+        type: NumberType.TokenNonTx
+      })} ${tokenASymbol} + ${formatDisplayNumber({
+        input: liquidityPairReserves.reserveB,
+        type: NumberType.TokenNonTx
+      })} ${tokenBSymbol}`
+    : "—";
+
   // Check transaction status FIRST - override button label and disabled state
   let finalButtonLabel = buttonLabel;
   let finalButtonDisabled = buttonDisabled;
@@ -173,175 +274,119 @@ function LiquidityAddForm({
     .join(" ");
 
   return (
-    <>
-      <div className={styles.swapPanel}>
-        <div className={styles.assetCard}>
-          <div className={styles.assetHeader}>
-            <span>Deposit A</span>
-            <button
-              type="button"
-              className={styles.assetSelector}
-              onClick={
-                tokenSelectionEnabled
-                  ? () => onOpenTokenDialog("liquidityA")
-                  : undefined
-              }
-              disabled={!tokenSelectionEnabled}
-            >
-              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {liquidityTokenA?.logo && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={liquidityTokenA.logo}
-                    alt={liquidityTokenA.symbol}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                )}
-                {liquidityTokenA?.symbol ?? "Select"}
-              </span>
-            </button>
-          </div>
-          <div className={styles.assetAmountRow}>
+    <div className="space-y-4">
+      {/* Token Inputs - Side by Side */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Token A */}
+        <div className="space-y-2">
+          <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+            {tokenASymbol ?? "TOKEN A"}
+          </label>
+          <div className="relative">
             <input
-              className={styles.amountInput}
               type="text"
               inputMode="decimal"
               autoComplete="off"
               autoCorrect="off"
               pattern="^[0-9]*[.,]?[0-9]*$"
-              placeholder="0.0"
-              minLength={1}
-              maxLength={79}
-              spellCheck="false"
+              placeholder="0"
               value={liquidityForm.amountA}
               onChange={(event) => onAmountAChange(event.target.value)}
+              className="h-14 w-full bg-background border border-border rounded-none text-2xl font-mono font-bold focus-visible:ring-1 focus-visible:ring-primary/50 px-3 focus:outline-none"
             />
-          </div>
-          <div className={styles.assetBalance}>
-            <span className={styles.helper}>
-              Balance:{" "}
-              {liquidityTokenA
-                ? formatBalance(tokenABalanceFormatted)
-                : "—"}
-            </span>
             {liquidityTokenA && tokenABalanceFormatted && (
               <button
                 type="button"
-                className={styles.maxButton}
                 onClick={onSetMaxAmountA}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-primary hover:text-primary/80"
               >
                 MAX
               </button>
             )}
           </div>
+          <div className="text-xs text-muted-foreground font-mono">
+            Bal: {liquidityTokenA ? formatBalance(tokenABalanceFormatted) : "0"}
+          </div>
         </div>
 
-        <div className={styles.assetCard}>
-          <div className={styles.assetHeader}>
-            <span>Deposit B</span>
-            <button
-              type="button"
-              className={styles.assetSelector}
-              onClick={
-                tokenSelectionEnabled
-                  ? () => onOpenTokenDialog("liquidityB")
-                  : undefined
-              }
-              disabled={!tokenSelectionEnabled}
-            >
-              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {liquidityTokenB?.logo && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={liquidityTokenB.logo}
-                    alt={liquidityTokenB.symbol}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                )}
-                {liquidityTokenB?.symbol ?? "Select"}
-              </span>
-            </button>
-          </div>
-          <div className={styles.assetAmountRow}>
+        {/* Token B */}
+        <div className="space-y-2">
+          <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+            {tokenBSymbol ?? "TOKEN B"}
+          </label>
+          <div className="relative">
             <input
-              className={styles.amountInput}
               type="text"
               inputMode="decimal"
               autoComplete="off"
               autoCorrect="off"
               pattern="^[0-9]*[.,]?[0-9]*$"
-              placeholder="0.0"
-              minLength={1}
-              maxLength={79}
-              spellCheck="false"
+              placeholder="0"
               value={liquidityForm.amountB}
               onChange={(event) => onAmountBChange(event.target.value)}
+              className="h-14 w-full bg-background border border-border rounded-none text-2xl font-mono font-bold focus-visible:ring-1 focus-visible:ring-primary/50 px-3 text-primary focus:outline-none"
             />
           </div>
-          <div className={styles.assetBalance}>
-            <span className={styles.helper}>
-              Balance:{" "}
-              {liquidityTokenB
-                ? formatBalance(tokenBBalanceFormatted)
-                : "—"}
-            </span>
-            {liquidityTokenB && tokenBBalanceFormatted && (
-              <button
-                type="button"
-                className={styles.maxButton}
-                onClick={onSetMaxAmountB}
-              >
-                MAX
-              </button>
-            )}
+          <div className="text-xs text-muted-foreground font-mono">
+            Bal: {liquidityTokenB ? formatBalance(tokenBBalanceFormatted) : "0"}
           </div>
         </div>
       </div>
 
-      <div className={styles.summary}>
-        <button
-          className={primaryButtonClass}
-          onClick={onPrimary}
-          disabled={finalButtonDisabled}
-          type="button"
-          style={
-            transactionStatus.type === "error"
-              ? {
-                  background: "rgba(255, 92, 92, 0.9)",
-                  borderColor: "rgba(255, 92, 92, 1)",
-                  color: "#ffffff",
-                  opacity: 1,
-                  cursor: "not-allowed",
-                  pointerEvents: "none"
-                }
-              : transactionStatus.type === "success"
-                ? {
-                    background: "var(--accent)",
-                    borderColor: "var(--accent)",
-                    color: "#000000",
-                    opacity: 1,
-                    cursor: "not-allowed",
-                    pointerEvents: "none"
-                  }
-                : undefined
-          }
-        >
-          {finalButtonLabel}
-        </button>
+      {/* Info Grid */}
+      <div className="grid grid-cols-3 gap-3 border-t border-border pt-4">
+        <div className="bg-card p-3 border border-border">
+          <div className="text-xs text-muted-foreground font-mono mb-1">
+            RATE
+          </div>
+          <div className="text-sm font-mono font-bold">
+            1 {tokenASymbol}
+          </div>
+          <div className="text-xs text-foreground font-mono">
+            {exchangeRate} {tokenBSymbol}
+          </div>
+        </div>
+        <div className="bg-card p-3 border border-border">
+          <div className="text-xs text-muted-foreground font-mono mb-1">
+            LP TOKENS
+          </div>
+          <div className="text-sm font-mono font-bold text-primary">
+            {lpTokensDisplay}
+          </div>
+          <div className="text-xs text-foreground font-mono">
+            to receive
+          </div>
+        </div>
+        <div className="bg-card p-3 border border-border">
+          <div className="text-xs text-muted-foreground font-mono mb-1">
+            GAS
+          </div>
+          <div className="text-sm font-mono font-bold">&lt; $0.01</div>
+          <div className="text-xs text-foreground font-mono">
+            on MegaETH
+          </div>
+        </div>
       </div>
-    </>
+
+      <button
+        onClick={onPrimary}
+        disabled={finalButtonDisabled}
+        type="button"
+        className={`w-full h-14 text-lg font-bold font-mono uppercase tracking-wider rounded-none transition-all ${
+          finalButtonDisabled
+            ? "bg-muted text-muted-foreground cursor-not-allowed"
+            : "bg-primary text-black hover:bg-primary/90"
+        } ${
+          transactionStatus.type === "error"
+            ? "!bg-red-500 !text-white"
+            : transactionStatus.type === "success"
+              ? "!bg-accent !text-black"
+              : ""
+        }`}
+      >
+        {finalButtonLabel}
+      </button>
+    </div>
   );
 }
 
@@ -385,295 +430,119 @@ function LiquidityRemoveForm({
   }
 
   return (
-    <>
-      <div className={styles.swapPanel}>
-        <div className={styles.assetCard}>
-          <div className={styles.assetHeader}>
-            <span>Select Pair</span>
+    <div className="space-y-4">
+      {/* Position Display */}
+      {liquidityPairReserves && lpTokenInfo && userPooledAmounts && (
+        <div className="border border-border bg-card/50 p-6">
+          <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
+            CURRENT POSITION
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              alignItems: "center",
-              marginBottom: "0.75rem"
-            }}
-          >
-            <button
-              type="button"
-              className={styles.assetSelector}
-              onClick={
-                tokenSelectionEnabled
-                  ? () => onOpenTokenDialog("liquidityA")
-                  : undefined
-              }
-              disabled={!tokenSelectionEnabled}
-              style={{ flex: 1 }}
-            >
-              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {liquidityTokenA?.logo && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={liquidityTokenA.logo}
-                    alt={liquidityTokenA.symbol}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                )}
-                {liquidityTokenA?.symbol ?? "Select"}
-              </span>
-            </button>
-            <span style={{ opacity: 0.5 }}>+</span>
-            <button
-              type="button"
-              className={styles.assetSelector}
-              onClick={
-                tokenSelectionEnabled
-                  ? () => onOpenTokenDialog("liquidityB")
-                  : undefined
-              }
-              disabled={!tokenSelectionEnabled}
-              style={{ flex: 1 }}
-            >
-              <span className={styles.assetSelectorSymbol} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {liquidityTokenB?.logo && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={liquidityTokenB.logo}
-                    alt={liquidityTokenB.symbol}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                )}
-                {liquidityTokenB?.symbol ?? "Select"}
-              </span>
-            </button>
+          <div className="text-3xl font-mono font-bold mb-4">
+            {formatDisplayNumber({
+              input: lpTokenInfo.balance,
+              type: NumberType.TokenNonTx
+            })} LP
           </div>
-
-          {liquidityPairReserves && lpTokenInfo && (
-            <div
-              style={{
-                borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-                paddingTop: "0.75rem",
-                marginTop: "0.5rem"
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "0.5rem",
-                  fontSize: "0.875rem"
-                }}
-              >
-                <span style={{ opacity: 0.7 }}>Your LP Tokens</span>
-                <span style={{ fontWeight: 500 }}>
-                  {formatDisplayNumber({
-                    input: lpTokenInfo.balance,
-                    type: NumberType.TokenNonTx
-                  })}
-                </span>
+          <div className="grid grid-cols-2 gap-4 text-sm font-mono">
+            <div>
+              <div className="text-muted-foreground text-xs mb-1">
+                Token 0
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "0.5rem",
-                  fontSize: "0.875rem"
-                }}
-              >
-                <span style={{ opacity: 0.7 }}>Your Pool Share</span>
-                <span style={{ fontWeight: 500 }}>
-                  {formatPercent(Number(lpTokenInfo.poolShare))}
-                </span>
+              <div className="font-bold">
+                {userPooledAmounts.amountA} {liquidityTokenA?.symbol}
               </div>
-              {userPooledAmounts && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.375rem",
-                    fontSize: "0.875rem",
-                    marginTop: "0.5rem"
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between"
-                    }}
-                  >
-                    <span className={styles.helper}>
-                      {liquidityTokenA?.symbol ?? "Token A"}
-                    </span>
-                    <span>{userPooledAmounts.amountA}</span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between"
-                    }}
-                  >
-                    <span className={styles.helper}>
-                      {liquidityTokenB?.symbol ?? "Token B"}
-                    </span>
-                    <span>{userPooledAmounts.amountB}</span>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
+            <div>
+              <div className="text-muted-foreground text-xs mb-1">
+                Token 1
+              </div>
+              <div className="font-bold">
+                {userPooledAmounts.amountB} {liquidityTokenB?.symbol}
+              </div>
+            </div>
+          </div>
         </div>
+      )}
 
-        <div className={styles.assetCard}>
-          <div className={styles.assetHeader}>
-            <span>Amount</span>
-            <span style={{ fontSize: "1.125rem", fontWeight: 600 }}>
-              {removeLiquidityPercent}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={removeLiquidityPercent}
-            onChange={(event) =>
-              onRemoveLiquidityPercentChange(event.target.value)
-            }
-            style={{
-              width: "100%",
-              marginBottom: "0.75rem",
-              accentColor: "#6b7280"
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              marginBottom: "0.75rem"
-            }}
-          >
-            {["25", "50", "75", "100"].map((pct) => (
-              <button
-                key={pct}
-                type="button"
-                onClick={() => onRemoveLiquidityPercentChange(pct)}
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  borderRadius: "0.5rem",
-                  border:
-                    removeLiquidityPercent === pct
-                      ? "1px solid #6b7280"
-                      : "1px solid rgba(255,255,255,0.1)",
-                  background:
-                    removeLiquidityPercent === pct
-                      ? "rgba(107, 114, 128, 0.15)"
-                      : "transparent",
-                  color: removeLiquidityPercent === pct ? "#d1d5db" : "inherit",
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  transition: "all 0.15s ease"
-                }}
-              >
-                {pct}%
-              </button>
-            ))}
-          </div>
+      {/* Withdrawal Percentage */}
+      <div className="border border-border bg-card/50 p-4">
+        <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider block mb-4">
+          WITHDRAW {removeLiquidityPercent}%
+        </label>
 
-          {expectedRemoveAmounts && (
-            <div
-              style={{
-                borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-                paddingTop: "0.75rem"
-              }}
+        {/* Slider */}
+        <input
+          type="range"
+          min="1"
+          max="100"
+          value={removeLiquidityPercent}
+          onChange={(event) => onRemoveLiquidityPercentChange(event.target.value)}
+          className="w-full h-2 mb-4 appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, hsl(336 70% 65%) 0%, hsl(336 70% 65%) ${removeLiquidityPercent}%, hsl(0 0% 16%) ${removeLiquidityPercent}%, hsl(0 0% 16%) 100%)`
+          }}
+        />
+
+        {/* Quick Select Buttons */}
+        <div className="grid grid-cols-4 gap-2">
+          {["25", "50", "75", "100"].map((percent) => (
+            <button
+              key={percent}
+              onClick={() => onRemoveLiquidityPercentChange(percent)}
+              className={`py-2 text-xs font-mono font-bold border border-border rounded-none transition-all ${
+                removeLiquidityPercent === percent
+                  ? "bg-primary text-black"
+                  : "bg-card hover:border-primary/50"
+              }`}
             >
-              <div
-                style={{
-                  fontSize: "0.875rem",
-                  opacity: 0.7,
-                  marginBottom: "0.5rem"
-                }}
-              >
-                You will receive:
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.375rem",
-                  fontSize: "0.875rem"
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between"
-                  }}
-                >
-                  <span>{liquidityTokenA?.symbol ?? "Token A"}</span>
-                  <span style={{ fontWeight: 600 }}>
-                    {expectedRemoveAmounts.amountA}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between"
-                  }}
-                >
-                  <span>{liquidityTokenB?.symbol ?? "Token B"}</span>
-                  <span style={{ fontWeight: 600 }}>
-                    {expectedRemoveAmounts.amountB}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+              {percent}%
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className={styles.summary}>
-        <button
-          className={`${styles.primaryButton} ${styles.primaryFull}`}
-          onClick={onRemoveLiquidity}
-          disabled={buttonDisabled}
-          type="button"
-          style={
-            transactionStatus.type === "error"
-              ? {
-                  background: "rgba(255, 92, 92, 0.9)",
-                  borderColor: "rgba(255, 92, 92, 1)",
-                  color: "#ffffff",
-                  opacity: 1,
-                  cursor: "not-allowed",
-                  pointerEvents: "none"
-                }
-              : transactionStatus.type === "success"
-                ? {
-                    background: "var(--accent)",
-                    borderColor: "var(--accent)",
-                    color: "#000000",
-                    opacity: 1,
-                    cursor: "not-allowed",
-                    pointerEvents: "none"
-                  }
-                : undefined
-          }
-        >
-          {buttonLabel}
-        </button>
-      </div>
-    </>
+      {/* You Will Receive */}
+      {expectedRemoveAmounts && (
+        <div className="border border-border bg-card/50 p-4">
+          <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-3">
+            YOU WILL RECEIVE
+          </div>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="flex justify-between items-center">
+              <span>
+                {expectedRemoveAmounts.amountA} {liquidityTokenA?.symbol}
+              </span>
+              <span className="text-muted-foreground">—</span>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex justify-between items-center">
+              <span>
+                {expectedRemoveAmounts.amountB} {liquidityTokenB?.symbol}
+              </span>
+              <span className="text-muted-foreground">—</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={onRemoveLiquidity}
+        disabled={buttonDisabled}
+        type="button"
+        className={`w-full h-14 text-lg font-bold font-mono uppercase tracking-wider rounded-none transition-all ${
+          buttonDisabled
+            ? "bg-muted text-muted-foreground cursor-not-allowed"
+            : "bg-primary text-black hover:bg-primary/90"
+        } ${
+          transactionStatus.type === "error"
+            ? "!bg-red-500 !text-white"
+            : transactionStatus.type === "success"
+              ? "!bg-accent !text-black"
+              : ""
+        }`}
+      >
+        {buttonLabel}
+      </button>
+    </div>
   );
 }

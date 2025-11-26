@@ -24,7 +24,6 @@ import {
   formatCompactNumber
 } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
-import { PoolsCharts } from "@/components/pools/PoolsCharts";
 import { usePoolsChartData } from "@/hooks/usePoolsChartData";
 
 export default function PoolsPage() {
@@ -49,6 +48,7 @@ export default function PoolsPage() {
   const [showMyPositionsOnly, setShowMyPositionsOnly] = useState(false);
   const [tokenList, setTokenList] = useState<TokenDescriptor[]>(TOKEN_CATALOG);
   const [hasMounted, setHasMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const readProvider = useMemo(() => {
     const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
@@ -253,13 +253,36 @@ export default function PoolsPage() {
     if (!pools.length) {
       return [];
     }
-    if (!showMyPositionsOnly) {
-      return pools;
+
+    let filtered = pools;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((pool) => {
+        const token0Symbol = pool.token0.symbol.toLowerCase();
+        const token1Symbol = pool.token1.symbol.toLowerCase();
+        const pairName = `${token0Symbol}-${token1Symbol}`;
+        const reversePairName = `${token1Symbol}-${token0Symbol}`;
+
+        return (
+          pairName.includes(query) ||
+          reversePairName.includes(query) ||
+          token0Symbol.includes(query) ||
+          token1Symbol.includes(query)
+        );
+      });
     }
-    return pools.filter(
-      (pool) => pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n
-    );
-  }, [pools, showMyPositionsOnly]);
+
+    // Filter by user positions
+    if (showMyPositionsOnly) {
+      filtered = filtered.filter(
+        (pool) => pool.userLpBalanceRaw && pool.userLpBalanceRaw > 0n
+      );
+    }
+
+    return filtered;
+  }, [pools, showMyPositionsOnly, searchQuery]);
 
   const totalTvlSummary = useMemo(() => {
     if (pools.length === 0) {
@@ -342,91 +365,78 @@ export default function PoolsPage() {
   }, [pools]);
 
   return (
-    <div className="relative">
-      <div className="relative z-10 space-y-8">
-        <NetworkBanner
-          error={networkError}
-          onSwitch={switchToMegaEth}
-          isSwitching={isSwitchingChain}
-        />
+    <div className="container mx-auto px-4 py-12 max-w-7xl">
+      <NetworkBanner
+        error={networkError}
+        onSwitch={switchToMegaEth}
+        isSwitching={isSwitchingChain}
+      />
 
-        <section className="space-y-6 rounded border border-white/10 bg-black/40 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.6)]">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded border border-primary/30 bg-black/50 p-4">
-              <div className="text-xs font-mono uppercase tracking-[0.3em] text-white/50">
-                Total Value Locked
-              </div>
-              <div className="mt-3 text-3xl font-mono text-primary">
-                {totalTvlSummary.loading
-                  ? "…"
-                  : (totalTvlSummary.value ?? "$0.00")}
-              </div>
-            </div>
-            <div className="rounded border border-cyan/30 bg-black/50 p-4">
-              <div className="text-xs font-mono uppercase tracking-[0.3em] text-white/50">
-                24h Trading Volume
-              </div>
-              <div className="mt-3 text-3xl font-mono text-cyan">
-                {totalVolumeSummary.loading
-                  ? "…"
-                  : (totalVolumeSummary.value ?? "$0.00")}
-              </div>
-            </div>
+      <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+        <div>
+          <h1 className="text-4xl font-display font-bold mb-2 uppercase">
+            LIQUIDITY MATRIX
+          </h1>
+          <p className="font-mono text-muted-foreground text-sm">
+            DEPLOY CAPITAL. EARN YIELD.
+          </p>
+        </div>
+        <div className="flex gap-4 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              placeholder="SEARCH_POOLS"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-card border border-border font-mono text-sm h-10 rounded-none w-full px-3 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
           </div>
-
-          <PoolsCharts />
-
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            {hasMounted && isWalletConnected ? (
-              <div className="inline-flex rounded border border-white/15 text-xs font-mono uppercase tracking-[0.3em]">
-                <button
-                  type="button"
-                  className={`px-4 py-2 ${
-                    !showMyPositionsOnly
-                      ? "bg-primary/20 text-primary"
-                      : "text-white/40"
-                  }`}
-                  onClick={() => setShowMyPositionsOnly(false)}
-                >
-                  All Pools
-                </button>
-                <button
-                  type="button"
-                  className={`px-4 py-2 ${
-                    showMyPositionsOnly
-                      ? "bg-primary/20 text-primary"
-                      : "text-white/40"
-                  }`}
-                  onClick={() => setShowMyPositionsOnly(true)}
-                >
-                  My Positions
-                </button>
-              </div>
-            ) : (
-              <div />
-            )}
-
-            {hasMounted && isWalletConnected && (
-              <button
-                type="button"
-                className="rounded border border-primary bg-primary px-4 py-3 font-mono text-xs uppercase tracking-[0.35em] text-black transition hover:shadow-pink-glow"
-                onClick={handleCreatePool}
+          {hasMounted && isWalletConnected && (
+            <button
+              onClick={handleCreatePool}
+              className="h-10 px-4 bg-primary text-black font-mono font-bold rounded-none hover:bg-primary/90 flex items-center gap-2"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                Launch Pool
-              </button>
-            )}
-          </div>
-
-          <PoolsTable
-            pools={filteredPools}
-            loading={poolsLoading}
-            error={poolsError}
-            onRetry={handleRefreshPools}
-            onSelectPool={handlePoolSelect}
-            showUserPositions={showMyPositionsOnly}
-          />
-        </section>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              DEPLOY
+            </button>
+          )}
+        </div>
       </div>
+
+      <PoolsTable
+        pools={filteredPools}
+        loading={poolsLoading}
+        error={poolsError}
+        onRetry={handleRefreshPools}
+        onSelectPool={handlePoolSelect}
+        showUserPositions={showMyPositionsOnly}
+      />
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>

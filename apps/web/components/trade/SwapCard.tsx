@@ -182,11 +182,7 @@ export function SwapCard({
       <div className="space-y-1 mb-8">
         <div className="flex justify-between text-xs font-mono text-muted-foreground mb-2">
           <span>RECEIVE</span>
-          {selectedOut && (
-            <span>
-              BAL: {formatBalance(null)}
-            </span>
-          )}
+          {selectedOut && <span>BAL: {formatBalance(null)}</span>}
         </div>
         <div className="relative group">
           <input
@@ -210,11 +206,11 @@ export function SwapCard({
         </div>
       </div>
 
-      {transactionStatus && transactionStatus.type !== "idle" && (
+      {/* {transactionStatus && transactionStatus.type !== "idle" && (
         <div className="rounded border border-border/60 bg-surface-alt/70 p-3 text-xs text-foreground mb-6">
           {transactionStatus.message}
         </div>
-      )}
+      )} */}
 
       <div className="space-y-3 mb-6 border-t border-border pt-4">
         <div className="flex justify-between text-xs font-mono">

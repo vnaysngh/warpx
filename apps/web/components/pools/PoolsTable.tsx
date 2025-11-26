@@ -65,182 +65,92 @@ export function PoolsTable({
   error,
   onRetry,
   onSelectPool,
-  totalTvl,
-  totalTvlLoading,
-  totalVolume,
-  totalVolumeLoading,
   showUserPositions = false
 }: PoolsTableProps) {
   const showSkeleton = loading && pools.length === 0 && !error;
   const showEmpty = !loading && pools.length === 0 && !error;
 
   return (
-    <div className="rounded border border-white/10 bg-black/30 text-white shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-white/5 text-xs font-mono uppercase tracking-[0.3em] text-white/60">
-              <th className="px-4 py-3 text-left">Asset Pair</th>
-              <th className="px-4 py-3 text-left">Protocol</th>
-              <th className="px-4 py-3 text-left">Fee tier</th>
-              {showUserPositions ? (
-                <th className="px-4 py-3 text-right">Your Position</th>
-              ) : (
-                <>
-                  <th className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <span>TVL</span>
-                      <span className="rounded border border-cyan/60 px-2 py-0.5 text-cyan">
-                        {totalTvlLoading ? "…" : totalTvl ?? "-"}
-                      </span>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <span>Volume</span>
-                      <span className="rounded border border-primary/60 px-2 py-0.5 text-primary">
-                        {totalVolumeLoading ? "…" : totalVolume ?? "-"}
-                      </span>
-                    </div>
-                  </th>
-                </>
-              )}
-              <th className="px-4 py-3 text-right">APR</th>
-              <th className="px-4 py-3 text-right">Risk</th>
-            </tr>
-          </thead>
-          <tbody>
-            {showSkeleton &&
-              Array.from({ length: 5 }).map((_, index) => (
-                <tr key={`skeleton-${index}`} className="border-t border-white/5">
-                  <td colSpan={7} className="px-4 py-6">
-                    <div className="h-4 w-full animate-pulse rounded bg-white/10" />
-                  </td>
-                </tr>
-              ))}
+    <div className="border border-border bg-card/30">
+      {/* Table Header */}
+      <div className="grid grid-cols-12 gap-4 p-4 border-b border-border text-xs font-mono text-muted-foreground uppercase tracking-wider bg-card/50">
+        <div className="col-span-4">ASSET PAIR</div>
+        <div className="col-span-2 text-right">TVL</div>
+        <div className="col-span-2 text-right">VOL (24H)</div>
+        <div className="col-span-2 text-right">Fee Tier</div>
+        <div className="col-span-2 text-right">Protocol</div>
+      </div>
 
-            {!showSkeleton &&
-              !error &&
-              pools.map((pool) => {
-                let userPositionValue: string | null = null;
-                if (
-                  showUserPositions &&
-                  pool.userLpBalanceRaw &&
-                  pool.userLpBalanceRaw > 0n &&
-                  pool.totalSupply &&
-                  pool.totalSupply > 0n &&
-                  pool.totalLiquidityValue &&
-                  pool.totalLiquidityValue > 0
-                ) {
-                  const userShare =
-                    Number(pool.userLpBalanceRaw) / Number(pool.totalSupply);
-                  const positionValueUSD = userShare * pool.totalLiquidityValue;
-                  userPositionValue = formatCompactNumber(positionValueUSD, 2);
+      {/* Table Rows */}
+      <div className="divide-y divide-border">
+        {showSkeleton &&
+          Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="grid grid-cols-12 gap-4 p-4 items-center"
+            >
+              <div className="col-span-12">
+                <div className="h-8 w-full animate-pulse rounded bg-white/10" />
+              </div>
+            </div>
+          ))}
+
+        {!showSkeleton &&
+          !error &&
+          pools.map((pool) => (
+            <div
+              key={pool.pairAddress}
+              onClick={() => onSelectPool?.(pool)}
+              role={onSelectPool ? "button" : undefined}
+              tabIndex={onSelectPool ? 0 : undefined}
+              className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-white/5 transition-colors cursor-pointer group"
+              onKeyDown={(event) => {
+                if (!onSelectPool) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectPool(pool);
                 }
-
-                return (
-                  <tr
-                    key={pool.pairAddress}
-                    className="border-t border-white/10 text-sm transition hover:bg-white/5"
-                    onClick={() => onSelectPool?.(pool)}
-                    role={onSelectPool ? "button" : undefined}
-                    tabIndex={onSelectPool ? 0 : undefined}
-                    onKeyDown={(event) => {
-                      if (!onSelectPool) return;
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onSelectPool(pool);
-                      }
-                    }}
-                  >
-                    <td className="px-4 py-4 text-left">
-                      <div className="flex items-center gap-4">
-                        <div className="flex -space-x-2">
-                          {[pool.token0, pool.token1].map((token, index) => (
-                            <div
-                              key={`${pool.pairAddress}-${token.symbol}-${index}`}
-                              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-xs font-bold"
-                            >
-                              {token.logo ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={token.logo}
-                                  alt={token.symbol}
-                                  className="h-full w-full rounded-full object-cover"
-                                />
-                              ) : (
-                                token.symbol.slice(0, 3).toUpperCase()
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="text-white">
-                          <div className="flex items-center gap-2 text-base">
-                            {getDisplaySymbol(pool.token0)}/
-                            {getDisplaySymbol(pool.token1)}
-                            {pool.userLpBalanceRaw &&
-                              pool.userLpBalanceRaw > 0n && (
-                                <span
-                                  className="text-xs text-primary"
-                                  title="You have a position in this pool"
-                                >
-                                  ●
-                                </span>
-                              )}
-                          </div>
-                          <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-white/50">
-                            {pool.pairAddress.slice(0, 6)}…
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-left text-white/70">
-                      WarpX
-                    </td>
-                    <td className="px-4 py-4 text-left text-white/60">
-                      {DEFAULT_FEE_PERCENT_DISPLAY}%
-                    </td>
-                    {showUserPositions ? (
-                      <td className="px-4 py-4 text-right text-white">
-                        {userPositionValue ?? "-"}
-                      </td>
-                    ) : (
-                      <>
-                        <td className="px-4 py-4 text-right text-white">
-                          {pool.totalLiquidityFormatted ?? "—"}
-                        </td>
-                        <td className="px-4 py-4 text-right text-white">
-                          {pool.totalVolumeFormatted ?? "—"}
-                        </td>
-                      </>
-                    )}
-                    <td className="px-4 py-4 text-right text-primary">
-                      12.4%
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <span className="rounded border border-white/20 px-2 py-1 text-xs uppercase tracking-[0.3em]">
-                        LOW
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
+              }}
+            >
+              <div className="col-span-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-8 bg-primary/20 group-hover:bg-primary transition-colors" />
+                  <span className="font-bold font-display text-lg">
+                    {getDisplaySymbol(pool.token0)}-
+                    {getDisplaySymbol(pool.token1)}
+                  </span>
+                </div>
+              </div>
+              <div className="col-span-2 text-right font-mono">
+                {pool.totalLiquidityFormatted ? `$${pool.totalLiquidityFormatted}` : "—"}
+              </div>
+              <div className="col-span-2 text-right font-mono">
+                {pool.totalVolumeFormatted ? `$${pool.totalVolumeFormatted}` : "—"}
+              </div>
+              <div className="col-span-2 text-right font-mono text-primary">
+                {DEFAULT_FEE_PERCENT_DISPLAY}%
+              </div>
+              <div className="col-span-2 text-right flex justify-end">
+                <span className="px-2 py-1 bg-white/5 border border-border text-[10px] font-mono">
+                  V2
+                </span>
+              </div>
+            </div>
+          ))}
       </div>
 
       {showEmpty && (
-        <div className="px-4 py-10 text-center text-sm text-white/60">
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
           No pools found.
         </div>
       )}
 
       {error && (
-        <div className="space-y-4 border-t border-white/10 px-4 py-6 text-center">
-          <p className="text-sm text-danger">{error}</p>
+        <div className="space-y-4 border-t border-border px-4 py-6 text-center">
+          <p className="text-sm text-destructive">{error}</p>
           <button
             type="button"
-            className="rounded border border-primary px-4 py-2 text-xs uppercase tracking-[0.3em] text-primary"
+            className="rounded-none border border-primary px-4 py-2 text-xs uppercase tracking-[0.3em] text-primary hover:bg-primary hover:text-black transition-colors"
             onClick={onRetry}
           >
             Retry

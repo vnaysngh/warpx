@@ -1,183 +1,242 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, useSwitchChain } from "wagmi";
-import styles from "./page.module.css";
-import { NetworkBanner } from "@/components/trade/NetworkBanner";
-import { ToastContainer } from "@/components/Toast";
-import { useToasts } from "@/hooks/useToasts";
+import { useMemo } from "react";
+import { usePoolsChartData } from "@/hooks/usePoolsChartData";
+import { usePools } from "@/hooks/usePools";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
-import { useStakingManifest } from "@/hooks/useStakingManifest";
+import { JsonRpcProvider } from "ethers";
+import { megaethTestnet } from "@/lib/chains";
+import { TOKEN_CATALOG } from "@/lib/trade/constants";
 import {
-  DEFAULT_TOKEN_DECIMALS,
-  MEGAETH_CHAIN_ID,
-  TOKEN_CATALOG
-} from "@/lib/trade/constants";
-import type { TokenManifest } from "@/lib/trade/types";
-import { appKit } from "@/lib/wagmi";
-import { parseErrorMessage } from "@/lib/trade/errors";
-import { StakingCard } from "@/components/staking/StakingCard";
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { formatCompactNumber } from "@/lib/trade/math";
 
-type TokenMeta = {
-  symbol: string;
-  name: string;
-  decimals: number;
-};
-
-type TokenMap = Record<string, TokenMeta>;
-
-export default function StakePage() {
-  const { address, chain, status } = useAccount();
-  const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
+export default function AnalyticsPage() {
+  const { data: chartData, isLoading: chartLoading } = usePoolsChartData({
+    days: 30
+  });
   const { deployment } = useDeploymentManifest();
-  const { toasts, removeToast, showError, showSuccess, showLoading } =
-    useToasts();
-  const { programs, loading } = useStakingManifest(deployment?.network ?? null);
 
-  const initialMap = useMemo(() => {
-    const map: TokenMap = {};
-    TOKEN_CATALOG.forEach((token) => {
-      if (!token.address) return;
-      map[token.address.toLowerCase()] = {
-        symbol: token.symbol,
-        name: token.name,
-        decimals: token.decimals
-      };
-    });
-    return map;
+  const readProvider = useMemo(() => {
+    const rpcUrl = megaethTestnet.rpcUrls.default.http[0];
+    return new JsonRpcProvider(rpcUrl);
   }, []);
 
-  const [tokenMap, setTokenMap] = useState<TokenMap>(initialMap);
+  const { data: poolsData } = usePools({
+    tokenList: TOKEN_CATALOG,
+    factoryAddress: deployment?.factory ?? null,
+    wrappedNativeAddress: deployment?.wmegaeth ?? null,
+    provider: readProvider
+  });
 
-  const isWalletConnected = Boolean(address) && status !== "disconnected";
-  const walletAccount = isWalletConnected
-    ? (address?.toLowerCase() ?? null)
-    : null;
+  // Calculate top pairs by TVL
+  const topPairs = useMemo(() => {
+    if (!poolsData || poolsData.length === 0) return [];
 
-  const networkError = useMemo(() => {
-    if (!walletAccount || !chain) return null;
-    if (chain.id !== Number(MEGAETH_CHAIN_ID)) {
-      return `Switch to MegaETH Testnet (chain id ${Number(MEGAETH_CHAIN_ID)})`;
-    }
-    return null;
-  }, [walletAccount, chain]);
+    const sorted = [...poolsData]
+      .filter((pool) => pool.totalLiquidityValue && pool.totalLiquidityValue > 0)
+      .sort((a, b) => (b.totalLiquidityValue ?? 0) - (a.totalLiquidityValue ?? 0))
+      .slice(0, 4);
 
-  const ready = Boolean(
-    walletAccount && chain && chain.id === Number(MEGAETH_CHAIN_ID)
-  );
+    const total = sorted.reduce(
+      (sum, pool) => sum + (pool.totalLiquidityValue ?? 0),
+      0
+    );
 
-  const switchToMegaEth = useCallback(async () => {
-    if (!switchChainAsync) {
-      showError("Wallet does not support programmatic chain switching.");
-      return;
-    }
-    try {
-      showLoading("Switching network...");
-      await switchChainAsync({ chainId: Number(MEGAETH_CHAIN_ID) });
-      showSuccess("Network switched successfully.");
-    } catch (switchError) {
-      console.error("[stake] network switch failed", switchError);
-      showError(parseErrorMessage(switchError));
-    }
-  }, [switchChainAsync, showError, showLoading, showSuccess]);
-
-  const handleConnectWallet = useCallback(() => {
-    appKit.open();
-  }, []);
-
-  useEffect(() => {
-    if (!deployment?.network) return;
-    let cancelled = false;
-
-    const fetchTokens = async () => {
-      const manifestPaths = [
-        `/deployments/${deployment.network}.tokens.json`,
-        `/deployments/${deployment.network.toLowerCase()}.tokens.json`
-      ];
-
-      for (const manifestPath of manifestPaths) {
-        try {
-          const response = await fetch(manifestPath, { cache: "no-store" });
-          if (!response.ok) continue;
-          const manifest = (await response.json()) as TokenManifest;
-          if (cancelled) return;
-          const map: TokenMap = { ...initialMap };
-          manifest.tokens?.forEach((token) => {
-            if (!token.address) return;
-            map[token.address.toLowerCase()] = {
-              symbol: token.symbol,
-              name: token.name,
-              decimals: token.decimals ?? DEFAULT_TOKEN_DECIMALS
-            };
-          });
-          setTokenMap(map);
-          return;
-        } catch (error) {
-          console.warn(
-            "[stake] token manifest fetch failed",
-            manifestPath,
-            error
-          );
-        }
-      }
-    };
-
-    fetchTokens();
-    return () => {
-      cancelled = true;
-    };
-  }, [deployment?.network, initialMap]);
+    return sorted.map((pool) => ({
+      name: `${pool.token0.symbol}-${pool.token1.symbol}`,
+      value: pool.totalLiquidityValue ?? 0,
+      percentage: total > 0 ? ((pool.totalLiquidityValue ?? 0) / total) * 100 : 0
+    }));
+  }, [poolsData]);
 
   return (
-    <>
-      <NetworkBanner
-        error={networkError}
-        onSwitch={switchToMegaEth}
-        isSwitching={isSwitchingChain}
-      />
-
-      <div className={styles.page}>
-        {/* <section className={styles.intro}>
-          <h1 className={styles.title}>Stake WarpX LP tokens</h1>
-          <p className={styles.subtitle}>
-            Stake your WarpX LP positions, withdraw, or claim in a couple of
-            clicks—no extra dashboards required.
-          </p>
-        </section> */}
-
-        <div className={styles.grid}>
-          {loading && (
-            <div className={styles.emptyState}>
-              <strong>Loading staking programs…</strong>
-              Hang tight while we fetch the latest emissions data.
-            </div>
-          )}
-
-          {!loading && programs.length === 0 && (
-            <div className={styles.emptyState}>
-              <strong>No staking programs configured</strong>
-              Deploy a WarpStakingRewards contract and sync the manifest to make
-              it appear here.
-            </div>
-          )}
-
-          {programs.map((program) => (
-            <StakingCard
-              key={program.contract}
-              program={program}
-              tokenMap={tokenMap}
-              walletAccount={walletAccount}
-              ready={ready}
-              onConnectWallet={handleConnectWallet}
-              showError={showError}
-              showSuccess={showSuccess}
-              showLoading={showLoading}
-            />
-          ))}
-        </div>
+    <div className="container mx-auto px-4 py-12 max-w-7xl">
+      <div className="mb-12">
+        <h1 className="text-4xl font-display font-bold mb-2 uppercase">
+          ANALYTICS
+        </h1>
+        <p className="font-mono text-muted-foreground text-sm">
+          NETWORK STATISTICS & PROTOCOL DATA
+        </p>
       </div>
 
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-    </>
+      <div className="space-y-6">
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* TVL Chart */}
+          <div className="border border-border bg-card/30 p-6">
+            <div className="text-xs font-mono text-muted-foreground mb-4 uppercase tracking-wide">
+              TOTAL VALUE LOCKED
+            </div>
+            <div className="h-[280px]">
+              {chartLoading || !chartData || chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  Loading chart data...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(336, 70%, 65%)" stopOpacity={0.8} />
+                        <stop offset="100%" stopColor="hsl(336, 70%, 65%)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="timestamp"
+                      tickFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric"
+                        })
+                      }
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `$${formatCompactNumber(value, 1)}`}
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "0",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-mono)"
+                      }}
+                      labelFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric"
+                        })
+                      }
+                      formatter={(value: number) => [
+                        `$${formatCompactNumber(value, 2)}`,
+                        "TVL"
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="tvl"
+                      stroke="hsl(336, 70%, 65%)"
+                      strokeWidth={2}
+                      fill="url(#tvlGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Volume Chart */}
+          <div className="border border-border bg-card/30 p-6">
+            <div className="text-xs font-mono text-muted-foreground mb-4 uppercase tracking-wide">
+              VOLUME (24H)
+            </div>
+            <div className="h-[280px]">
+              {chartLoading || !chartData || chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  Loading chart data...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <XAxis
+                      dataKey="timestamp"
+                      tickFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric"
+                        })
+                      }
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `$${formatCompactNumber(value, 1)}`}
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "0",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-mono)"
+                      }}
+                      labelFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric"
+                        })
+                      }
+                      formatter={(value: number) => [
+                        `$${formatCompactNumber(value, 2)}`,
+                        "Volume"
+                      ]}
+                      cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
+                    />
+                    <Bar dataKey="volume" fill="hsl(336, 70%, 65%)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Pairs Breakdown */}
+        <div className="border border-border bg-card/30 p-6">
+          <div className="text-xs font-mono text-muted-foreground mb-6 uppercase tracking-wide">
+            TOP PAIRS BREAKDOWN
+          </div>
+          <div className="space-y-4">
+            {topPairs.length === 0 ? (
+              <div className="text-muted-foreground text-sm text-center py-8">
+                Loading pairs data...
+              </div>
+            ) : (
+              topPairs.map((pair, index) => (
+                <div key={pair.name} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-bold font-display">{pair.name}</span>
+                    <span className="font-mono text-primary">
+                      {pair.percentage.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="relative h-2 bg-muted/20">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-primary transition-all"
+                      style={{ width: `${pair.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

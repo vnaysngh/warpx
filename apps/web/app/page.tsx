@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ToastContainer } from "@/components/Toast";
 import { JsonRpcProvider } from "ethers";
-import {
-  useAccount,
-  useSwitchChain
-} from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { megaethTestnet } from "@/lib/chains";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { TokenDialog } from "@/components/trade/TokenDialog";
@@ -38,13 +35,8 @@ export default function Page() {
     ? (address?.toLowerCase() ?? null)
     : null;
 
-  const {
-    toasts,
-    removeToast,
-    showLoading,
-    showSuccess,
-    showError
-  } = useToasts();
+  const { toasts, removeToast, showLoading, showSuccess, showError } =
+    useToasts();
   const { deployment } = useDeploymentManifest();
 
   const readProvider = useMemo(() => {
@@ -150,9 +142,9 @@ export default function Page() {
             <div>
               <h1 className="text-3xl font-display font-bold flex items-center gap-3">
                 ETH / USDC
-                <span className="text-xs bg-primary text-black px-2 py-0.5 font-mono font-bold rounded-sm">
+                {/*  <span className="text-xs bg-primary text-black px-2 py-0.5 font-mono font-bold rounded-sm">
                   LIVE
-                </span>
+                </span> */}
               </h1>
             </div>
             <div className="flex gap-8 font-mono text-sm">
@@ -161,7 +153,9 @@ export default function Page() {
                   <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
                     {stat.label}
                   </div>
-                  <div className={`text-xl font-bold ${stat.accent || 'text-foreground'}`}>
+                  <div
+                    className={`text-xl font-bold ${stat.accent || "text-foreground"}`}
+                  >
                     {stat.value}
                   </div>
                 </div>

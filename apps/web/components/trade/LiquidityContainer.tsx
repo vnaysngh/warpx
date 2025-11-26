@@ -135,6 +135,10 @@ export function LiquidityContainer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
+  const [lpBaseData, setLpBaseData] = useState<{
+    userBalance: bigint;
+    totalSupply: bigint;
+  } | null>(null);
   const [transactionStatus, setTransactionStatus] = useState<{
     message: string;
     type: "idle" | "pending" | "success" | "error";
@@ -755,13 +759,100 @@ export function LiquidityContainer({
   }, [
     liquidityPairReserves,
     walletAccount,
-    removeLiquidityPercent,
     liquidityMode,
     liquidityTokenA?.decimals,
     liquidityTokenB?.decimals,
     liquidityTokenA,
     liquidityTokenB,
     readProvider,
+    formatDisplayNumber
+  ]);
+
+  // Store fetched LP data separately so slider changes don't trigger RPC calls
+  useEffect(() => {
+    if (!liquidityPairReserves || liquidityMode !== "remove" || !walletAccount) {
+      setLpBaseData(null);
+      return;
+    }
+
+    let active = true;
+    const fetchData = async () => {
+      try {
+        const lpTokenContract = getToken(
+          liquidityPairReserves.pairAddress,
+          readProvider
+        );
+        const [userBalance, totalSupply] = await Promise.all([
+          lpTokenContract.balanceOf(walletAccount),
+          lpTokenContract.totalSupply()
+        ]);
+
+        if (active) {
+          setLpBaseData({
+            userBalance: toBigInt(userBalance),
+            totalSupply: toBigInt(totalSupply)
+          });
+        }
+      } catch (err) {
+        console.error("[liquidity] fetch LP base data failed", err);
+        if (active) {
+          setLpBaseData(null);
+        }
+      }
+    };
+
+    fetchData();
+    return () => {
+      active = false;
+    };
+  }, [liquidityPairReserves, liquidityMode, walletAccount, readProvider]);
+
+  // Recalculate expected amounts when percentage changes (pure math, no RPC)
+  useEffect(() => {
+    if (!lpBaseData || !liquidityPairReserves || !liquidityTokenA || !liquidityTokenB) {
+      return;
+    }
+
+    const { userBalance, totalSupply } = lpBaseData;
+    const percentBigInt = clampPercentToBigInt(removeLiquidityPercent);
+    const liquidityToRemove =
+      percentBigInt === 100n
+        ? userBalance
+        : (userBalance * percentBigInt) / 100n;
+
+    const { amountAWei: expectedAWei, amountBWei: expectedBWei} =
+      getLiquidityRemoveAmounts(
+        liquidityToRemove,
+        liquidityPairReserves.reserveAWei,
+        liquidityPairReserves.reserveBWei,
+        totalSupply
+      );
+
+    const expectedAFormatted = formatUnits(
+      expectedAWei,
+      liquidityTokenA.decimals ?? 18
+    );
+    const expectedBFormatted = formatUnits(
+      expectedBWei,
+      liquidityTokenB.decimals ?? 18
+    );
+
+    setExpectedRemoveAmounts({
+      amountA: formatDisplayNumber({
+        input: expectedAFormatted,
+        type: NumberType.TokenTx
+      }),
+      amountB: formatDisplayNumber({
+        input: expectedBFormatted,
+        type: NumberType.TokenTx
+      })
+    });
+  }, [
+    lpBaseData,
+    removeLiquidityPercent,
+    liquidityPairReserves,
+    liquidityTokenA,
+    liquidityTokenB,
     formatDisplayNumber
   ]);
 
@@ -1756,7 +1847,10 @@ export function LiquidityContainer({
         }
         return;
       }
-      setShowLiquidityConfirm(true);
+      // Skip confirmation dialog and go directly to add liquidity
+      if (!isSubmitting) {
+        runAddLiquidityFlow();
+      }
       return;
     }
     handleRemoveLiquidity();
@@ -1765,7 +1859,9 @@ export function LiquidityContainer({
     handleRemoveLiquidity,
     isWalletConnected,
     liquidityMode,
-    onConnect
+    onConnect,
+    isSubmitting,
+    runAddLiquidityFlow
   ]);
 
   return (
@@ -1791,6 +1887,8 @@ export function LiquidityContainer({
           buttonLabel: liquidityButtonLabel,
           buttonDisabled: liquidityButtonDisabled,
           buttonVariant: addLiquidityOverride?.variant ?? "default",
+          liquidityPairReserves,
+          lpTokenInfo,
           transactionStatus
         }}
         removeProps={{
