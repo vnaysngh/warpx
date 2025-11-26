@@ -84,12 +84,12 @@ export function TradeHeader({
               <img src="/logo-black.png" alt="WarpX" className="w-6 h-6" />
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-bold text-lg leading-none tracking-tight">
+              <span className="font-display font-bold text-2xl leading-none tracking-tight">
                 WARP<span className="text-primary">X</span>
               </span>
-              <span className="text-[10px] font-mono text-muted-foreground leading-none tracking-widest">
+              {/*   <span className="text-[10px] font-mono text-muted-foreground leading-none tracking-widest">
                 PROTOCOL
-              </span>
+              </span> */}
             </div>
           </Link>
 

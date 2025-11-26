@@ -117,8 +117,30 @@ export function PoolsTable({
                 <div className="col-span-4">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-8 bg-primary/20 group-hover:bg-primary transition-colors" />
+                    <div className="flex items-center -space-x-2">
+                      {pool.token0.logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={pool.token0.logo}
+                          alt={pool.token0.symbol}
+                          className="h-8 w-8 rounded-full object-cover border-2 border-card bg-card"
+                        />
+                      ) : (
+                        <span className="h-8 w-8 rounded-full bg-muted border-2 border-card" />
+                      )}
+                      {pool.token1.logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={pool.token1.logo}
+                          alt={pool.token1.symbol}
+                          className="h-8 w-8 rounded-full object-cover border-2 border-card bg-card"
+                        />
+                      ) : (
+                        <span className="h-8 w-8 rounded-full bg-muted border-2 border-card" />
+                      )}
+                    </div>
                     <span className="font-bold font-display text-lg">
-                      {getDisplaySymbol(pool.token0)}-
+                      {getDisplaySymbol(pool.token0)}/
                       {getDisplaySymbol(pool.token1)}
                     </span>
                   </div>
@@ -189,8 +211,30 @@ export function PoolsTable({
               {/* Pool Name */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-1.5 h-6 bg-primary/20 group-hover:bg-primary transition-colors" />
+                <div className="flex items-center -space-x-2">
+                  {pool.token0.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pool.token0.logo}
+                      alt={pool.token0.symbol}
+                      className="h-6 w-6 rounded-full object-cover border-2 border-card bg-card"
+                    />
+                  ) : (
+                    <span className="h-6 w-6 rounded-full bg-muted border-2 border-card" />
+                  )}
+                  {pool.token1.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pool.token1.logo}
+                      alt={pool.token1.symbol}
+                      className="h-6 w-6 rounded-full object-cover border-2 border-card bg-card"
+                    />
+                  ) : (
+                    <span className="h-6 w-6 rounded-full bg-muted border-2 border-card" />
+                  )}
+                </div>
                 <span className="font-bold font-display text-lg uppercase">
-                  {getDisplaySymbol(pool.token0)}-
+                  {getDisplaySymbol(pool.token0)}/
                   {getDisplaySymbol(pool.token1)}
                 </span>
               </div>

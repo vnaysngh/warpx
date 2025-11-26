@@ -23,7 +23,7 @@ const socialLinks = [
 
 export function Footer() {
   const addNetwork = useCallback(async () => {
-    if (typeof window === "undefined" || !window.ethereum) {
+    if (typeof window === "undefined" || !(window as any).ethereum) {
       window.alert(
         "No wallet detected. Please install MetaMask or another Web3 wallet."
       );
@@ -31,7 +31,7 @@ export function Footer() {
     }
 
     try {
-      await (window.ethereum.request as any)({
+      await ((window as any).ethereum.request as any)({
         method: "wallet_addEthereumChain",
         params: [MEGAETH_TESTNET]
       });
