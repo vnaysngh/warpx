@@ -8,20 +8,23 @@ import { megaethTestnet } from "@/lib/chains";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { TokenDialog } from "@/components/trade/TokenDialog";
 import { SwapContainer } from "@/components/trade/SwapContainer";
+import { PriceChart } from "@/components/trade/PriceChart";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
-import { MEGAETH_CHAIN_ID } from "@/lib/trade/constants";
+import { usePools } from "@/hooks/usePools";
+import { usePairChartData } from "@/hooks/usePairChartData";
+import { MEGAETH_CHAIN_ID, TOKEN_CATALOG } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { appKit } from "@/lib/wagmi";
-
-const MARKET_STATS = [
-  { label: "Price", value: "$3,245.80", accent: "" },
-  { label: "24h Chg", value: "+2.45%", accent: "text-primary" },
-  { label: "Vol (24h)", value: "$1.2B", accent: "" }
-];
+import { findPairInPools } from "@/lib/trade/pairUtils";
+import { useLocalization } from "@/lib/format/LocalizationContext";
+import { NumberType } from "@/lib/format/formatNumbers";
+import { getDisplaySymbol } from "@/lib/trade/tokenDisplay";
 
 export default function Page() {
+  const { formatNumber: formatLocalizedNumber, formatCompactNumber: formatCompactNumberLocalized } =
+    useLocalization();
   const {
     address,
     isConnecting: isAccountConnecting,
@@ -65,6 +68,166 @@ export default function Page() {
 
   const [hasMounted, setHasMounted] = useState(false);
   const [swapRefreshNonce, setSwapRefreshNonce] = useState(0);
+
+  const selectedInAddress = useMemo(() => {
+    if (!selectedIn) return null;
+    if (selectedIn.isNative && selectedIn.wrappedAddress) {
+      return selectedIn.wrappedAddress;
+    }
+    return selectedIn.address;
+  }, [selectedIn]);
+
+  const selectedOutAddress = useMemo(() => {
+    if (!selectedOut) return null;
+    if (selectedOut.isNative && selectedOut.wrappedAddress) {
+      return selectedOut.wrappedAddress;
+    }
+    return selectedOut.address;
+  }, [selectedOut]);
+
+  // Fetch pools data for finding pair address
+  const { data: poolsData } = usePools({
+    tokenList: TOKEN_CATALOG,
+    factoryAddress: deployment?.factory ?? null,
+    wrappedNativeAddress: deployment?.wmegaeth ?? null,
+    provider: readProvider
+  });
+
+  // Find pair address for selected tokens
+  const pairAddress = useMemo(() => {
+    if (!selectedIn || !selectedOut || !poolsData) {
+      console.log("[swap] No pair address - missing data:", {
+        hasSelectedIn: !!selectedIn,
+        hasSelectedOut: !!selectedOut,
+        hasPoolsData: !!poolsData,
+        poolsCount: poolsData?.length ?? 0
+      });
+      return null;
+    }
+    const foundPair = findPairInPools(selectedIn, selectedOut, poolsData);
+    console.log("[swap] Looking for pair:", {
+      tokenIn: selectedIn.symbol,
+      tokenOut: selectedOut.symbol,
+      foundPair,
+      availablePairs: poolsData.map(p => `${p.token0.symbol}-${p.token1.symbol}`)
+    });
+    return foundPair;
+  }, [selectedIn, selectedOut, poolsData]);
+
+  const currentPoolData = useMemo(() => {
+    if (!poolsData || !pairAddress) {
+      return null;
+    }
+    const target = pairAddress.toLowerCase();
+    return poolsData.find(
+      (pool) => pool.pairAddress.toLowerCase() === target
+    );
+  }, [poolsData, pairAddress]);
+
+  // Fetch chart data for the selected pair
+  const {
+    data: chartData,
+    isLoading: chartLoading,
+    error: chartError
+  } = usePairChartData({
+    pairAddress,
+    days: 7,
+    tokenInAddress: selectedInAddress,
+    tokenOutAddress: selectedOutAddress,
+    enabled: Boolean(pairAddress && selectedInAddress && selectedOutAddress)
+  });
+
+  const pairSymbols = useMemo(() => {
+    if (!selectedIn || !selectedOut) {
+      return {
+        label: "Select Tokens",
+        tokenInSymbol: selectedIn?.symbol ?? null,
+        tokenOutSymbol: selectedOut?.symbol ?? null
+      };
+    }
+    const symbol0 = selectedIn.isNative
+      ? "ETH"
+      : getDisplaySymbol(selectedIn.symbol);
+    const symbol1 = selectedOut.isNative
+      ? "ETH"
+      : getDisplaySymbol(selectedOut.symbol);
+    return {
+      label: `${symbol0} / ${symbol1}`,
+      tokenInSymbol: symbol0,
+      tokenOutSymbol: symbol1
+    };
+  }, [selectedIn, selectedOut]);
+
+  const pairName = pairSymbols.label;
+
+  // Calculate market stats from chart data
+  const marketStats = useMemo(() => {
+    if (!chartData || chartData.length === 0) {
+      return {
+        currentPrice: null,
+        priceChange24h: null,
+        priceChangePercent24h: null,
+        volume24hUsd: null,
+        priceDisplay: null,
+        tokenInSymbol: pairSymbols.tokenInSymbol,
+        tokenOutSymbol: pairSymbols.tokenOutSymbol
+      };
+    }
+
+    const latestData = chartData[chartData.length - 1];
+    const currentPrice = latestData.price;
+    const tokenInSymbol = latestData.tokenInSymbol || pairSymbols.tokenInSymbol;
+    const tokenOutSymbol =
+      latestData.tokenOutSymbol || pairSymbols.tokenOutSymbol;
+
+    const volume24hUsd = currentPoolData?.totalVolumeValue ?? null;
+
+    // Calculate 24h price change (comparing with data from ~24h ago)
+    // Look for data point closest to 24h ago (1 day = 86400 seconds)
+    const currentTimestamp = latestData.date;
+    const targetTimestamp = currentTimestamp - 86400; // 24h ago
+
+    // Find the data point closest to 24h ago
+    let closestDataPoint = chartData[0];
+    let smallestDiff = Math.abs(closestDataPoint.date - targetTimestamp);
+
+    for (const dataPoint of chartData) {
+      const diff = Math.abs(dataPoint.date - targetTimestamp);
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        closestDataPoint = dataPoint;
+      }
+    }
+
+    const priceChange24h = currentPrice - closestDataPoint.price;
+    const priceChangePercent24h =
+      closestDataPoint.price > 0
+        ? (priceChange24h / closestDataPoint.price) * 100
+        : null;
+
+    const priceDisplay =
+      currentPrice !== null && tokenOutSymbol
+        ? `${formatLocalizedNumber({
+            input: currentPrice,
+            type: NumberType.TokenTx
+          })} ${tokenOutSymbol}`
+        : null;
+
+    return {
+      currentPrice,
+      priceChange24h,
+      priceChangePercent24h,
+      volume24hUsd,
+      tokenInSymbol,
+      tokenOutSymbol,
+      priceDisplay
+    };
+  }, [
+    chartData,
+    pairSymbols.tokenInSymbol,
+    pairSymbols.tokenOutSymbol,
+    currentPoolData
+  ]);
 
   const ready = useMemo(() => {
     const onMegaEth = chain && chain.id === Number(MEGAETH_CHAIN_ID);
@@ -134,32 +297,54 @@ export default function Page() {
         isSwitching={isSwitchingChain}
       />
 
-      <div className="grid lg:grid-cols-12 gap-8 items-start">
+      <div className="grid lg:grid-cols-12 gap-8 items-end">
         {/* LEFT: Market Data Module */}
         <div className="lg:col-span-8 space-y-6">
           {/* Header Stats */}
           <div className="flex flex-wrap items-end gap-8 pb-6 border-b border-border">
-            <div>
-              <h1 className="text-3xl font-display font-bold flex items-center gap-3">
-                ETH / USDC
-                {/*  <span className="text-xs bg-primary text-black px-2 py-0.5 font-mono font-bold rounded-sm">
-                  LIVE
-                </span> */}
-              </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-display font-bold">{pairName}</h1>
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] bg-primary text-black px-2 py-0.5">
+                LIVE
+              </span>
             </div>
             <div className="flex gap-8 font-mono text-sm">
-              {MARKET_STATS.map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
-                    {stat.label}
-                  </div>
-                  <div
-                    className={`text-xl font-bold ${stat.accent || "text-foreground"}`}
-                  >
-                    {stat.value}
-                  </div>
+              <div>
+                <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+                  Price
                 </div>
-              ))}
+                <div className="text-2xl font-bold text-foreground tracking-tight">
+                  {marketStats.priceDisplay ?? "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+                  24h Chg
+                </div>
+                <div
+                  className={`text-xl font-bold ${
+                    marketStats.priceChangePercent24h !== null
+                      ? marketStats.priceChangePercent24h >= 0
+                        ? "text-primary"
+                        : "text-red-500"
+                      : "text-foreground"
+                  }`}
+                >
+                  {marketStats.priceChangePercent24h !== null
+                    ? `${marketStats.priceChangePercent24h >= 0 ? "+" : ""}${marketStats.priceChangePercent24h.toFixed(2)}%`
+                    : "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+              Vol (24h)
+            </div>
+            <div className="text-xl font-bold text-foreground">
+              {marketStats.volume24hUsd !== null
+                ? `$${formatCompactNumberLocalized(marketStats.volume24hUsd, 2)}`
+                : "—"}
+            </div>
+              </div>
             </div>
           </div>
 
@@ -171,8 +356,12 @@ export default function Page() {
             <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary" />
             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-primary" />
             <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-primary" />
-            <div className="absolute inset-0 flex items-center justify-center text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground">
-              Market feed
+            <div className="absolute inset-4">
+              <PriceChart
+                data={chartData ?? []}
+                isLoading={chartLoading}
+                error={chartError}
+              />
             </div>
           </div>
         </div>

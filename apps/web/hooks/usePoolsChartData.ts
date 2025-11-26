@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fetchEthUsdPrice } from "@/lib/utils/ethPrice";
 
 const POOLS_CHART_DATA_QUERY = `
   query GetPoolsChartData($days: Int!) {
@@ -37,26 +38,6 @@ interface SubgraphDayData {
   date: number;
   dailyVolumeETH: string;
   totalLiquidityETH: string;
-}
-
-async function fetchEthUsdPrice(): Promise<number | null> {
-  try {
-    const response = await fetch("/api/eth-price", {
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ETH price: ${response.status}`);
-    }
-
-    const data = (await response.json()) as { priceUsd?: number | null };
-    return typeof data.priceUsd === "number" && Number.isFinite(data.priceUsd)
-      ? data.priceUsd
-      : null;
-  } catch (error) {
-    console.error("[usePoolsChartData] failed to fetch ETH price", error);
-    return null;
-  }
 }
 
 async function fetchPoolsChartData(days: number): Promise<ChartDataPoint[]> {

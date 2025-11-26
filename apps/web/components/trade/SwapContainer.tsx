@@ -164,6 +164,7 @@ export function SwapContainer({
   const swapInIsNative = Boolean(swapInDescriptor?.isNative);
   const swapOutIsNative = Boolean(swapOutDescriptor?.isNative);
   const swapInIsAddress = isAddress(swapInTokenAddress);
+  const swapOutIsAddress = isAddress(swapOutTokenAddress);
   const swapOutDecimals = swapOutDescriptor?.decimals ?? DEFAULT_TOKEN_DECIMALS;
 
   const { data: swapInBalanceData, refetch: refetchSwapInBalance } = useBalance(
@@ -198,6 +199,37 @@ export function SwapContainer({
   );
 
   const swapInBalanceFormatted = swapInBalanceData?.formatted ?? null;
+
+  const { data: swapOutBalanceData } = useBalance({
+    address:
+      walletAccount &&
+      chainId === Number(MEGAETH_CHAIN_ID) &&
+      hasMounted &&
+      isWalletConnected
+        ? (walletAccount as Address)
+        : undefined,
+    token:
+      walletAccount &&
+      chainId === Number(MEGAETH_CHAIN_ID) &&
+      (swapOutIsNative || swapOutIsAddress) &&
+      swapOutTokenAddress
+        ? swapOutIsNative
+          ? undefined
+          : (swapOutTokenAddress as Address)
+        : undefined,
+    chainId: Number(MEGAETH_CHAIN_ID),
+    query: {
+      enabled:
+        Boolean(walletAccount) &&
+        Boolean(swapOutTokenAddress) &&
+        hasMounted &&
+        isWalletConnected &&
+        chainId === Number(MEGAETH_CHAIN_ID) &&
+        (swapOutIsNative || swapOutIsAddress)
+    }
+  });
+
+  const swapOutBalanceFormatted = swapOutBalanceData?.formatted ?? null;
   const swapInSymbol =
     swapInDescriptor?.symbol ?? swapInBalanceData?.symbol ?? null;
 
@@ -1423,51 +1455,6 @@ export function SwapContainer({
     swapButtonDisabled = isSubmitting;
   }
 
-  const swapSummaryMessage = useMemo(() => {
-    // Works with both forward quote (swapQuote) and reverse quote (reverseQuote)
-    const hasQuote = swapQuote || reverseQuote;
-    if (
-      !hasQuote ||
-      !swapForm.amountIn ||
-      !swapForm.minOut ||
-      !selectedIn ||
-      !selectedOut
-    ) {
-      return null;
-    }
-
-    try {
-      const amountInNum = Number(swapForm.amountInExact ?? swapForm.amountIn);
-      const amountOutNum = swapQuote
-        ? Number(swapQuote.amount)
-        : Number(swapForm.minOut);
-
-      if (amountInNum <= 0 || amountOutNum <= 0) {
-        return null;
-      }
-
-      // Calculate exchange rate (1 unit of input = X units of output)
-      const rate = amountOutNum / amountInNum;
-
-      const formattedRate = formatDisplayNumber({
-        input: rate,
-        type: NumberType.TokenTx
-      });
-      return `1 ${selectedIn.symbol} = ${formattedRate} ${selectedOut.symbol}`;
-    } catch (err) {
-      return null;
-    }
-  }, [
-    swapQuote,
-    reverseQuote,
-    swapForm.amountIn,
-    swapForm.amountInExact,
-    swapForm.minOut,
-    selectedIn,
-    selectedOut,
-    formatDisplayNumber
-  ]);
-
   const receiveAmountValue =
     swapEditingFieldRef.current === "minOut"
       ? swapForm.minOut
@@ -1490,11 +1477,11 @@ export function SwapContainer({
       onMinOutChange={handleSwapMinOutChange}
       formatBalance={formatBalanceDisplay}
       swapInBalanceFormatted={swapInBalanceFormatted}
+      swapOutBalanceFormatted={swapOutBalanceFormatted}
       swapInSymbol={swapInSymbol}
       onSetMaxSwapAmount={handleSetMaxSwapAmount}
       receiveValue={receiveAmountValue}
       minReceived={minReceivedDisplay}
-      summaryMessage={swapSummaryMessage}
       priceImpact={priceImpact}
       priceImpactDisplay={priceImpactDisplay}
       slippage={slippagePercentDisplay}

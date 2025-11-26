@@ -17,11 +17,11 @@ type SwapCardProps = {
   onMinOutChange: (value: string) => void;
   formatBalance: (value: string | null) => string;
   swapInBalanceFormatted: string | null;
+  swapOutBalanceFormatted: string | null;
   swapInSymbol: string | null;
   onSetMaxSwapAmount: () => void;
   receiveValue: string;
   minReceived: string | null;
-  summaryMessage: string | null;
   priceImpact: number | null;
   priceImpactDisplay: string | null;
   slippage: string | null;
@@ -46,11 +46,11 @@ export function SwapCard({
   onMinOutChange,
   formatBalance,
   swapInBalanceFormatted,
+  swapOutBalanceFormatted,
   swapInSymbol,
   onSetMaxSwapAmount,
   receiveValue,
   minReceived,
-  summaryMessage,
   priceImpact,
   priceImpactDisplay,
   slippage,
@@ -182,7 +182,9 @@ export function SwapCard({
       <div className="space-y-1 mb-8">
         <div className="flex justify-between text-xs font-mono text-muted-foreground mb-2">
           <span>RECEIVE</span>
-          {selectedOut && <span>BAL: {formatBalance(null)}</span>}
+          {selectedOut && (
+            <span>BAL: {formatBalance(swapOutBalanceFormatted)}</span>
+          )}
         </div>
         <div className="relative group">
           <input
@@ -219,14 +221,8 @@ export function SwapCard({
         </div>
         <div className="flex justify-between text-xs font-mono">
           <span className="text-muted-foreground">NETWORK FEE</span>
-          <span className="text-primary">$0.02</span>
+          <span className="text-primary">&lt; $0.01</span>
         </div>
-        {summaryMessage && (
-          <div className="flex justify-between text-xs font-mono">
-            <span className="text-muted-foreground">ROUTE</span>
-            <span>ETH &gt; MEGA &gt; USDC</span>
-          </div>
-        )}
         {minReceived && selectedOut && (
           <div className="flex justify-between text-xs font-mono">
             <span className="text-muted-foreground">MIN RECEIVED</span>

@@ -365,24 +365,24 @@ export default function PoolsPage() {
   }, [pools]);
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 sm:py-12 max-w-7xl">
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}
         isSwitching={isSwitchingChain}
       />
 
-      <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-end mb-8 sm:mb-12 gap-4 sm:gap-6">
         <div>
-          <h1 className="text-4xl font-display font-bold mb-2 uppercase">
+          <h1 className="text-2xl sm:text-4xl font-display font-bold mb-2 uppercase">
             LIQUIDITY MATRIX
           </h1>
-          <p className="font-mono text-muted-foreground text-sm">
+          <p className="font-mono text-muted-foreground text-xs sm:text-sm">
             DEPLOY CAPITAL. EARN YIELD.
           </p>
         </div>
-        <div className="flex gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full md:w-auto">
+          <div className="relative flex-1 sm:w-64">
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
               width="16"
@@ -408,7 +408,7 @@ export default function PoolsPage() {
           {hasMounted && isWalletConnected && (
             <button
               onClick={handleCreatePool}
-              className="h-10 px-4 bg-primary text-black font-mono font-bold rounded-none hover:bg-primary/90 flex items-center gap-2"
+              className="h-10 px-4 bg-primary text-black font-mono font-bold rounded-none hover:bg-primary/90 flex items-center gap-2 whitespace-nowrap"
             >
               <svg
                 width="16"

@@ -19,7 +19,8 @@ export default function LandingPage() {
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-8 h-8 bg-[hsl(var(--primary))] text-black flex items-center justify-center font-bold font-display text-xl skew-x-[-10deg] group-hover:skew-x-0 transition-transform">
-              W
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-black.png" alt="WarpX" className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
               <span className="font-display font-bold text-lg leading-none tracking-tight">
@@ -37,7 +38,7 @@ export default function LandingPage() {
               href={appUrl}
               className="px-6 py-2 text-sm font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] transition-colors"
             >
-              TERMINAL
+              SWAP
             </Link>
             <Link
               href={`${appUrl}/pools`}
@@ -72,7 +73,7 @@ export default function LandingPage() {
             href={appUrl}
             className="font-mono text-xs h-9 px-4 border-2 border-[hsl(var(--primary))]/50 text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))] hover:text-black transition-all uppercase tracking-wide rounded-none flex items-center justify-center"
           >
-            [ CONNECT_WALLET ]
+            [ LAUNCH_APP ]
           </Link>
         </div>
 
@@ -98,111 +99,16 @@ export default function LandingPage() {
       {/* Main Content */}
       <main className="flex-1 pt-16 relative z-10">
         <div className="relative min-h-[calc(100vh-64px)] flex items-center overflow-hidden">
-          {/* Multi-layer Background */}
-          <div className="absolute inset-0 z-0">
-            {/* Grid Background */}
-            <div
-              className="absolute inset-0 opacity-40"
-              style={{
-                backgroundSize: "56px 56px",
-                backgroundImage:
-                  "linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)"
-              }}
+          {/* Background */}
+          <div className="absolute inset-0 z-0 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/technical_precision_grid_background.png"
+              alt="WarpX technical grid background"
+              className="w-full h-full object-cover opacity-25"
             />
-
-            {/* Noise Texture Overlay */}
-            <div
-              className="absolute inset-0 opacity-15 mix-blend-screen pointer-events-none"
-              style={{
-                backgroundImage:
-                  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.2'/%3E%3C/svg%3E\")"
-              }}
-            />
-
-            {/* Vignette Gradients */}
             <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--background))] via-transparent to-[hsl(var(--background))]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--background))] via-transparent to-transparent" />
-          </div>
-
-          {/* Radar Graphic - Right Side */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[700px] h-[700px] hidden lg:block opacity-20">
-            <svg
-              viewBox="0 0 700 700"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-full h-full"
-            >
-              {/* Concentric circles */}
-              <circle
-                cx="350"
-                cy="350"
-                r="300"
-                stroke="rgba(255,255,255,0.15)"
-                strokeWidth="1.5"
-              />
-              <circle
-                cx="350"
-                cy="350"
-                r="240"
-                stroke="rgba(255,255,255,0.12)"
-                strokeWidth="1.5"
-              />
-              <circle
-                cx="350"
-                cy="350"
-                r="180"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="1.5"
-              />
-              <circle
-                cx="350"
-                cy="350"
-                r="120"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth="1.5"
-              />
-              <circle
-                cx="350"
-                cy="350"
-                r="60"
-                stroke="rgba(255,255,255,0.06)"
-                strokeWidth="1.5"
-              />
-              {/* Cross lines */}
-              <line
-                x1="350"
-                y1="50"
-                x2="350"
-                y2="650"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="1.5"
-              />
-              <line
-                x1="50"
-                y1="350"
-                x2="650"
-                y2="350"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="1.5"
-              />
-              {/* Diagonal lines */}
-              <line
-                x1="120"
-                y1="120"
-                x2="580"
-                y2="580"
-                stroke="rgba(255,255,255,0.05)"
-                strokeWidth="1"
-              />
-              <line
-                x1="580"
-                y1="120"
-                x2="120"
-                y2="580"
-                stroke="rgba(255,255,255,0.05)"
-                strokeWidth="1"
-              />
-            </svg>
+            <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--background))] via-transparent to-[hsl(var(--background))]" />
           </div>
 
           <div className="container mx-auto px-6 relative z-10">
@@ -215,11 +121,11 @@ export default function LandingPage() {
                 {/* Status Indicator */}
                 <div className="flex items-center gap-2 mb-6 text-[hsl(var(--primary))] font-mono text-sm tracking-widest uppercase">
                   <div className="w-2 h-2 bg-[hsl(var(--primary))] animate-pulse rounded-full" />
-                  SYSTEM ONLINE // MEGAETH V2
+                  MEGAETH V2
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-6xl md:text-8xl lg:text-9xl font-display font-bold uppercase leading-[0.85] tracking-tighter mb-8">
+                <h1 className="text-6xl md:text-8xl lg:text-9xl font-display font-bold uppercase leading-[0.78] tracking-tighter mb-8">
                   ZERO <br />
                   LATENCY <br />
                   TRADING
@@ -237,7 +143,7 @@ export default function LandingPage() {
                 <div className="flex flex-col sm:flex-row gap-6">
                   <Link href={appUrl}>
                     <button className="h-16 px-10 bg-[hsl(var(--primary))] text-black text-lg font-bold font-mono uppercase rounded-none hover:bg-[hsl(var(--primary))]/80 tracking-wider transition-colors">
-                      INITIALIZE TERMINAL
+                      LAUNCH APP
                     </button>
                   </Link>
                   <a
