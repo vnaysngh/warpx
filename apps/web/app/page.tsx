@@ -23,8 +23,10 @@ import { NumberType } from "@/lib/format/formatNumbers";
 import { getDisplaySymbol } from "@/lib/trade/tokenDisplay";
 
 export default function Page() {
-  const { formatNumber: formatLocalizedNumber, formatCompactNumber: formatCompactNumberLocalized } =
-    useLocalization();
+  const {
+    formatNumber: formatLocalizedNumber,
+    formatCompactNumber: formatCompactNumberLocalized
+  } = useLocalization();
   const {
     address,
     isConnecting: isAccountConnecting,
@@ -109,7 +111,9 @@ export default function Page() {
       tokenIn: selectedIn.symbol,
       tokenOut: selectedOut.symbol,
       foundPair,
-      availablePairs: poolsData.map(p => `${p.token0.symbol}-${p.token1.symbol}`)
+      availablePairs: poolsData.map(
+        (p) => `${p.token0.symbol}-${p.token1.symbol}`
+      )
     });
     return foundPair;
   }, [selectedIn, selectedOut, poolsData]);
@@ -119,9 +123,7 @@ export default function Page() {
       return null;
     }
     const target = pairAddress.toLowerCase();
-    return poolsData.find(
-      (pool) => pool.pairAddress.toLowerCase() === target
-    );
+    return poolsData.find((pool) => pool.pairAddress.toLowerCase() === target);
   }, [poolsData, pairAddress]);
 
   // Fetch chart data for the selected pair
@@ -297,7 +299,7 @@ export default function Page() {
         isSwitching={isSwitchingChain}
       />
 
-      <div className="grid lg:grid-cols-12 gap-8 items-end">
+      <div className="grid lg:grid-cols-12 gap-8 items-start">
         {/* LEFT: Market Data Module */}
         <div className="lg:col-span-8 space-y-6">
           {/* Header Stats */}
@@ -337,13 +339,13 @@ export default function Page() {
               </div>
               <div>
                 <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
-              Vol (24h)
-            </div>
-            <div className="text-xl font-bold text-foreground">
-              {marketStats.volume24hUsd !== null
-                ? `$${formatCompactNumberLocalized(marketStats.volume24hUsd, 2)}`
-                : "—"}
-            </div>
+                  Vol (24h)
+                </div>
+                <div className="text-xl font-bold text-foreground">
+                  {marketStats.volume24hUsd !== null
+                    ? `$${formatCompactNumberLocalized(marketStats.volume24hUsd, 2)}`
+                    : "—"}
+                </div>
               </div>
             </div>
           </div>

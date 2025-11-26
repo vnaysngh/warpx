@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Radio, Activity } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ??
@@ -185,6 +186,8 @@ export default function LandingPage() {
           </div>
         </div>
       </main>
+
+      <Footer />
 
       {/* Decorative Corner HUD Elements */}
       <div className="fixed bottom-8 left-8 w-32 h-32 border-l border-b border-white/5 pointer-events-none z-0" />

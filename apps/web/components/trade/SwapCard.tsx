@@ -249,6 +249,12 @@ export function SwapCard({
           buttonDisabled
             ? "cursor-not-allowed border border-border bg-muted text-muted-foreground"
             : "bg-primary text-black hover:bg-primary/90"
+        } ${
+          transactionStatus?.type === "error"
+            ? "!bg-red-500 !text-white"
+            : transactionStatus?.type === "success"
+              ? "!bg-accent !text-black"
+              : ""
         }`}
       >
         {buttonLabel}

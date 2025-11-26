@@ -1279,8 +1279,10 @@ export function SwapContainer({
       setNeedsApproval(false);
       setCheckingAllowance(false);
 
+      const txSeconds = (txDuration / 1000).toFixed(2);
+
       setTransactionStatus({
-        message: `Swap completed in ${txDuration}ms!`,
+        message: `Transaction done in ${txSeconds}s`,
         type: "success"
       });
 
