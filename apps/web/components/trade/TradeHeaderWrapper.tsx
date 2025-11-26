@@ -116,7 +116,7 @@ export function TradeHeaderWrapper() {
   const activeNav = pathname?.startsWith("/pools")
     ? "pools"
     : pathname?.startsWith("/stake")
-      ? "stake"
+      ? "analytics"
       : "swap";
 
   return (

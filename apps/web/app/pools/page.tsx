@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { JsonRpcProvider } from "ethers";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
-import pageStyles from "../page.module.css";
-import styles from "./page.module.css";
 import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { PoolsTable, type PoolsTableRow } from "@/components/pools/PoolsTable";
@@ -26,7 +24,6 @@ import {
   formatCompactNumber
 } from "@/lib/trade/math";
 import type { TokenDescriptor, TokenManifest } from "@/lib/trade/types";
-import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 import { PoolsCharts } from "@/components/pools/PoolsCharts";
 import { usePoolsChartData } from "@/hooks/usePoolsChartData";
 
@@ -345,100 +342,81 @@ export default function PoolsPage() {
   }, [pools]);
 
   return (
-    <>
-      <AnimatedBackground variant="pools" />
+    <div className="relative">
+      <div className="relative z-10 space-y-8">
+        <NetworkBanner
+          error={networkError}
+          onSwitch={switchToMegaEth}
+          isSwitching={isSwitchingChain}
+        />
 
-      <NetworkBanner
-        error={networkError}
-        onSwitch={switchToMegaEth}
-        isSwitching={isSwitchingChain}
-      />
-
-      <section className={styles.pageShell}>
-        <div className={styles.statsChartsContainer} suppressHydrationWarning>
-          <div className={styles.statsRow}>
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>
-                <span className={styles.statLabelFull}>Total Value Locked</span>
-                <span className={styles.statLabelShort}>TVL</span>
+        <section className="space-y-6 rounded border border-white/10 bg-black/40 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.6)]">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded border border-primary/30 bg-black/50 p-4">
+              <div className="text-xs font-mono uppercase tracking-[0.3em] text-white/50">
+                Total Value Locked
               </div>
-              {totalTvlSummary.loading ? (
-                <div className={styles.statValue}>
-                  <span className={styles.statLoader}>
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </div>
-              ) : (
-                <div className={`${styles.statValue} ${styles.statValueTvl}`}>
-                  {totalTvlSummary.value || "$0.00"}
-                </div>
-              )}
+              <div className="mt-3 text-3xl font-mono text-primary">
+                {totalTvlSummary.loading
+                  ? "…"
+                  : (totalTvlSummary.value ?? "$0.00")}
+              </div>
             </div>
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>
-                <span className={styles.statLabelFull}>24h Trading Volume</span>
-                <span className={styles.statLabelShort}>24h Volume</span>
+            <div className="rounded border border-cyan/30 bg-black/50 p-4">
+              <div className="text-xs font-mono uppercase tracking-[0.3em] text-white/50">
+                24h Trading Volume
               </div>
-              {totalVolumeSummary.loading ? (
-                <div className={styles.statValue}>
-                  <span className={styles.statLoader}>
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </div>
-              ) : (
-                <div className={`${styles.statValue} ${styles.statValueVolume}`}>
-                  {totalVolumeSummary.value || "$0.00"}
-                </div>
-              )}
+              <div className="mt-3 text-3xl font-mono text-cyan">
+                {totalVolumeSummary.loading
+                  ? "…"
+                  : (totalVolumeSummary.value ?? "$0.00")}
+              </div>
             </div>
           </div>
 
           <PoolsCharts />
-        </div>
 
-        <div className={styles.toolbarRow} suppressHydrationWarning>
-          {hasMounted && isWalletConnected ? (
-            <div
-              className={`${pageStyles.segmented} ${styles.toolbarSegmented}`}
-            >
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {hasMounted && isWalletConnected ? (
+              <div className="inline-flex rounded border border-white/15 text-xs font-mono uppercase tracking-[0.3em]">
+                <button
+                  type="button"
+                  className={`px-4 py-2 ${
+                    !showMyPositionsOnly
+                      ? "bg-primary/20 text-primary"
+                      : "text-white/40"
+                  }`}
+                  onClick={() => setShowMyPositionsOnly(false)}
+                >
+                  All Pools
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-2 ${
+                    showMyPositionsOnly
+                      ? "bg-primary/20 text-primary"
+                      : "text-white/40"
+                  }`}
+                  onClick={() => setShowMyPositionsOnly(true)}
+                >
+                  My Positions
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
+
+            {hasMounted && isWalletConnected && (
               <button
                 type="button"
-                className={`${pageStyles.segment} ${
-                  !showMyPositionsOnly ? pageStyles.segmentActive : ""
-                }`}
-                onClick={() => setShowMyPositionsOnly(false)}
+                className="rounded border border-primary bg-primary px-4 py-3 font-mono text-xs uppercase tracking-[0.35em] text-black transition hover:shadow-pink-glow"
+                onClick={handleCreatePool}
               >
-                All Pools
+                Launch Pool
               </button>
-              <button
-                type="button"
-                className={`${pageStyles.segment} ${
-                  showMyPositionsOnly ? pageStyles.segmentActive : ""
-                }`}
-                onClick={() => setShowMyPositionsOnly(true)}
-              >
-                My Positions
-              </button>
-            </div>
-          ) : (
-            <div />
-          )}
-          {hasMounted && isWalletConnected && (
-            <button
-              type="button"
-              className={`${styles.primaryButton} ${styles.createButton}`}
-              onClick={handleCreatePool}
-            >
-              Launch Pool
-            </button>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div className={styles.tableSection}>
           <PoolsTable
             pools={filteredPools}
             loading={poolsLoading}
@@ -447,10 +425,10 @@ export default function PoolsPage() {
             onSelectPool={handlePoolSelect}
             showUserPositions={showMyPositionsOnly}
           />
-        </div>
-      </section>
+        </section>
+      </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
-    </>
+    </div>
   );
 }

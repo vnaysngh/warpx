@@ -17,7 +17,6 @@ import type { TokenManifest } from "@/lib/trade/types";
 import { appKit } from "@/lib/wagmi";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { StakingCard } from "@/components/staking/StakingCard";
-import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 
 type TokenMeta = {
   symbol: string;
@@ -131,8 +130,6 @@ export default function StakePage() {
 
   return (
     <>
-      <AnimatedBackground variant="stake" />
-
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}

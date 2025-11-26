@@ -1,7 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
+"use client";
+
 import Link from "next/link";
-import styles from "./page.module.css";
-import { AnimatedBackground } from "@/components/background/AnimatedBackground";
+import { motion } from "framer-motion";
+import { Radio, Activity } from "lucide-react";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ??
@@ -11,155 +12,277 @@ const appUrl =
 
 export default function LandingPage() {
   return (
-    <>
-      <AnimatedBackground variant="landing" />
-
-      <div className={`${styles.page} ${styles.shell}`}>
-        <header className={styles.nav}>
-          <div className={styles.brand}>
-            <img src="/logo.png" alt="WarpX" className={styles.brandLogo} />
-            <div className={styles.brandText}>
-              <span className={styles.brandMain}>WarpX</span>
-              {/* <span className={styles.brandSub}>Built on MegaETH</span> */}
+    <div className="min-h-screen flex flex-col bg-[hsl(var(--background))] relative overflow-hidden">
+      {/* Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 h-16 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/80 backdrop-blur-md z-50 flex items-center px-6 justify-between">
+        {/* Left: Logo & Brand */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 bg-[hsl(var(--primary))] text-black flex items-center justify-center font-bold font-display text-xl skew-x-[-10deg] group-hover:skew-x-0 transition-transform">
+              W
             </div>
-          </div>
-          <Link href={appUrl} className={styles.ctaButton}>
-            Launch App
+            <div className="flex flex-col">
+              <span className="font-display font-bold text-lg leading-none tracking-tight">
+                WARP<span className="text-[hsl(var(--primary))]">X</span>
+              </span>
+              <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] leading-none tracking-widest">
+                PROTOCOL
+              </span>
+            </div>
           </Link>
-        </header>
 
-        <main className={styles.main}>
-          <section className={styles.hero}>
-            <div className={styles.heroText}>
-              <h1 className={styles.heroHeadline}>
-                The AMM built for instant MegaETH liquidity
-              </h1>
-              <p className={styles.heroCopy}>
-                WarpX brings the classic constant-product design to MegaETH with
-                deterministic execution, pooled routing, and advanced analytics
-                for LPs. Step into the next era of trustless swaps.
-              </p>
-              <Link href={appUrl} className={styles.ctaPrimary}>
-                Launch App
-              </Link>
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1 border-l border-[hsl(var(--border))] pl-6 h-8">
+            <Link
+              href={appUrl}
+              className="px-6 py-2 text-sm font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] transition-colors"
+            >
+              TERMINAL
+            </Link>
+            <Link
+              href={`${appUrl}/pools`}
+              className="px-6 py-2 text-sm font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] transition-colors"
+            >
+              LIQUIDITY
+            </Link>
+            <Link
+              href={`${appUrl}`}
+              className="px-6 py-2 text-sm font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] transition-colors"
+            >
+              DATA
+            </Link>
+          </nav>
+        </div>
+
+        {/* Right: Status & Wallet */}
+        <div className="hidden md:flex items-center gap-6">
+          {/* Status */}
+          {/*      <div className="flex items-center gap-4 text-xs font-mono text-[hsl(var(--muted-foreground))] border-r border-[hsl(var(--border))] pr-6 h-8">
+            <div className="flex items-center gap-2">
+              <Radio className="w-3 h-3 text-[hsl(var(--accent))] animate-pulse" />
+              <span>MEGA_NET: ONLINE</span>
             </div>
-            <div className={styles.heroGraphic} aria-hidden="true">
-              <div className={styles.speedCard}>
-                <div className={styles.speedHeader}>
-                  <span>Transaction finality</span>
-                </div>
-
-                <div className={styles.speedLane}>
-                  <div className={styles.laneLabel}>Other chains</div>
-                  <div className={styles.laneTrack}>
-                    <div
-                      className={`${styles.laneMeter} ${styles.laneMeterSlow}`}
-                    />
-                    <div
-                      className={`${styles.laneGlow} ${styles.laneGlowSlow}`}
-                    />
-                    <div className={styles.laneTime}>12–15s</div>
-                  </div>
-                </div>
-
-                <div className={`${styles.speedLane} ${styles.speedLaneMega}`}>
-                  <div className={styles.laneLabel}>MegaETH</div>
-                  <div className={styles.laneTrack}>
-                    <div
-                      className={`${styles.laneMeter} ${styles.laneMeterFast}`}
-                    />
-                    <div
-                      className={`${styles.laneGlow} ${styles.laneGlowFast}`}
-                    />
-                    <div className={styles.laneTime}>10ms</div>
-                  </div>
-                </div>
-
-                <div className={styles.speedFooter}>
-                  <span>MegaETH keeps deterministic 10ms blocks</span>
-                  <span className={styles.speedFootNote}>
-                    WarpX routes settle instantly
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <Activity className="w-3 h-3" />
+              <span>LATENCY: 0.8ms</span>
             </div>
-          </section>
+          </div> */}
 
-          {/* Future marketing modules can be re-enabled here */}
-          {/* <section id="features" className={styles.featureSection}>
-          ...
-        </section> */}
-        </main>
+          <Link
+            href={appUrl}
+            className="font-mono text-xs h-9 px-4 border-2 border-[hsl(var(--primary))]/50 text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))] hover:text-black transition-all uppercase tracking-wide rounded-none flex items-center justify-center"
+          >
+            [ CONNECT_WALLET ]
+          </Link>
+        </div>
 
-        <footer className={styles.footer}>
-          <div className={styles.footerContent}>
-            <p className={styles.footerText}>
-              Built on MegaETH Testnet • Early Access •{" "}
-              <a
-                href="https://docs.warpx.exchange/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.footerLink}
+        {/* Mobile Menu Button */}
+        <button className="md:hidden p-2 text-foreground hover:text-[hsl(var(--primary))]">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 pt-16 relative z-10">
+        <div className="relative min-h-[calc(100vh-64px)] flex items-center overflow-hidden">
+          {/* Multi-layer Background */}
+          <div className="absolute inset-0 z-0">
+            {/* Grid Background */}
+            <div
+              className="absolute inset-0 opacity-40"
+              style={{
+                backgroundSize: "56px 56px",
+                backgroundImage:
+                  "linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)"
+              }}
+            />
+
+            {/* Noise Texture Overlay */}
+            <div
+              className="absolute inset-0 opacity-15 mix-blend-screen pointer-events-none"
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.2'/%3E%3C/svg%3E\")"
+              }}
+            />
+
+            {/* Vignette Gradients */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--background))] via-transparent to-[hsl(var(--background))]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--background))] via-transparent to-transparent" />
+          </div>
+
+          {/* Radar Graphic - Right Side */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[700px] h-[700px] hidden lg:block opacity-20">
+            <svg
+              viewBox="0 0 700 700"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-full h-full"
+            >
+              {/* Concentric circles */}
+              <circle
+                cx="350"
+                cy="350"
+                r="300"
+                stroke="rgba(255,255,255,0.15)"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="350"
+                cy="350"
+                r="240"
+                stroke="rgba(255,255,255,0.12)"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="350"
+                cy="350"
+                r="180"
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="350"
+                cy="350"
+                r="120"
+                stroke="rgba(255,255,255,0.08)"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="350"
+                cy="350"
+                r="60"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1.5"
+              />
+              {/* Cross lines */}
+              <line
+                x1="350"
+                y1="50"
+                x2="350"
+                y2="650"
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1.5"
+              />
+              <line
+                x1="50"
+                y1="350"
+                x2="650"
+                y2="350"
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1.5"
+              />
+              {/* Diagonal lines */}
+              <line
+                x1="120"
+                y1="120"
+                x2="580"
+                y2="580"
+                stroke="rgba(255,255,255,0.05)"
+                strokeWidth="1"
+              />
+              <line
+                x1="580"
+                y1="120"
+                x2="120"
+                y2="580"
+                stroke="rgba(255,255,255,0.05)"
+                strokeWidth="1"
+              />
+            </svg>
+          </div>
+
+          <div className="container mx-auto px-6 relative z-10">
+            <div className="max-w-4xl">
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8 }}
               >
-                Docs
-              </a>
-            </p>
-            <div className={styles.socialLinks}>
-              <a
-                href="https://discord.gg/E7sZCw2gMS"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.socialLink}
-                aria-label="Join our Discord"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
-              </a>
-              <a
-                href="https://t.me/+_300oWZNXkdjNzhl"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.socialLink}
-                aria-label="Join our Telegram"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18.717-.962 3.767-1.362 5.001-.168.521-.501.695-.821.712-.697.036-1.227-.461-1.901-.903-1.056-.693-1.653-1.124-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.429-.009-1.252-.242-1.865-.442-.752-.244-1.349-.374-1.297-.788.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.141.121.099.155.232.171.326.016.094.036.308.02.475z" />
-                </svg>
-              </a>
-              <a
-                href="https://x.com/warpexchange"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.socialLink}
-                aria-label="Follow us on Twitter"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </a>
+                {/* Status Indicator */}
+                <div className="flex items-center gap-2 mb-6 text-[hsl(var(--primary))] font-mono text-sm tracking-widest uppercase">
+                  <div className="w-2 h-2 bg-[hsl(var(--primary))] animate-pulse rounded-full" />
+                  SYSTEM ONLINE // MEGAETH V2
+                </div>
+
+                {/* Main Heading */}
+                <h1 className="text-6xl md:text-8xl lg:text-9xl font-display font-bold uppercase leading-[0.85] tracking-tighter mb-8">
+                  ZERO <br />
+                  LATENCY <br />
+                  TRADING
+                </h1>
+
+                {/* Description */}
+                <p className="text-lg md:text-xl text-[hsl(var(--muted-foreground))] font-mono max-w-xl mb-12 border-l-2 border-[hsl(var(--primary))]/50 pl-6">
+                  Next-generation AMM protocol engineered for high-frequency
+                  execution.
+                  <br />
+                  Sub-millisecond settlement.
+                </p>
+
+                {/* CTA Buttons */}
+                <div className="flex flex-col sm:flex-row gap-6">
+                  <Link href={appUrl}>
+                    <button className="h-16 px-10 bg-[hsl(var(--primary))] text-black text-lg font-bold font-mono uppercase rounded-none hover:bg-[hsl(var(--primary))]/80 tracking-wider transition-colors">
+                      INITIALIZE TERMINAL
+                    </button>
+                  </Link>
+                  <a
+                    href="https://docs.warpx.exchange/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <button className="h-16 px-10 border-2 border-white/20 text-lg font-bold font-mono uppercase rounded-none hover:bg-white hover:text-black tracking-wider transition-all">
+                      PROTOCOL DOCS
+                    </button>
+                  </a>
+                </div>
+              </motion.div>
             </div>
           </div>
-        </footer>
-      </div>
-    </>
+
+          {/* System Status - Bottom Right */}
+          <div className="absolute bottom-12 right-12 text-right hidden md:block">
+            <div className="font-mono text-xs text-[hsl(var(--muted-foreground))] mb-2">
+              SYSTEM STATUS
+            </div>
+            <div className="flex flex-col gap-1 items-end">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="w-32 h-1 bg-white/10">
+                  <motion.div
+                    className="h-full bg-[hsl(var(--primary))]"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${Math.random() * 100}%` }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                      delay: i * 0.1
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Decorative Corner HUD Elements */}
+      <div className="fixed bottom-8 left-8 w-32 h-32 border-l border-b border-white/5 pointer-events-none z-0" />
+      <div className="fixed bottom-8 right-8 w-32 h-32 border-r border-b border-white/5 pointer-events-none z-0" />
+    </div>
   );
 }

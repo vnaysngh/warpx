@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import { Poppins, Mochiy_Pop_One } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "@warpx/theme/globals.css";
 import { Providers } from "./providers";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
-// Primary font - Poppins (everything except brand name)
-const poppins = Poppins({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
   display: "swap"
 });
 
-// Brand font - Mochiy Pop One (WARPX logo only)
-const mochiyPopOne = Mochiy_Pop_One({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400"],
-  variable: "--font-mochiy",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap"
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-mono",
   display: "swap"
 });
 
@@ -33,10 +38,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${poppins.variable} ${mochiyPopOne.variable}`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body>
+      <body className="min-h-screen bg-background text-foreground">
         <Providers>
           <ClientLayout>{children}</ClientLayout>
         </Providers>

@@ -14,7 +14,6 @@ import {
 } from "recharts";
 import { usePoolsChartData } from "@/hooks/usePoolsChartData";
 import { formatCompactNumber } from "@/lib/trade/math";
-import styles from "./PoolsCharts.module.css";
 
 type ChartType = "tvl" | "volume";
 
@@ -45,13 +44,12 @@ function CustomTooltip({
   });
 
   return (
-    <div className={styles.tooltip}>
-      <div className={styles.tooltipDate}>{formattedDate}</div>
-      <div className={styles.tooltipValue}>
-        <span className={styles.tooltipLabel}>
-          {chartType === "tvl" ? "TVL" : "Volume"}:
-        </span>{" "}
-        ${formatCompactNumber(value, 2)}
+    <div className="rounded border border-white/20 bg-black/80 px-3 py-2 text-xs text-white shadow-lg">
+      <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-white/60">
+        {formattedDate}
+      </div>
+      <div className="mt-1 font-bold text-white">
+        {chartType === "tvl" ? "TVL" : "Volume"} ${formatCompactNumber(value, 2)}
       </div>
     </div>
   );
@@ -74,215 +72,162 @@ export function PoolsCharts() {
   const hasData = formattedData.length > 0;
   const chartKey = activeChart === "tvl" ? "tvl" : "volume";
 
-  // Calculate domain and ticks for proper y-axis scaling
   const yAxisConfig = useMemo(() => {
-    if (!hasData) return { domain: [0, 100] as [number, number], ticks: [0, 25, 50, 75, 100] };
-
+    if (!hasData) {
+      return { domain: [0, 100] as [number, number], ticks: [0, 25, 50, 75, 100] };
+    }
     const values = formattedData.map((d) => d[chartKey]);
     const maxValue = Math.max(...values);
-
-    // Add 10% padding to top
     const max = Math.ceil(maxValue * 1.1);
-
-    // Generate 5 evenly spaced ticks
     const tickCount = 5;
     const tickInterval = max / (tickCount - 1);
-    const ticks = Array.from({ length: tickCount }, (_, i) => Math.round(i * tickInterval));
-
+    const ticks = Array.from({ length: tickCount }, (_, i) =>
+      Math.round(i * tickInterval)
+    );
     return { domain: [0, max] as [number, number], ticks };
   }, [formattedData, chartKey, hasData]);
 
-  // Prevent hydration mismatch by only rendering after mount
   if (!hasMounted) {
     return (
-      <div className={styles.chartsContainer}>
-        <div className={styles.chartCard}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTabs}>
-              <button className={`${styles.chartTab} ${styles.chartTabActive}`}>
-                TVL
-              </button>
-              <button className={styles.chartTab}>Volume</button>
-            </div>
-          </div>
-          <div className={styles.chartContent}>
-            <div className={styles.chartLoader}>
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
+      <div className="rounded border border-white/10 bg-black/40 p-6 text-white">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="rounded border border-primary px-3 py-1 text-primary">
+            Loading
+          </span>
+          <div className="h-3 w-3 animate-pulse rounded-full bg-primary" />
         </div>
+        <div className="mt-6 h-56 w-full animate-pulse rounded bg-white/5" />
       </div>
     );
   }
 
-  if (error) {
-    return null; // Silently fail - charts are supplementary
-  }
-
-  if (isLoading) {
-    return (
-      <div className={styles.chartsContainer}>
-        <div className={styles.chartCard}>
-          <div className={styles.chartHeader}>
-            <div className={styles.chartTabs}>
-              <button className={`${styles.chartTab} ${styles.chartTabActive}`}>
-                TVL
-              </button>
-              <button className={styles.chartTab}>Volume</button>
-            </div>
-          </div>
-          <div className={styles.chartContent}>
-            <div className={styles.chartLoader}>
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasData) {
-    return null; // Don't show charts if no data
+  if (error || isLoading || !hasData) {
+    return null;
   }
 
   return (
-    <div className={styles.chartsContainer}>
-      <div className={styles.chartCard}>
-        <div className={styles.chartHeader}>
-          <div className={styles.chartTabs}>
-            <button
-              className={`${styles.chartTab} ${
-                activeChart === "tvl" ? styles.chartTabActive : ""
-              }`}
-              onClick={() => setActiveChart("tvl")}
-            >
-              TVL
-            </button>
-            <button
-              className={`${styles.chartTab} ${
-                activeChart === "volume" ? styles.chartTabActive : ""
-              }`}
-              onClick={() => setActiveChart("volume")}
-            >
-              Volume
-            </button>
-          </div>
-          <div className={styles.chartPeriod}>30 Days</div>
+    <div className="rounded border border-white/10 bg-black/40 p-6 text-white">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="flex gap-2 text-xs font-mono uppercase tracking-[0.3em]">
+          <button
+            type="button"
+            className={`rounded border px-4 py-1 ${
+              activeChart === "tvl"
+                ? "border-primary text-primary"
+                : "border-white/10 text-white/40"
+            }`}
+            onClick={() => setActiveChart("tvl")}
+          >
+            TVL
+          </button>
+          <button
+            type="button"
+            className={`rounded border px-4 py-1 ${
+              activeChart === "volume"
+                ? "border-primary text-primary"
+                : "border-white/10 text-white/40"
+            }`}
+            onClick={() => setActiveChart("volume")}
+          >
+            Volume
+          </button>
         </div>
+        <div className="text-xs font-mono uppercase tracking-[0.3em] text-white/50">
+          30 Days
+        </div>
+      </div>
 
-        <div className={styles.chartContent}>
-          {activeChart === "tvl" ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={formattedData}>
-                <defs>
-                  <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor="rgb(123, 97, 255)"
-                      stopOpacity={0.4}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="rgb(123, 97, 255)"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(255, 255, 255, 0.05)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(timestamp) => {
-                    const date = new Date(timestamp * 1000);
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric"
-                    });
-                  }}
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  tick={{ fill: "rgba(255, 255, 255, 0.5)", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis hide domain={yAxisConfig.domain} />
-                <Tooltip
-                  content={<CustomTooltip chartType="tvl" />}
-                  cursor={{ stroke: "rgba(123, 97, 255, 0.3)", strokeWidth: 1 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey={chartKey}
-                  stroke="rgb(123, 97, 255)"
-                  strokeWidth={2}
-                  fill="url(#tvlGradient)"
-                  animationDuration={500}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={formattedData}>
-                <defs>
-                  <linearGradient
-                    id="volumeGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor="rgb(138, 116, 249)"
-                      stopOpacity={0.9}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="rgb(123, 97, 255)"
-                      stopOpacity={0.4}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(255, 255, 255, 0.05)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(timestamp) => {
-                    const date = new Date(timestamp * 1000);
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric"
-                    });
-                  }}
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  tick={{ fill: "rgba(255, 255, 255, 0.5)", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis hide domain={yAxisConfig.domain} />
-                <Tooltip
-                  content={<CustomTooltip chartType="volume" />}
-                  cursor={{ fill: "rgba(123, 97, 255, 0.15)" }}
-                />
-                <Bar
-                  dataKey={chartKey}
-                  fill="url(#volumeGradient)"
-                  radius={[4, 4, 0, 0]}
-                  animationDuration={500}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+      <div className="mt-6 h-72 w-full">
+        {activeChart === "tvl" ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={formattedData}>
+              <defs>
+                <linearGradient id="tvlGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="rgba(123, 97, 255, 0.8)"
+                    stopOpacity={0.7}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="rgba(123, 97, 255, 0)"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255, 255, 255, 0.05)"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="timestamp"
+                stroke="rgba(255, 255, 255, 0.4)"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) =>
+                  new Date(value * 1000).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric"
+                  })
+                }
+              />
+              <YAxis
+                stroke="rgba(255, 255, 255, 0.4)"
+                tickLine={false}
+                axisLine={false}
+                domain={yAxisConfig.domain}
+                ticks={yAxisConfig.ticks}
+                tickFormatter={(value) => `$${formatCompactNumber(value, 1)}`}
+              />
+              <Tooltip
+                content={<CustomTooltip chartType="tvl" />}
+                cursor={{ stroke: "rgba(235, 104, 150, 0.35)", strokeWidth: 2 }}
+              />
+              <Area
+                dataKey="tvl"
+                stroke="#a48bff"
+                strokeWidth={2}
+                fill="url(#tvlGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={formattedData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255, 255, 255, 0.05)"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="timestamp"
+                stroke="rgba(255, 255, 255, 0.4)"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) =>
+                  new Date(value * 1000).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric"
+                  })
+                }
+              />
+              <YAxis
+                stroke="rgba(255, 255, 255, 0.4)"
+                tickLine={false}
+                axisLine={false}
+                domain={yAxisConfig.domain}
+                ticks={yAxisConfig.ticks}
+                tickFormatter={(value) => `$${formatCompactNumber(value, 1)}`}
+              />
+              <Tooltip
+                content={<CustomTooltip chartType="volume" />}
+                cursor={{ fill: "rgba(0, 255, 255, 0.15)" }}
+              />
+              <Bar dataKey="volume" fill="#00FFFF" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

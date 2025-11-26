@@ -17,7 +17,12 @@ import { useTokenManager } from "@/hooks/useTokenManager";
 import { MEGAETH_CHAIN_ID } from "@/lib/trade/constants";
 import { parseErrorMessage } from "@/lib/trade/errors";
 import { appKit } from "@/lib/wagmi";
-import { AnimatedBackground } from "@/components/background/AnimatedBackground";
+
+const MARKET_STATS = [
+  { label: "Price", value: "$3,245.80", accent: "" },
+  { label: "24h Chg", value: "+2.45%", accent: "text-primary" },
+  { label: "Vol (24h)", value: "$1.2B", accent: "" }
+];
 
 export default function Page() {
   const {
@@ -130,35 +135,81 @@ export default function Page() {
   }, []);
 
   return (
-    <>
-      <AnimatedBackground variant="swap" />
-
+    <div className="container mx-auto px-4 py-12 max-w-7xl">
       <NetworkBanner
         error={networkError}
         onSwitch={switchToMegaEth}
         isSwitching={isSwitchingChain}
       />
 
-      <SwapContainer
-        key={`swap-${deployment?.router ?? "default"}`}
-        selectedIn={selectedIn}
-        selectedOut={selectedOut}
-        onOpenTokenDialog={openTokenDialog}
-        onSwapTokens={swapTokens}
-        routerAddress={deployment?.router ?? ""}
-        wrappedNativeAddress={deployment?.wmegaeth}
-        readProvider={readProvider}
-        walletAccount={walletAccount}
-        chainId={chainId}
-        hasMounted={hasMounted}
-        isWalletConnected={isWalletConnected}
-        isAccountConnecting={isAccountConnecting}
-        ready={ready}
-        showError={showError}
-        refreshNonce={swapRefreshNonce}
-        onRequestRefresh={bumpSwapRefresh}
-        onConnect={handleConnectWallet}
-      />
+      <div className="grid lg:grid-cols-12 gap-8 items-start">
+        {/* LEFT: Market Data Module */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Header Stats */}
+          <div className="flex flex-wrap items-end gap-8 pb-6 border-b border-border">
+            <div>
+              <h1 className="text-3xl font-display font-bold flex items-center gap-3">
+                ETH / USDC
+                <span className="text-xs bg-primary text-black px-2 py-0.5 font-mono font-bold rounded-sm">
+                  LIVE
+                </span>
+              </h1>
+            </div>
+            <div className="flex gap-8 font-mono text-sm">
+              {MARKET_STATS.map((stat) => (
+                <div key={stat.label}>
+                  <div className="text-muted-foreground text-xs mb-1 uppercase tracking-wide">
+                    {stat.label}
+                  </div>
+                  <div className={`text-xl font-bold ${stat.accent || 'text-foreground'}`}>
+                    {stat.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Chart Container */}
+          <div className="h-[450px] bg-card/50 border border-border relative p-4 group overflow-hidden">
+            {/* Technical grid overlay */}
+            <div className="absolute inset-0 grid-bg opacity-50 pointer-events-none" />
+            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary" />
+            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary" />
+            <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-primary" />
+            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-primary" />
+            <div className="absolute inset-0 flex items-center justify-center text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground">
+              Market feed
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Execution Module */}
+        <div className="lg:col-span-4">
+          <div className="bg-card border border-border p-6 relative sticky top-24">
+            <div className="absolute top-0 inset-x-0 h-1 bg-primary/20" />
+            <SwapContainer
+              key={`swap-${deployment?.router ?? "default"}`}
+              selectedIn={selectedIn}
+              selectedOut={selectedOut}
+              onOpenTokenDialog={openTokenDialog}
+              onSwapTokens={swapTokens}
+              routerAddress={deployment?.router ?? ""}
+              wrappedNativeAddress={deployment?.wmegaeth}
+              readProvider={readProvider}
+              walletAccount={walletAccount}
+              chainId={chainId}
+              hasMounted={hasMounted}
+              isWalletConnected={isWalletConnected}
+              isAccountConnecting={isAccountConnecting}
+              ready={ready}
+              showError={showError}
+              refreshNonce={swapRefreshNonce}
+              onRequestRefresh={bumpSwapRefresh}
+              onConnect={handleConnectWallet}
+            />
+          </div>
+        </div>
+      </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
@@ -178,6 +229,6 @@ export default function Page() {
         walletAccount={walletAccount}
         provider={readProvider}
       />
-    </>
+    </div>
   );
 }

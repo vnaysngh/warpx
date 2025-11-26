@@ -1,101 +1,22 @@
 'use client';
 
-import React from 'react';
-import styles from './AnimatedBackground.module.css';
-
-interface AnimatedBackgroundProps {
-  variant?: 'swap' | 'pools' | 'stake';
-}
-
-const PARTICLE_COUNT = 20;
-
-const hashString = (value: string) => {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
+type AnimatedBackgroundProps = {
+  variant?: "swap" | "pools" | "stake";
 };
 
-const seededRandom = (seed: number) => {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
+const gradientMap: Record<NonNullable<AnimatedBackgroundProps["variant"]>, string> = {
+  swap: "from-primary/25 via-transparent to-transparent",
+  pools: "from-secondary/30 via-transparent to-transparent",
+  stake: "from-primary/15 via-transparent to-transparent"
 };
 
-const format = (value: number, unit: string) => `${value.toFixed(3)}${unit}`;
-
-const generateParticles = (variant: AnimatedBackgroundProps['variant'] = 'swap') =>
-  Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-    const left = seededRandom(hashString(`${variant}-left-${i}`)) * 100;
-    const top = seededRandom(hashString(`${variant}-top-${i}`)) * 100;
-    const delay = seededRandom(hashString(`${variant}-delay-${i}`)) * 10;
-    const duration = 15 + seededRandom(hashString(`${variant}-duration-${i}`)) * 10;
-
-    return {
-      left: format(left, '%'),
-      top: format(top, '%'),
-      animationDelay: format(delay, 's'),
-      animationDuration: format(duration, 's'),
-    };
-  });
-
-export function AnimatedBackground({ variant = 'swap' }: AnimatedBackgroundProps) {
-  const particles = React.useMemo(() => generateParticles(variant), [variant]);
-
+export function AnimatedBackground({ variant = "swap" }: AnimatedBackgroundProps) {
   return (
-    <div className={styles.backgroundContainer}>
-      {/* Large gradient orbs */}
-      <div className={`${styles.orb} ${styles.orb1}`} />
-      <div className={`${styles.orb} ${styles.orb2}`} />
-      <div className={`${styles.orb} ${styles.orb3}`} />
-      <div className={`${styles.orb} ${styles.orb4}`} />
-      <div className={`${styles.orb} ${styles.orb5}`} />
-
-      {/* Floating particles */}
-      <div className={styles.particlesContainer}>
-        {particles.map((particle, i) => (
-          <div
-            key={i}
-            className={styles.particle}
-            style={particle}
-          />
-        ))}
-      </div>
-
-      {/* Grid overlay */}
-      <div className={styles.gridOverlay} />
-
-      {/* Gradient mesh */}
-      <div className={styles.gradientMesh}>
-        <div className={styles.meshGradient1} />
-        <div className={styles.meshGradient2} />
-        <div className={styles.meshGradient3} />
-      </div>
-
-      {/* Speed lines for swap page */}
-      {variant === 'swap' && (
-        <div className={styles.speedLines}>
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className={styles.speedLine}
-              style={{
-                top: `${10 + i * 12}%`,
-                animationDelay: `${i * 0.3}s`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Floating shapes */}
-      <div className={styles.floatingShapes}>
-        <div className={`${styles.shape} ${styles.shape1}`} />
-        <div className={`${styles.shape} ${styles.shape2}`} />
-        <div className={`${styles.shape} ${styles.shape3}`} />
-        <div className={`${styles.shape} ${styles.shape4}`} />
-      </div>
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradientMap[variant]}`} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_45%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px] opacity-40" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22 viewBox=%220 0 40 40%22 fill=%22none%22%3E%3Cpath d=%22M0 20 H40%22 stroke=%22rgba(255,255,255,0.02)%22/%3E%3Cpath d=%22M20 0 V40%22 stroke=%22rgba(255,255,255,0.02)%22/%3E%3C/svg%3E')] opacity-30" />
     </div>
   );
 }

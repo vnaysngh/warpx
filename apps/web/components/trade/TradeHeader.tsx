@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { type RefObject, useEffect, useMemo, useState } from "react";
-import styles from "@/app/page.module.css";
+import { type RefObject, useState } from "react";
 import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
+import { Radio, Activity } from "lucide-react";
 
-type NavKey = "swap" | "pools" | "faucet" | "stake";
+type NavKey = "swap" | "pools" | "analytics";
+
+const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string }> = [
+  { key: "swap", label: "Swap", href: "/" },
+  { key: "pools", label: "Liquidity", href: "/pools" },
+  { key: "analytics", label: "Data", href: "/stake" }
+];
 
 type TradeHeaderProps = {
   manifestTag: string;
@@ -26,23 +31,6 @@ type TradeHeaderProps = {
   activeNav?: NavKey;
 };
 
-const NAV_ITEMS: Array<{
-  key: NavKey;
-  label: string;
-  href: string;
-  external?: boolean;
-}> = [
-  { key: "swap", label: "Swap", href: "/" },
-  { key: "pools", label: "Pools", href: "/pools" },
-  {
-    key: "faucet",
-    label: "Faucet",
-    href: "https://docs.megaeth.com/faucet",
-    external: true
-  }
-  // { key: "stake", label: "Stake", href: "/stake" }
-];
-
 export function TradeHeader({
   manifestTag,
   showWalletActions,
@@ -58,362 +46,208 @@ export function TradeHeader({
   onConnect,
   isAccountConnecting,
   hasMounted,
-  activeNav
+  activeNav = "swap"
 }: TradeHeaderProps) {
-  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const resolvedActiveNav = useMemo<NavKey>(() => {
-    if (activeNav) return activeNav;
-    if (!pathname) return "swap";
-    if (pathname.startsWith("/pools")) return "pools";
-    if (pathname.startsWith("/stake")) return "stake";
-    return "swap";
-  }, [activeNav, pathname]);
-
-  useEffect(() => {
-    if (!isMobileMenuOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsMobileMenuOpen(false);
-      }
-    };
-
-    const { body } = document;
-    const originalOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      body.style.overflow = originalOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isMobileMenuOpen]);
-
-  useEffect(() => {
-    // Intentionally close mobile menu on navigation
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!isMobileMenuOpen || !isWalletMenuOpen) return;
-    onWalletButtonClick();
-  }, [isMobileMenuOpen, isWalletMenuOpen, onWalletButtonClick]);
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen((prev) => !prev);
-  };
-
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
+  const renderNavLink = (
+    item: (typeof NAV_ITEMS)[number],
+    isMobile = false
+  ) => {
+    const isActive = activeNav === item.key;
+    const baseClass = isMobile
+      ? "block py-3 text-lg font-display uppercase tracking-[0.3em]"
+      : "px-6 py-2 text-sm font-mono uppercase tracking-wider transition-colors";
+    const activeClass = isActive
+      ? "text-primary"
+      : "text-muted-foreground hover:text-primary";
+    return (
+      <Link
+        key={`${item.key}-${isMobile ? "mobile" : "desktop"}`}
+        href={item.href}
+        className={`${baseClass} ${activeClass}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        {item.label}
+      </Link>
+    );
   };
 
   return (
     <>
-      <header className={styles.navbar}>
-        <div className={styles.brandArea}>
-          <button
-            type="button"
-            className={styles.mobileMenuButton}
-            aria-label={
-              isMobileMenuOpen
-                ? "Close navigation menu"
-                : "Open navigation menu"
-            }
-            aria-controls="mobile-menu"
-            aria-expanded={isMobileMenuOpen}
-            onClick={toggleMobileMenu}
-          >
-            <span className={styles.mobileMenuIcon} aria-hidden="true" />
-          </button>
-          <Link href="/" className={styles.brand}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="WarpX" className={styles.logo} />
-            <span className={styles.brandMain}>WarpX</span>
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md h-16 flex items-center px-6 justify-between">
+        {/* Left: Logo & Brand */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 bg-primary text-black flex items-center justify-center font-bold font-display text-xl skew-x-[-10deg] group-hover:skew-x-0 transition-transform">
+              W
+            </div>
+            <div className="flex flex-col">
+              <span className="font-display font-bold text-lg leading-none tracking-tight">
+                WARP<span className="text-primary">X</span>
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground leading-none tracking-widest">
+                PROTOCOL
+              </span>
+            </div>
           </Link>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1 border-l border-border pl-6 h-8">
+            {NAV_ITEMS.map((item) => renderNavLink(item))}
+          </nav>
         </div>
 
-        <nav className={styles.navCenter} aria-label="Main navigation">
-          {NAV_ITEMS.map((item) =>
-            item.external ? (
-              <a
-                key={item.key}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${styles.navLink} ${
-                  resolvedActiveNav === item.key ? styles.navLinkActive : ""
-                }`}
-              >
-                {item.label}
-              </a>
-            ) : (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={`${styles.navLink} ${
-                  resolvedActiveNav === item.key ? styles.navLinkActive : ""
-                }`}
-              >
-                {item.label}
-              </Link>
-            )
-          )}
-        </nav>
-        <div className={styles.navRight}>
+        {/* Right: Status & Wallet */}
+        <div className="hidden md:flex items-center gap-6">
+          {/* Status Indicators */}
+          {/*    <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground border-r border-border pr-6 h-8">
+            <div className="flex items-center gap-2">
+              <Radio className="w-3 h-3 text-accent animate-pulse" />
+              <span>MEGA_NET: ONLINE</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Activity className="w-3 h-3" />
+              <span>LATENCY: 0.8ms</span>
+            </div>
+          </div> */}
+
+          {/* Wallet Button */}
           {showWalletActions ? (
-            <div ref={walletMenuRef} className={styles.walletMenuContainer}>
+            <div ref={walletMenuRef} className="relative">
               <button
-                className={styles.walletButton}
-                onClick={onWalletButtonClick}
                 type="button"
+                onClick={onWalletButtonClick}
+                className="font-mono text-xs h-9 px-4 border-2 border-primary/50 text-primary hover:bg-primary hover:text-black transition-all uppercase tracking-wide rounded-none flex items-center justify-center"
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                  <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                  <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
-                </svg>
-                <span className={styles.walletButtonText}>
-                  {shortAccountAddress ? `${shortAccountAddress}` : "Wallet"}
-                </span>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  aria-hidden="true"
-                  className={styles.walletButtonChevron}
-                >
-                  <path
-                    d="M4 6l4 4 4-4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                [ {shortAccountAddress} ]
               </button>
-
               {isWalletMenuOpen && (
-                <div className={styles.walletDropdown}>
-                  <div className={styles.walletDropdownHeader}>
-                    {/* <div className={styles.walletDropdownLabel}>Wallet</div> */}
-                    <button
-                      onClick={onCopyAddress}
-                      className={styles.walletDropdownAddressWithCopy}
-                      type="button"
-                      title={
-                        copyStatus === "copied" ? "Copied!" : "Copy address"
-                      }
-                    >
-                      <span className={styles.walletDropdownAddress}>
-                        {shortAccountAddress}
-                      </span>
-                      {copyStatus === "copied" ? (
-                        <CopySuccessIcon className={styles.walletCopyIcon} />
-                      ) : (
-                        <CopyIcon className={styles.walletCopyIcon} />
-                      )}
-                    </button>
-                  </div>
-
+                <div className="absolute right-0 top-12 w-56 rounded border border-border bg-surface-alt p-4 text-sm shadow-hud">
+                  <button
+                    type="button"
+                    onClick={onCopyAddress}
+                    className="flex w-full items-center justify-between rounded border border-border px-3 py-2 text-xs text-muted-foreground"
+                  >
+                    <span>{shortAccountAddress}</span>
+                    {copyStatus === "copied" ? (
+                      <CopySuccessIcon className="h-4 w-4 text-primary" />
+                    ) : (
+                      <CopyIcon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
                   {address && (
                     <a
                       href={`https://megaeth-testnet-v2.blockscout.com/address/${address}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={styles.walletDropdownItem}
+                      className="mt-3 block text-xs text-primary underline-offset-4 hover:underline"
                     >
-                      View on Explorer
+                      View on explorer
                     </a>
                   )}
-
-                  <a
-                    href="https://x.com/warpexchange"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.walletDropdownItem}
-                  >
-                    Follow on X
-                  </a>
-
-                  <div className={styles.walletDropdownDivider} />
-
                   <button
+                    type="button"
                     onClick={onDisconnect}
                     disabled={isDisconnecting}
-                    className={`${styles.walletDropdownItem} ${styles.walletDropdownDisconnect}`}
-                    type="button"
+                    className="mt-4 w-full border border-border px-3 py-2 text-xs text-white/80 transition hover:border-primary"
                   >
-                    {isDisconnecting ? "Disconnecting…" : "Disconnect wallet"}
+                    {isDisconnecting ? "Disconnecting…" : "Disconnect"}
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <button
-              className={styles.connectWalletButton}
+              type="button"
               onClick={onConnect}
               disabled={isAccountConnecting && hasMounted}
-              type="button"
+              className="font-mono text-xs h-9 px-4 border-2 border-primary/50 text-primary hover:bg-primary hover:text-black transition-all uppercase tracking-wide rounded-none flex items-center justify-center"
             >
-              {isAccountConnecting && hasMounted
-                ? "Connecting…"
-                : "Connect Wallet"}
+              [ CONNECT_WALLET ]
             </button>
           )}
         </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          type="button"
+          className="md:hidden p-2 text-foreground hover:text-primary"
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {isMobileMenuOpen ? (
+              <>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </>
+            ) : (
+              <>
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </>
+            )}
+          </svg>
+        </button>
       </header>
 
       {isMobileMenuOpen && (
-        <div
-          className={styles.mobileMenuOverlay}
-          role="presentation"
-          onClick={closeMobileMenu}
-        >
-          <div
-            className={styles.mobileMenu}
-            role="dialog"
-            aria-modal="true"
-            id="mobile-menu"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className={styles.mobileMenuHeader}>
-              <Link href="/" className={styles.mobileMenuBrand} onClick={closeMobileMenu}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="WarpX" className={styles.logo} />
-                <div className={styles.mobileMenuTitle}>
-                  <span className={styles.brandMain}>WarpX</span>
-                </div>
-              </Link>
+        <div className="fixed inset-0 z-30 bg-background/95 p-6 md:hidden pt-20">
+          <nav className="space-y-4 mb-8">
+            {NAV_ITEMS.map((item) => renderNavLink(item, true))}
+          </nav>
+          <div className="border-t border-border/40 pt-6 space-y-4">
+            {/*  <div className="text-xs font-mono text-muted-foreground space-y-2">
+              <div className="flex items-center gap-2">
+                <Radio className="w-3 h-3 text-accent animate-pulse" />
+                <span>MEGA_NET: ONLINE</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Activity className="w-3 h-3" />
+                <span>LATENCY: 0.8ms</span>
+              </div>
+            </div> */}
+            {showWalletActions ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={onWalletButtonClick}
+                  className="w-full border border-border px-4 py-2 text-left font-mono text-xs uppercase tracking-[0.3em]"
+                >
+                  {shortAccountAddress}
+                </button>
+                <button
+                  type="button"
+                  onClick={onDisconnect}
+                  disabled={isDisconnecting}
+                  className="w-full border border-border px-4 py-2 text-left text-xs"
+                >
+                  {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                className={styles.mobileMenuClose}
-                aria-label="Close navigation menu"
-                onClick={closeMobileMenu}
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onConnect();
+                }}
+                disabled={isAccountConnecting && hasMounted}
+                className="w-full border-2 border-primary/50 px-4 py-2 font-mono text-xs uppercase tracking-[0.3em] text-primary hover:bg-primary hover:text-black transition-all"
               >
-                ×
+                [ CONNECT_WALLET ]
               </button>
-            </div>
-
-            <nav className={styles.mobileNav} aria-label="Mobile navigation">
-              {NAV_ITEMS.map((item) =>
-                item.external ? (
-                  <a
-                    key={`mobile-${item.key}`}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`${styles.mobileNavLink} ${
-                      resolvedActiveNav === item.key
-                        ? styles.mobileNavLinkActive
-                        : ""
-                    }`}
-                    onClick={closeMobileMenu}
-                  >
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={`mobile-${item.key}`}
-                    href={item.href}
-                    className={`${styles.mobileNavLink} ${
-                      resolvedActiveNav === item.key
-                        ? styles.mobileNavLinkActive
-                        : ""
-                    }`}
-                    onClick={closeMobileMenu}
-                  >
-                    {item.label}
-                  </Link>
-                )
-              )}
-            </nav>
-
-            <div className={styles.mobileMenuDivider} />
-
-            <div className={styles.mobileMenuFooter}>
-              {showWalletActions ? (
-                <div className={styles.mobileWalletSection}>
-                  <div className={styles.mobileWalletMeta}>
-                    <span className={styles.mobileWalletLabel}>
-                      Connected wallet
-                    </span>
-                    <span className={styles.mobileWalletAccount}>
-                      {shortAccountAddress}
-                    </span>
-                  </div>
-
-                  {/*  <div className={styles.mobileWalletActions}>
-                    <button
-                      type="button"
-                      className={styles.mobileWalletAction}
-                      onClick={onCopyAddress}
-                    >
-                      Copy address
-                    </button>
-                    {copyStatus === "copied" && (
-                      <span className={styles.mobileWalletStatus}>Copied!</span>
-                    )}
-                  </div> */}
-
-                  {address && (
-                    <a
-                      href={`https://megaeth-testnet-v2.blockscout.com/address/${address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.mobileWalletActionLink}
-                    >
-                      View on Explorer
-                    </a>
-                  )}
-
-                  <a
-                    href="https://x.com/warpexchange"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.mobileWalletActionLink}
-                  >
-                    Follow on X
-                  </a>
-
-                  <button
-                    type="button"
-                    className={styles.mobileWalletDisconnect}
-                    onClick={onDisconnect}
-                    disabled={isDisconnecting}
-                  >
-                    {isDisconnecting ? "Disconnecting…" : "Disconnect wallet"}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className={styles.connectWalletButton}
-                  onClick={() => {
-                    closeMobileMenu();
-                    onConnect();
-                  }}
-                  disabled={isAccountConnecting && hasMounted}
-                  type="button"
-                >
-                  {isAccountConnecting && hasMounted
-                    ? "Connecting…"
-                    : "Connect Wallet"}
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}

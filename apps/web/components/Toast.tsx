@@ -1,8 +1,5 @@
-"use client";
-
 import { useEffect, useMemo } from "react";
 import Image from "next/image";
-import styles from "./Toast.module.css";
 
 export type ToastType = "success" | "error" | "info" | "loading";
 
@@ -45,25 +42,25 @@ const TYPE_META: Record<
     label: "Confirm in wallet",
     subtitle: "Review and approve the transaction in your wallet to continue.",
     icon: "🚀",
-    accent: styles.loadingAccent
+    accent: "border-cyan text-cyan"
   },
   success: {
     label: "Transaction confirmed",
     subtitle: "Your transaction has been successfully executed on MegaETH.",
     icon: "✨",
-    accent: styles.successAccent
+    accent: "border-primary text-primary"
   },
   error: {
     label: "Transaction failed",
     subtitle: "The transaction was rejected or failed. Please try again.",
     icon: "⚠️",
-    accent: styles.errorAccent
+    accent: "border-danger text-danger"
   },
   info: {
     label: "Heads up",
     subtitle: "Keep an eye on your wallet for the next prompt.",
     icon: "💡",
-    accent: styles.infoAccent
+    accent: "border-white/40 text-white"
   }
 };
 
@@ -76,17 +73,20 @@ type TokenBubbleProps = {
 };
 
 const TokenBubble = ({ token, position }: TokenBubbleProps) => {
-  const className = `${styles.tokenBubble} ${
-    styles[`token${capitalize(position)}`]
-  }`;
+  const baseClass =
+    "flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/40 text-xs font-display tracking-[0.3em]";
+  const translateClass =
+    position === "left" ? "-translate-x-4" : "translate-x-4";
 
-  if (token?.logo) {
+  if (!token) return null;
+
+  if (token.logo) {
     return (
-      <div className={className}>
+      <div className={`${baseClass} ${translateClass} overflow-hidden`}>
         <img
           src={token.logo}
           alt={`${token.symbol} logo`}
-          className={styles.tokenLogo}
+          className="h-full w-full object-cover"
           loading="lazy"
           decoding="async"
         />
@@ -94,18 +94,9 @@ const TokenBubble = ({ token, position }: TokenBubbleProps) => {
     );
   }
 
-  if (token?.symbol) {
-    return (
-      <div className={className}>
-        <span className={styles.tokenSymbol}>
-          {token.symbol.slice(0, 4).toUpperCase()}
-        </span>
-      </div>
-    );
-  }
-
-  // Return null instead of fallback when no token data is provided
-  return null;
+  return (
+    <div className={`${baseClass} ${translateClass}`}>{token.symbol}</div>
+  );
 };
 
 type TokenPairStackProps = {
@@ -113,46 +104,16 @@ type TokenPairStackProps = {
   rightToken?: ToastVisualToken | null;
 };
 
-const TokenPairStack = ({ leftToken, rightToken }: TokenPairStackProps) => {
-  const renderToken = (
-    token: ToastVisualToken | null | undefined,
-    isPrimary: boolean
-  ) => {
-    const className = `${styles.tokenStackBadge} ${
-      isPrimary ? styles.tokenStackPrimary : styles.tokenStackSecondary
-    }`;
-
-    if (token?.logo) {
-      return (
-        <img
-          key={token.symbol}
-          src={token.logo}
-          alt={`${token.symbol} logo`}
-          className={className}
-          loading="lazy"
-          decoding="async"
-        />
-      );
-    }
-
-    if (token?.symbol) {
-      return (
-        <span key={token.symbol} className={className}>
-          {token.symbol.slice(0, 3).toUpperCase()}
-        </span>
-      );
-    }
-
-    return null;
-  };
-
-  return (
-    <div className={styles.tokenPairStack}>
-      {renderToken(leftToken, true)}
-      {renderToken(rightToken, false)}
-    </div>
-  );
-};
+const TokenPairStack = ({ leftToken, rightToken }: TokenPairStackProps) => (
+  <div className="relative flex items-center">
+    {leftToken && (
+      <TokenBubble token={leftToken} position="left" key={leftToken.symbol} />
+    )}
+    {rightToken && (
+      <TokenBubble token={rightToken} position="right" key={rightToken.symbol} />
+    )}
+  </div>
+);
 
 interface ToastContainerProps {
   toasts: Toast[];
@@ -182,22 +143,21 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 
   const meta = TYPE_META[activeToast.type];
   const variant = activeToast.visuals?.variant ?? "default";
-  const sceneClass =
-    styles[`scene${capitalize(variant)}` as keyof typeof styles] ?? "";
 
   return (
-    <div className={styles.overlay}>
-      <div className={styles.card}>
-        <div className={`${styles.accent} ${meta.accent}`} />
-        <div className={styles.header}>
-          <span className={styles.badge}>
-            <span className={styles.badgeIcon}>{meta.icon}</span>
+    <div className="pointer-events-none fixed inset-0 z-[1000] flex items-end justify-end p-6">
+      <div className="pointer-events-auto w-full max-w-md rounded border border-white/15 bg-black/80 p-5 text-white shadow-[0_20px_80px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <span
+            className={`inline-flex items-center gap-2 rounded border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.3em] ${meta.accent}`}
+          >
+            <span>{meta.icon}</span>
             {meta.label}
           </span>
           {activeToast.type !== "loading" && (
             <button
               type="button"
-              className={styles.close}
+              className="text-xs uppercase tracking-[0.3em] text-white/60 hover:text-primary"
               onClick={() => onClose(activeToast.id)}
             >
               Close
@@ -205,64 +165,71 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
           )}
         </div>
 
-        <div className={styles.copyBlock}>
-          <h3 className={styles.title}>{activeToast.message}</h3>
-          <p className={styles.subtitle}>{meta.subtitle}</p>
+        <div className="mt-4 space-y-2">
+          <h3 className="font-display text-lg tracking-[0.3em] text-white">
+            {activeToast.message}
+          </h3>
+          <p className="text-sm text-white/60">{meta.subtitle}</p>
         </div>
 
-        <div className={`${styles.scene} ${sceneClass}`}>
-          {variant === "addLiquidity" ? (
-            <TokenPairStack
-              leftToken={activeToast.visuals?.leftToken}
-              rightToken={activeToast.visuals?.rightToken}
-            />
-          ) : variant === "removeLiquidity" ? null : (
-            <TokenBubble
-              token={activeToast.visuals?.leftToken}
-              position="left"
-            />
-          )}
-          <div className={styles.brandOrb}>
-            <div className={styles.brandGlow} />
-            <Image
-              src="/logo.png"
-              alt="WarpX mascot"
-              width={72}
-              height={72}
-              className={styles.brandLogo}
-              priority
-            />
-          </div>
-          {variant === "removeLiquidity" ? (
+        <div className="relative mt-6 flex items-center justify-between rounded border border-white/10 bg-black/40 px-4 py-5">
+          {variant === "addLiquidity" || variant === "removeLiquidity" ? (
             <TokenPairStack
               leftToken={activeToast.visuals?.leftToken}
               rightToken={activeToast.visuals?.rightToken}
             />
           ) : (
-            variant !== "addLiquidity" && (
+            <>
+              <TokenBubble
+                token={activeToast.visuals?.leftToken}
+                position="left"
+              />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-primary/40 bg-black/80">
+                <div className="absolute inset-0 rounded-full border border-primary/40 blur-xl" />
+                <Image
+                  src="/logo.png"
+                  alt="WarpX mascot"
+                  width={48}
+                  height={48}
+                  className="relative z-10"
+                  priority
+                />
+              </div>
               <TokenBubble
                 token={activeToast.visuals?.rightToken}
                 position="right"
               />
-            )
+            </>
           )}
         </div>
 
-        <div className={styles.progress}>
+        <div className="mt-4 h-1 overflow-hidden rounded bg-white/10">
           <div
-            className={`${styles.progressFill} ${styles[`${activeToast.type}Fill`] ?? ""}`}
+            className={`h-full ${
+              activeToast.type === "success"
+                ? "bg-primary"
+                : activeToast.type === "error"
+                  ? "bg-danger"
+                  : activeToast.type === "loading"
+                    ? "bg-cyan"
+                    : "bg-white"
+            } animate-toastProgress`}
+            style={{
+              // default 5s (5000ms)
+              animationDuration: `${(activeToast.duration ?? 5000) / 1000}s`
+            }}
           />
         </div>
 
-        <div className={styles.etaRow}>
-          <span className={styles.etaLabel}>
+        <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50">
+          <span>
             {activeToast.type === "loading"
               ? "Estimated time"
               : activeToast.type === "success"
                 ? "Status"
                 : "Status"}
           </span>
-          <span className={styles.etaValue}>
+          <span>
             {activeToast.type === "loading"
               ? "~1s"
               : activeToast.type === "success"
@@ -278,19 +245,19 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
             href={activeToast.link.href}
             target="_blank"
             rel="noreferrer noopener"
-            className={styles.explorerButton}
+            className="mt-4 inline-flex items-center justify-center rounded border border-primary px-3 py-2 text-xs uppercase tracking-[0.3em] text-primary transition hover:bg-primary hover:text-black"
           >
-            View on explorer
+            {activeToast.link.label ?? "View on explorer"}
           </a>
         )}
 
         {queueIndicators.length > 1 && (
-          <div className={styles.queue}>
+          <div className="mt-4 flex items-center justify-center gap-2">
             {queueIndicators.map((toast) => (
               <span
                 key={toast.id}
-                className={`${styles.queueDot} ${
-                  toast.id === activeToast.id ? styles.activeDot : ""
+                className={`h-1 w-6 rounded ${
+                  toast.id === activeToast.id ? "bg-primary" : "bg-white/20"
                 }`}
               />
             ))}

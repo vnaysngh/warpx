@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
-import { Poppins, Mochiy_Pop_One } from "next/font/google";
+import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "@warpx/theme/globals.css";
 
-// Primary font - Poppins (everything except brand name)
-const poppins = Poppins({
+// Display font - Space Grotesk (headings, brand)
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-poppins",
+  variable: "--font-display",
   display: "swap"
 });
 
-// Brand font - Mochiy Pop One (WARPX logo only)
-const mochiyPopOne = Mochiy_Pop_One({
+// Body font - Inter (UI text, body)
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400"],
-  variable: "--font-mochiy",
+  variable: "--font-sans",
+  display: "swap"
+});
+
+// Mono font - JetBrains Mono (data, numbers, code)
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap"
 });
 
@@ -32,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${poppins.variable} ${mochiyPopOne.variable}`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>{children}</body>
     </html>

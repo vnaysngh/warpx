@@ -1,5 +1,3 @@
-import styles from "@/app/page.module.css";
-
 type NetworkBannerProps = {
   error: string | null;
   onSwitch: () => void;
@@ -16,14 +14,11 @@ export function NetworkBanner({
   }
 
   return (
-    <div className={styles.statusStack}>
-      <div className={`${styles.status} ${styles.statusWarn}`}>
-        <div className={styles.statusContent}>
-          <span className={styles.statusLabel}>Network</span>
-          {error}
-        </div>
+    <div className="rounded border border-warning/30 bg-warning/10 px-4 py-3 text-xs font-mono uppercase tracking-[0.3em] text-warning">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span>{error}</span>
         <button
-          className={styles.statusAction}
+          className="rounded border border-warning px-4 py-1 text-warning transition hover:bg-warning hover:text-black disabled:opacity-60"
           type="button"
           onClick={onSwitch}
           disabled={isSwitching}

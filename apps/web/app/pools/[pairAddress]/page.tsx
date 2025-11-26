@@ -10,7 +10,6 @@ import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
 import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
-import { AnimatedBackground } from "@/components/background/AnimatedBackground";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
@@ -401,8 +400,6 @@ export default function PoolLiquidityPage() {
 
   return (
     <>
-      <AnimatedBackground variant="pools" />
-
       <NetworkBanner
         error={networkError ?? pairResolutionError}
         onSwitch={switchToMegaEth}
@@ -528,7 +525,9 @@ function CopyAddressButton({
     >
       <span>{displayValue}</span>
       {copied ? (
-        <CopySuccessIcon className={`${styles.copyIcon} ${styles.copyIconSuccess}`} />
+        <CopySuccessIcon
+          className={`${styles.copyIcon} ${styles.copyIconSuccess}`}
+        />
       ) : (
         <CopyIcon className={styles.copyIcon} />
       )}

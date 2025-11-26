@@ -1482,7 +1482,6 @@ export function SwapContainer({
     <SwapCard
       swapForm={swapForm}
       swapQuote={swapQuote}
-      reverseQuote={reverseQuote}
       selectedIn={selectedIn}
       selectedOut={selectedOut}
       onOpenTokenDialog={onOpenTokenDialog}
