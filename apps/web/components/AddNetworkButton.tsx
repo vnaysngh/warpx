@@ -12,7 +12,7 @@ const MEGAETH_TESTNET = {
     symbol: "ETH",
     decimals: 18
   },
-  rpcUrls: ["https://timothy.megaeth.com/rpc"],
+  rpcUrls: [`https://6343.rpc.thirdweb.com/${process.env.NEXT_PUBLIC_THIRDWEB_API_KEY}`],
   blockExplorerUrls: ["https://megaeth-testnet-v2.blockscout.com/"]
 };
 

@@ -108,9 +108,9 @@ export function useTokenBalances(params: UseTokenBalancesParams) {
     queryKey,
     queryFn: () => fetchTokenBalances(tokens, account!, provider),
     enabled: enabled && !!account && tokens.length > 0,
-    staleTime: 10 * 1000, // 10 seconds - balances are considered fresh for 10s
+    staleTime: 30 * 1000, // 30 seconds - balances are considered fresh for 30s
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
-    refetchOnWindowFocus: true, // Refetch when user returns to window
+    refetchOnWindowFocus: false, // Don't refetch on every window focus
     refetchOnMount: false, // Don't refetch on every mount, use cache
   });
 }

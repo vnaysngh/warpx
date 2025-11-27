@@ -14,7 +14,7 @@ import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
 import { useTokenManager } from "@/hooks/useTokenManager";
-import { usePoolDetails } from "@/hooks/usePoolDetails";
+import { usePoolStaticData, usePoolDynamicData } from "@/hooks/usePoolDetails";
 import { usePools } from "@/hooks/usePools";
 import { megaethTestnet } from "@/lib/chains";
 import {
@@ -181,15 +181,36 @@ export default function PoolLiquidityPage() {
 
   // Use optimized multicall hook to fetch pool details
   const {
-    data: poolDetails,
-    isLoading: poolDetailsLoading,
-    error: poolDetailsError
-  } = usePoolDetails({
+    data: staticData,
+    isLoading: staticLoading,
+    error: staticError
+  } = usePoolStaticData({
+    pairAddress,
+    provider: readProvider,
+    enabled: !!pairAddress && tokenList.length > 0
+  });
+
+  const {
+    data: dynamicData,
+    isLoading: dynamicLoading,
+    error: dynamicError
+  } = usePoolDynamicData({
     pairAddress,
     account: walletAccount,
     provider: readProvider,
     enabled: !!pairAddress && tokenList.length > 0
   });
+
+  const poolDetails = useMemo(() => {
+    if (!staticData || !dynamicData) return undefined;
+    return {
+      ...staticData,
+      ...dynamicData
+    };
+  }, [staticData, dynamicData]);
+
+  const poolDetailsLoading = staticLoading || dynamicLoading;
+  const poolDetailsError = staticError || dynamicError;
 
   // Derive network error from chain state
   const networkError = useMemo(() => {

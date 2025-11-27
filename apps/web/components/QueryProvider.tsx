@@ -39,6 +39,15 @@ export function QueryProvider({ children }: PropsWithChildren) {
       },
     };
 
+    // Configure default options for the client
+    queryClient.setDefaultOptions({
+      queries: {
+        retry: 1, // Reduce retries to avoid rate limit spam
+        staleTime: 30 * 1000, // 30 seconds default stale time
+        refetchOnWindowFocus: false, // Don't refetch on window focus by default
+      },
+    });
+
     return (
       <PersistQueryClientProvider
         client={queryClient}
@@ -48,6 +57,15 @@ export function QueryProvider({ children }: PropsWithChildren) {
       </PersistQueryClientProvider>
     );
   }
+
+  // Configure default options for the client (server-side / fallback)
+  queryClient.setDefaultOptions({
+    queries: {
+      retry: 1,
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  });
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

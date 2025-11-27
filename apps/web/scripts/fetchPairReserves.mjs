@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // MegaETH Testnet configuration
-const MEGAETH_TESTNET_RPC = "https://timothy.megaeth.com/rpc";
+const MEGAETH_TESTNET_RPC = `https://6343.rpc.thirdweb.com/${process.env.THIRDWEB_API_KEY}`;
 
 // ABIs
 const FACTORY_ABI = [

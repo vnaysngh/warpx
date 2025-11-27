@@ -42,55 +42,72 @@ interface UsePoolDetailsParams {
  * Fetch pool details using a single multicall for optimal performance
  * Batches: token0, token1, reserves, totalSupply, and optionally userLpBalance
  */
-export function usePoolDetails({
+/**
+ * Fetch static pool data (token addresses) - rarely changes
+ */
+export function usePoolStaticData({
+  pairAddress,
+  provider,
+  enabled = true
+}: {
+  pairAddress: string | null;
+  provider: JsonRpcProvider;
+  enabled?: boolean;
+}) {
+  const queryKey = useMemo(
+    () => ["pool-static", pairAddress],
+    [pairAddress]
+  );
+
+  return useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!pairAddress) throw new Error("Pair address is required");
+      const pairInterface = new Interface(PAIR_ABI);
+      const calls: MulticallCall[] = [
+        { target: pairAddress, callData: pairInterface.encodeFunctionData("token0"), allowFailure: false },
+        { target: pairAddress, callData: pairInterface.encodeFunctionData("token1"), allowFailure: false }
+      ];
+      const results = await multicall(provider, calls);
+      const [token0] = pairInterface.decodeFunctionResult("token0", results[0].returnData);
+      const [token1] = pairInterface.decodeFunctionResult("token1", results[1].returnData);
+      return { token0Address: token0 as string, token1Address: token1 as string };
+    },
+    enabled: enabled && !!pairAddress,
+    staleTime: Infinity, // Static data never changes
+    gcTime: 24 * 60 * 60 * 1000 // Keep in cache for 24h
+  });
+}
+
+/**
+ * Fetch dynamic pool data (reserves, supply, balance) - changes frequently
+ */
+export function usePoolDynamicData({
   pairAddress,
   account,
   provider,
   enabled = true
-}: UsePoolDetailsParams) {
+}: {
+  pairAddress: string | null;
+  account: string | null;
+  provider: JsonRpcProvider;
+  enabled?: boolean;
+}) {
   const queryKey = useMemo(
-    () => ["pool-details", pairAddress, account],
+    () => ["pool-dynamic", pairAddress, account],
     [pairAddress, account]
   );
 
   return useQuery({
     queryKey,
-    queryFn: async (): Promise<PoolDetailsData> => {
-      if (!pairAddress) {
-        throw new Error("Pair address is required");
-      }
-
+    queryFn: async () => {
+      if (!pairAddress) throw new Error("Pair address is required");
       const pairInterface = new Interface(PAIR_ABI);
-
-      // Build multicall requests
       const calls: MulticallCall[] = [
-        // 0: token0
-        {
-          target: pairAddress,
-          callData: pairInterface.encodeFunctionData("token0"),
-          allowFailure: false
-        },
-        // 1: token1
-        {
-          target: pairAddress,
-          callData: pairInterface.encodeFunctionData("token1"),
-          allowFailure: false
-        },
-        // 2: getReserves
-        {
-          target: pairAddress,
-          callData: pairInterface.encodeFunctionData("getReserves"),
-          allowFailure: false
-        },
-        // 3: totalSupply
-        {
-          target: pairAddress,
-          callData: pairInterface.encodeFunctionData("totalSupply"),
-          allowFailure: false
-        }
+        { target: pairAddress, callData: pairInterface.encodeFunctionData("getReserves"), allowFailure: false },
+        { target: pairAddress, callData: pairInterface.encodeFunctionData("totalSupply"), allowFailure: false }
       ];
 
-      // Add user balance call if account is connected
       if (account) {
         calls.push({
           target: pairAddress,
@@ -99,43 +116,42 @@ export function usePoolDetails({
         });
       }
 
-      // Execute single multicall
       const results = await multicall(provider, calls);
-
-      // Decode results
-      const [token0Result] = pairInterface.decodeFunctionResult(
-        "token0",
-        results[0].returnData
-      );
-      const [token1Result] = pairInterface.decodeFunctionResult(
-        "token1",
-        results[1].returnData
-      );
-
-      const reserves = decodeReserves(results[2].returnData);
-      const totalSupply = decodeTotalSupply(results[3].returnData);
-
-      if (!reserves || !totalSupply) {
-        throw new Error("Failed to decode pool data");
-      }
+      const reserves = decodeReserves(results[0].returnData);
+      const totalSupply = decodeTotalSupply(results[1].returnData);
 
       let userLpBalance: bigint | null = null;
-      if (account && results[4]?.success) {
-        userLpBalance = decodeBalance(results[4].returnData);
+      if (account && results[2]?.success) {
+        userLpBalance = decodeBalance(results[2].returnData);
       }
 
-      return {
-        token0Address: token0Result as string,
-        token1Address: token1Result as string,
-        reserves,
-        totalSupply,
-        userLpBalance
-      };
+      if (!reserves || !totalSupply) throw new Error("Failed to decode pool data");
+
+      return { reserves, totalSupply, userLpBalance };
     },
     enabled: enabled && !!pairAddress,
-    staleTime: 15 * 1000, // 15 seconds
-    retry: 2
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000 // Poll every 30s
   });
+}
+
+/**
+ * @deprecated Use usePoolStaticData and usePoolDynamicData instead
+ */
+export function usePoolDetails(params: UsePoolDetailsParams) {
+  const staticData = usePoolStaticData(params);
+  const dynamicData = usePoolDynamicData(params);
+
+  return {
+    ...staticData,
+    ...dynamicData,
+    data: staticData.data && dynamicData.data ? {
+      ...staticData.data,
+      ...dynamicData.data
+    } : undefined,
+    isLoading: staticData.isLoading || dynamicData.isLoading,
+    error: staticData.error || dynamicData.error
+  };
 }
 
 /**
