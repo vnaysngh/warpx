@@ -18,7 +18,7 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 h-16 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/80 backdrop-blur-md z-50 flex items-center px-6 justify-between">
         {/* Left: Logo & Brand */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-3 group">
+          <div className="flex items-center gap-3 group">
             <div className="w-8 h-8 bg-[hsl(var(--primary))] text-black flex items-center justify-center font-bold font-display text-xl skew-x-[-10deg] group-hover:skew-x-0 transition-transform">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-black.png" alt="WarpX" className="w-6 h-6" />
@@ -31,7 +31,7 @@ export default function LandingPage() {
                 PROTOCOL
               </span> */}
             </div>
-          </Link>
+          </div>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1 border-l border-[hsl(var(--border))] pl-6 h-8">
@@ -48,7 +48,7 @@ export default function LandingPage() {
               LIQUIDITY
             </Link>
             <Link
-              href={`${appUrl}`}
+              href={`${appUrl}/analytics`}
               className="px-6 py-2 text-sm font-mono uppercase tracking-wider text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] transition-colors"
             >
               DATA

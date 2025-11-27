@@ -10,7 +10,7 @@ type NavKey = "swap" | "pools" | "analytics";
 const NAV_ITEMS: Array<{ key: NavKey; label: string; href: string }> = [
   { key: "swap", label: "Swap", href: "/" },
   { key: "pools", label: "Liquidity", href: "/pools" },
-  { key: "analytics", label: "Data", href: "/stake" }
+  { key: "analytics", label: "Data", href: "/analytics" }
 ];
 
 type TradeHeaderProps = {
