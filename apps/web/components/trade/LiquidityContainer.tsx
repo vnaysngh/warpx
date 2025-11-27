@@ -135,6 +135,10 @@ export function LiquidityContainer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLiquidityConfirm, setShowLiquidityConfirm] = useState(false);
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
+
+  // Debounce the slider to avoid excessive calculations while dragging
+  const debouncedRemoveLiquidityPercent = useDebounce(removeLiquidityPercent, 300);
+
   const [lpBaseData, setLpBaseData] = useState<{
     userBalance: bigint;
     totalSupply: bigint;
@@ -627,146 +631,6 @@ export function LiquidityContainer({
     setCheckingLiquidityAllowances
   ]);
 
-  useEffect(() => {
-    let active = true;
-    const calculateRemovalAmounts = async () => {
-      if (
-        liquidityMode !== "remove" ||
-        !walletAccount ||
-        !liquidityPairReserves ||
-        !liquidityPairReserves.pairAddress ||
-        !liquidityTokenA ||
-        !liquidityTokenB
-      ) {
-        if (active) {
-          setExpectedRemoveAmounts(null);
-          setUserPooledAmounts(null);
-          setLpTokenInfo(null);
-        }
-        return;
-      }
-
-      try {
-        const lpTokenContract = getToken(
-          liquidityPairReserves.pairAddress,
-          readProvider
-        );
-        const [userBalance, totalSupply] = await Promise.all([
-          lpTokenContract.balanceOf(walletAccount),
-          lpTokenContract.totalSupply()
-        ]);
-
-        const userBalanceBigInt = toBigInt(userBalance);
-        const percentBigInt = clampPercentToBigInt(removeLiquidityPercent);
-        const liquidityToRemove =
-          percentBigInt === 100n
-            ? userBalanceBigInt
-            : (userBalanceBigInt * percentBigInt) / 100n;
-
-        const lpBalanceFormatted = formatUnits(userBalance, 18);
-
-        const poolSharePercent =
-          totalSupply > 0n
-            ? (Number(userBalance) / Number(totalSupply)) * 100
-            : 0;
-
-        if (liquidityToRemove === 0n || totalSupply === 0n) {
-          if (active) {
-            setExpectedRemoveAmounts(null);
-            setUserPooledAmounts(null);
-            setLpTokenInfo({
-              balance: lpBalanceFormatted,
-              poolShare: poolSharePercent.toString()
-            });
-          }
-          return;
-        }
-
-        const { amountAWei: pooledAWei, amountBWei: pooledBWei } =
-          getLiquidityRemoveAmounts(
-            userBalanceBigInt,
-            liquidityPairReserves.reserveAWei,
-            liquidityPairReserves.reserveBWei,
-            totalSupply
-          );
-
-        const { amountAWei: expectedAWei, amountBWei: expectedBWei } =
-          getLiquidityRemoveAmounts(
-            liquidityToRemove,
-            liquidityPairReserves.reserveAWei,
-            liquidityPairReserves.reserveBWei,
-            totalSupply
-          );
-
-        if (active) {
-          setLpTokenInfo({
-            balance: lpBalanceFormatted,
-            poolShare: poolSharePercent.toString()
-          });
-
-          const pooledAFormatted = formatUnits(
-            pooledAWei,
-            liquidityTokenA.decimals ?? 18
-          );
-          const pooledBFormatted = formatUnits(
-            pooledBWei,
-            liquidityTokenB.decimals ?? 18
-          );
-          setUserPooledAmounts({
-            amountA: formatDisplayNumber({
-              input: pooledAFormatted,
-              type: NumberType.TokenNonTx
-            }),
-            amountB: formatDisplayNumber({
-              input: pooledBFormatted,
-              type: NumberType.TokenNonTx
-            })
-          });
-
-          const expectedAFormatted = formatUnits(
-            expectedAWei,
-            liquidityTokenA.decimals ?? 18
-          );
-          const expectedBFormatted = formatUnits(
-            expectedBWei,
-            liquidityTokenB.decimals ?? 18
-          );
-          setExpectedRemoveAmounts({
-            amountA: formatDisplayNumber({
-              input: expectedAFormatted,
-              type: NumberType.TokenTx
-            }),
-            amountB: formatDisplayNumber({
-              input: expectedBFormatted,
-              type: NumberType.TokenTx
-            })
-          });
-        }
-      } catch (err) {
-        console.error("[liquidity] calculate removal amounts failed", err);
-        if (active) {
-          setExpectedRemoveAmounts(null);
-          setUserPooledAmounts(null);
-          setLpTokenInfo(null);
-        }
-      }
-    };
-
-    calculateRemovalAmounts();
-    return () => {
-      active = false;
-    };
-  }, [
-    liquidityPairReserves,
-    walletAccount,
-    liquidityMode,
-    liquidityTokenA?.decimals,
-    liquidityTokenB?.decimals,
-    liquidityTokenA,
-    liquidityTokenB,
-    readProvider,
-    formatDisplayNumber
-  ]);
 
   // Store fetched LP data separately so slider changes don't trigger RPC calls
   useEffect(() => {
@@ -792,6 +656,17 @@ export function LiquidityContainer({
             userBalance: toBigInt(userBalance),
             totalSupply: toBigInt(totalSupply)
           });
+
+          const lpBalanceFormatted = formatUnits(userBalance, 18);
+          const poolSharePercent =
+            totalSupply > 0n
+              ? (Number(userBalance) / Number(totalSupply)) * 100
+              : 0;
+
+          setLpTokenInfo({
+            balance: lpBalanceFormatted,
+            poolShare: poolSharePercent.toString()
+          });
         }
       } catch (err) {
         console.error("[liquidity] fetch LP base data failed", err);
@@ -814,7 +689,7 @@ export function LiquidityContainer({
     }
 
     const { userBalance, totalSupply } = lpBaseData;
-    const percentBigInt = clampPercentToBigInt(removeLiquidityPercent);
+    const percentBigInt = clampPercentToBigInt(debouncedRemoveLiquidityPercent);
     const liquidityToRemove =
       percentBigInt === 100n
         ? userBalance
@@ -849,7 +724,7 @@ export function LiquidityContainer({
     });
   }, [
     lpBaseData,
-    removeLiquidityPercent,
+    debouncedRemoveLiquidityPercent,
     liquidityPairReserves,
     liquidityTokenA,
     liquidityTokenB,
