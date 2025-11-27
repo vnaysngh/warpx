@@ -30,12 +30,65 @@ export default function AnalyticsPage() {
     return new JsonRpcProvider(rpcUrl);
   }, []);
 
-  const { data: poolsData } = usePools({
+  const { data: poolsData, isLoading: poolsLoading } = usePools({
     tokenList: TOKEN_CATALOG,
     factoryAddress: deployment?.factory ?? null,
     wrappedNativeAddress: deployment?.wmegaeth ?? null,
     provider: readProvider
   });
+
+  // Calculate total TVL from pools
+  const totalTvl = useMemo(() => {
+    if (!poolsData || poolsData.length === 0) return null;
+
+    const poolsWithValues = poolsData.filter(
+      (pool) =>
+        typeof pool.totalLiquidityValue === "number" &&
+        pool.totalLiquidityValue !== null &&
+        pool.totalLiquidityValue > 0
+    );
+
+    if (poolsWithValues.length === 0) return null;
+
+    const totalValue = poolsWithValues.reduce(
+      (acc, pool) => acc + (pool.totalLiquidityValue ?? 0),
+      0
+    );
+
+    return totalValue > 0 ? totalValue : null;
+  }, [poolsData]);
+
+  // Calculate 24h volume and percentage changes
+  const stats = useMemo(() => {
+    if (!chartData || chartData.length < 2) {
+      return {
+        tvl: null,
+        tvlChange: null,
+        volume24h: null,
+        volumeChange: null
+      };
+    }
+
+    const latest = chartData[chartData.length - 1];
+    const previous = chartData[chartData.length - 2];
+
+    const tvlChangePercent =
+      previous.tvl > 0
+        ? ((latest.tvl - previous.tvl) / previous.tvl) * 100
+        : 0;
+
+    const volumeChangePercent =
+      previous.volume > 0
+        ? ((latest.volume - previous.volume) / previous.volume) * 100
+        : 0;
+
+    return {
+      tvl: latest.tvl,
+      tvlChange: tvlChangePercent,
+      volume24h: latest.volume,
+      volumeChange: volumeChangePercent
+    };
+  }, [chartData]);
 
   // Calculate top pairs by TVL
   const topPairs = useMemo(() => {
@@ -63,15 +116,82 @@ export default function AnalyticsPage() {
     }));
   }, [poolsData]);
 
+  const isLoading = chartLoading || poolsLoading;
+
   return (
     <div className="container mx-auto px-4 py-4 max-w-7xl">
-      <div className="mb-12">
+      <div className="mb-8">
         <h1 className="text-4xl font-display font-bold mb-2 uppercase">
           ANALYTICS
         </h1>
         <p className="font-mono text-muted-foreground text-sm">
           NETWORK STATISTICS & PROTOCOL DATA
         </p>
+      </div>
+
+      {/* TVL & Volume Stats Cards */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Total Value Locked Card */}
+        <div className="border border-border/60 bg-gradient-to-br from-white/5 to-transparent p-8 backdrop-blur-sm hover:border-primary/30 transition-colors">
+          <div className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-6">
+            Total Value Locked
+          </div>
+          {isLoading ? (
+            <div className="space-y-3">
+              <div className="h-12 bg-muted/20 animate-pulse rounded" />
+              <div className="h-4 w-32 bg-muted/20 animate-pulse rounded" />
+            </div>
+          ) : (
+            <>
+              <div className="text-5xl font-bold font-display text-white tracking-tight">
+                {totalTvl !== null && totalTvl > 0
+                  ? `$${formatCompactNumber(totalTvl, 2)}`
+                  : "$0.00"}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono mt-4">
+                {stats.tvlChange !== null ? (
+                  <>
+                    {stats.tvlChange >= 0 ? "+" : ""}
+                    {stats.tvlChange.toFixed(1)}% vs 24h ago
+                  </>
+                ) : (
+                  "No change data"
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 24h Trading Volume Card */}
+        <div className="border border-border/60 bg-gradient-to-br from-white/5 to-transparent p-8 backdrop-blur-sm hover:border-primary/30 transition-colors">
+          <div className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-6">
+            24h Trading Volume
+          </div>
+          {isLoading ? (
+            <div className="space-y-3">
+              <div className="h-12 bg-muted/20 animate-pulse rounded" />
+              <div className="h-4 w-32 bg-muted/20 animate-pulse rounded" />
+            </div>
+          ) : (
+            <>
+              <div className="text-5xl font-bold font-display text-white tracking-tight">
+                {stats.volume24h !== null && stats.volume24h > 0
+                  ? `$${formatCompactNumber(stats.volume24h, 2)}`
+                  : "$0.00"}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono mt-4">
+                {stats.volumeChange !== null ? (
+                  <>
+                    {stats.volumeChange >= 0 ? "+" : ""}
+                    {stats.volumeChange.toFixed(1)}% vs 24h ago
+                  </>
+                ) : (
+                  "No change data"
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">
