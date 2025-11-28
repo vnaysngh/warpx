@@ -72,6 +72,19 @@ export function TokenDialog({
     provider: provider!,
     enabled: open && Boolean(walletAccount) && Boolean(provider)
   });
+  const normalizedBalances = useMemo(() => {
+    if (balancesMap instanceof Map) return balancesMap;
+    if (!balancesMap) return new Map<string, bigint>();
+    try {
+      return new Map(
+        Object.entries(balancesMap as Record<string, bigint>).map(
+          ([key, value]) => [key.toLowerCase(), BigInt(value as bigint)]
+        )
+      );
+    } catch {
+      return new Map<string, bigint>();
+    }
+  }, [balancesMap]);
 
   if (!open) {
     return null;
@@ -130,7 +143,7 @@ export function TokenDialog({
             </div>
           ) : (
             filteredTokens.map((token) => {
-              const balance = balancesMap?.get(token.address.toLowerCase());
+              const balance = normalizedBalances.get(token.address.toLowerCase());
               const formattedBalance = formatTokenBalance(
                 balance,
                 token.decimals
@@ -217,7 +230,7 @@ export function TokenDialog({
                 </div>
               </div>
               {walletAccount && !isFetchingCustomToken && (() => {
-                const customTokenBalance = balancesMap?.get(
+                const customTokenBalance = normalizedBalances.get(
                   tokenSearch.trim().toLowerCase()
                 );
                 const formattedCustomBalance = formatTokenBalance(

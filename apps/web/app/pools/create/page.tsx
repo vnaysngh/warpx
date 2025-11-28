@@ -52,16 +52,18 @@ export default function CreatePoolPage() {
     setTokenSearch,
     openTokenDialog,
     closeTokenDialog,
-    handleSelectToken,
-    handleSelectCustomToken,
-    filteredTokens,
-    showCustomOption,
-    activeAddress,
-    setLiquidityTokenB,
-    isFetchingCustomToken,
-    prefetchedTokenDetails
-  } = useTokenManager(deployment, {
-    initialLiquidityB: null,
+  handleSelectToken,
+  handleSelectCustomToken,
+  filteredTokens,
+  showCustomOption,
+  activeAddress,
+  tokenList,
+  setLiquidityTokenA,
+  setLiquidityTokenB,
+  isFetchingCustomToken,
+  prefetchedTokenDetails
+} = useTokenManager(deployment, {
+  initialLiquidityB: null,
     provider: readProvider
   });
 
@@ -86,7 +88,7 @@ export default function CreatePoolPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [hasClearedTokenB, setHasClearedTokenB] = useState(false);
+const [hasClearedTokenB, setHasClearedTokenB] = useState(false);
 
   useEffect(() => {
     if (hasClearedTokenB) return;
@@ -252,6 +254,18 @@ export default function CreatePoolPage() {
   const handleConnectWallet = useCallback(() => {
     appKit.open();
   }, []);
+  const defaultNativeToken = useMemo(() => {
+    return (
+      tokenList.find((token) => token.isNative) ?? tokenList[0] ?? null
+    );
+  }, [tokenList]);
+
+  const handlePoolCreated = useCallback(() => {
+    if (defaultNativeToken) {
+      setLiquidityTokenA(defaultNativeToken);
+    }
+    setLiquidityTokenB(null);
+  }, [defaultNativeToken, setLiquidityTokenA, setLiquidityTokenB]);
 
   const addOverride = useMemo(() => {
     if (pairCheckPending) {
@@ -351,10 +365,11 @@ export default function CreatePoolPage() {
             onSwapRefresh={handleSwapRefresh}
             allowTokenSelection
             poolDetails={null}
-            onConnect={handleConnectWallet}
-            enableRemoveLiquidity={false}
-            addLiquidityOverride={addOverride}
-          />
+          onConnect={handleConnectWallet}
+          enableRemoveLiquidity={false}
+          addLiquidityOverride={addOverride}
+          onPoolCreated={handlePoolCreated}
+        />
         </div>
       </section>
 

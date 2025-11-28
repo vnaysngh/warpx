@@ -37,6 +37,11 @@ import { buildToastVisuals } from "@/lib/toastVisuals";
 import { useFirstTransactionCelebration } from "@/hooks/useFirstTransactionCelebration";
 import { useLocalization } from "@/lib/format/LocalizationContext";
 import { NumberType } from "@/lib/format/formatNumbers";
+import { getSafeDeadline } from "@/lib/trade/deadline";
+
+const POOL_CREATION_GAS_LIMIT = 900_000_000n;
+const POOL_CREATION_GAS_PRICE = 20_000_000n; // 0.02 gwei
+const LIQUIDITY_DEADLINE_MINUTES = 10;
 
 type LiquidityContainerProps = {
   liquidityTokenA: TokenDescriptor | null;
@@ -68,10 +73,8 @@ type LiquidityContainerProps = {
     disabled?: boolean;
     variant?: "default" | "highlight";
   } | null;
+  onPoolCreated?: () => void;
 };
-
-const nowPlusMinutes = (minutes: number) =>
-  Math.floor(Date.now() / 1000) + minutes * 60;
 
 const isAddress = (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value);
 
@@ -106,7 +109,8 @@ export function LiquidityContainer({
   poolDetails,
   onConnect,
   enableRemoveLiquidity = true,
-  addLiquidityOverride = null
+  addLiquidityOverride = null,
+  onPoolCreated
 }: LiquidityContainerProps) {
   const {
     formatNumber: formatDisplayNumber,
@@ -976,7 +980,17 @@ export function LiquidityContainer({
         return false;
       }
 
-      const deadline = BigInt(nowPlusMinutes(10));
+      const deadline = await getSafeDeadline(
+        readProvider,
+        LIQUIDITY_DEADLINE_MINUTES
+      );
+      const isPoolCreationTx =
+        !liquidityPairReserves ||
+        (liquidityPairReserves.reserveAWei === 0n &&
+          liquidityPairReserves.reserveBWei === 0n);
+      const poolCreationOverrides = isPoolCreationTx
+        ? { gas: POOL_CREATION_GAS_LIMIT, gasPrice: POOL_CREATION_GAS_PRICE }
+        : null;
 
       if (liquidityTokenAIsNative || liquidityTokenBIsNative) {
         if (!wrappedNativeAddress || !isAddress(wrappedNativeAddress)) {
@@ -994,15 +1008,12 @@ export function LiquidityContainer({
           ? liquidityTokenB.symbol
           : liquidityTokenA.symbol;
 
-        const allowance = await readContract(wagmiConfig, {
-          address: ercTokenAddress as `0x${string}`,
-          abi: erc20Abi,
-          functionName: "allowance",
-          args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
-          chainId: Number(MEGAETH_CHAIN_ID)
-        });
+        // Use the pre-checked needsApproval state instead of checking again
+        const needsApproval = liquidityTokenAIsNative
+          ? needsApprovalBRef.current
+          : needsApprovalARef.current;
 
-        if (toBigInt(allowance) < ercAmountWei) {
+        if (needsApproval) {
           setTransactionStatus({
             message: "Confirm approval...",
             type: "pending"
@@ -1049,7 +1060,8 @@ export function LiquidityContainer({
           ],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
-          value: nativeAmountWei
+          value: nativeAmountWei,
+          ...(poolCreationOverrides ?? {})
         });
 
         // Start transaction timer AFTER user confirms in wallet
@@ -1065,30 +1077,8 @@ export function LiquidityContainer({
         });
         submittedTxHash = txHash;
       } else {
-        const [allowanceA, allowanceB] = await Promise.all([
-          readContract(wagmiConfig, {
-            address: tokenA as `0x${string}`,
-            abi: erc20Abi,
-            functionName: "allowance",
-            args: [
-              ctx.account as `0x${string}`,
-              routerAddress as `0x${string}`
-            ],
-            chainId: Number(MEGAETH_CHAIN_ID)
-          }),
-          readContract(wagmiConfig, {
-            address: tokenB as `0x${string}`,
-            abi: erc20Abi,
-            functionName: "allowance",
-            args: [
-              ctx.account as `0x${string}`,
-              routerAddress as `0x${string}`
-            ],
-            chainId: Number(MEGAETH_CHAIN_ID)
-          })
-        ]);
-
-        if (toBigInt(allowanceA) < amountAWei) {
+        // Use the pre-checked needsApproval state instead of checking again
+        if (needsApprovalARef.current) {
           setTransactionStatus({
             message: "Confirm approval...",
             type: "pending"
@@ -1112,7 +1102,7 @@ export function LiquidityContainer({
           setNeedsApprovalA(false);
         }
 
-        if (toBigInt(allowanceB) < amountBWei) {
+        if (needsApprovalBRef.current) {
           setTransactionStatus({
             message: "Confirm approval...",
             type: "pending"
@@ -1157,6 +1147,7 @@ export function LiquidityContainer({
           ],
           account: ctx.account as `0x${string}`,
           chainId: Number(MEGAETH_CHAIN_ID),
+          ...(poolCreationOverrides ?? {})
         });
 
         // Start transaction timer AFTER user confirms in wallet
@@ -1193,6 +1184,10 @@ export function LiquidityContainer({
         message: `Liquidity added in ${txDuration}ms!`,
         type: "success"
       });
+
+      if (isPoolCreationTx && onPoolCreated) {
+        onPoolCreated();
+      }
 
       // Trigger celebration if this is the first transaction
       if (shouldCelebrate) {
@@ -1248,7 +1243,10 @@ export function LiquidityContainer({
     setLiquidityPairReserves,
     setLiquidityReservesRefreshNonce,
     setLiquidityAllowanceNonce,
-    setIsSubmitting
+    setIsSubmitting,
+    readProvider,
+    liquidityPairReserves,
+    onPoolCreated
   ]);
 
   const handleRemoveLiquidity = useCallback(async () => {
@@ -1335,7 +1333,10 @@ export function LiquidityContainer({
         type: "pending"
       });
 
-      const deadline = BigInt(nowPlusMinutes(10));
+      const deadline = await getSafeDeadline(
+        readProvider,
+        LIQUIDITY_DEADLINE_MINUTES
+      );
 
       const txRequest =
         liquidityTokenAIsNative || liquidityTokenBIsNative
@@ -1460,7 +1461,8 @@ export function LiquidityContainer({
     setNeedsApprovalB,
     setLiquidityAllowanceNonce,
     setIsSubmitting,
-    setRemoveLiquidityPercent
+    setRemoveLiquidityPercent,
+    readProvider
   ]);
 
   const liquidityButtonLabel = useMemo(() => {

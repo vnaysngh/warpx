@@ -38,6 +38,9 @@ import { buildToastVisuals } from "@/lib/toastVisuals";
 import { useFirstTransactionCelebration } from "@/hooks/useFirstTransactionCelebration";
 import { useLocalization } from "@/lib/format/LocalizationContext";
 import { NumberType } from "@/lib/format/formatNumbers";
+import { getSafeDeadline } from "@/lib/trade/deadline";
+
+const SWAP_DEADLINE_MINUTES = 10;
 type EnsureWalletContext = {
   walletAccount: string | null;
   ready: boolean;
@@ -65,9 +68,6 @@ type SwapContainerProps = {
   onRequestRefresh: () => void;
   onConnect?: () => void;
 };
-
-const nowPlusMinutes = (minutes: number) =>
-  Math.floor(Date.now() / 1000) + minutes * 60;
 
 const createEnsureWallet =
   ({ walletAccount, ready, showError }: EnsureWalletContext) =>
@@ -1087,7 +1087,10 @@ export function SwapContainer({
         return;
       }
 
-      const deadline = BigInt(nowPlusMinutes(10));
+      const deadline = await getSafeDeadline(
+        readProvider,
+        SWAP_DEADLINE_MINUTES
+      );
 
       const wrappedNative =
         wrappedNativeAddress ??
@@ -1325,7 +1328,8 @@ export function SwapContainer({
     swapInTokenAddress,
     swapOutTokenAddress,
     wrappedNativeAddress,
-    ensureSufficientAllowance
+    ensureSufficientAllowance,
+    readProvider
   ]);
 
   const handleApprove = useCallback(async () => {

@@ -184,12 +184,34 @@ function LiquidityAddForm({
 }) {
   const { formatNumber: formatDisplayNumber, formatPercent } =
     useLocalization();
+  const resolvedAmountAInput =
+    liquidityForm.amountAExact && liquidityForm.amountAExact.length > 0
+      ? liquidityForm.amountAExact
+      : liquidityForm.amountA || "";
+  const resolvedAmountBInput =
+    liquidityForm.amountBExact && liquidityForm.amountBExact.length > 0
+      ? liquidityForm.amountBExact
+      : liquidityForm.amountB || "";
+  const hasLiquidityReserves =
+    liquidityPairReserves &&
+    liquidityPairReserves.reserveAWei > 0n &&
+    liquidityPairReserves.reserveBWei > 0n;
+  const fallbackRateDisplay = (() => {
+    if (!resolvedAmountAInput || !resolvedAmountBInput) return null;
+    const parsedA = Number(resolvedAmountAInput);
+    const parsedB = Number(resolvedAmountBInput);
+    if (!Number.isFinite(parsedA) || parsedA <= 0 || !Number.isFinite(parsedB)) {
+      return null;
+    }
+    return formatDisplayNumber({
+      input: (parsedB / parsedA).toString(),
+      type: NumberType.TokenNonTx
+    });
+  })();
 
   // Calculate exchange rate (reserveB / reserveA)
   const exchangeRate =
-    liquidityPairReserves &&
-    liquidityPairReserves.reserveAWei > 0n &&
-    liquidityPairReserves.reserveBWei > 0n
+    hasLiquidityReserves
       ? formatDisplayNumber({
           input: (
             Number(liquidityPairReserves.reserveBWei) /
@@ -197,7 +219,7 @@ function LiquidityAddForm({
           ).toString(),
           type: NumberType.TokenNonTx
         })
-      : "—";
+      : fallbackRateDisplay ?? "—";
 
   // Calculate LP tokens to be minted
   const lpTokensDisplay = (() => {
@@ -206,26 +228,25 @@ function LiquidityAddForm({
     }
 
     try {
-      const amountAInput =
-        liquidityForm.amountAExact && liquidityForm.amountAExact.length > 0
-          ? liquidityForm.amountAExact
-          : liquidityForm.amountA || "0";
-      const amountBInput =
-        liquidityForm.amountBExact && liquidityForm.amountBExact.length > 0
-          ? liquidityForm.amountBExact
-          : liquidityForm.amountB || "0";
-
       if (
-        !amountAInput ||
-        amountAInput === "0" ||
-        !amountBInput ||
-        amountBInput === "0"
+        !resolvedAmountAInput ||
+        resolvedAmountAInput === "0" ||
+        resolvedAmountAInput === "." ||
+        !resolvedAmountBInput ||
+        resolvedAmountBInput === "." ||
+        resolvedAmountBInput.length === 0
       ) {
         return "—";
       }
 
-      const amountAWei = parseUnits(amountAInput, liquidityTokenA.decimals);
-      const amountBWei = parseUnits(amountBInput, liquidityTokenB.decimals);
+      const amountAWei = parseUnits(
+        resolvedAmountAInput.replace(/,/g, "."),
+        liquidityTokenA.decimals ?? 18
+      );
+      const amountBWei = parseUnits(
+        resolvedAmountBInput.replace(/,/g, "."),
+        liquidityTokenB.decimals ?? 18
+      );
 
       const lpTokensWei = getLiquidityMinted(
         amountAWei,
