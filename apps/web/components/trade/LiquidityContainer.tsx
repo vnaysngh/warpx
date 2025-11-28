@@ -1183,18 +1183,23 @@ export function LiquidityContainer({
       // Calculate transaction time
       const txDuration = Math.round(performance.now() - txStartTimeRef.current);
 
-      await refreshBalances();
       setLiquidityForm(LIQUIDITY_DEFAULT);
       liquidityEditingFieldRef.current = null;
       setExpectedRemoveAmounts(null);
       setUserPooledAmounts(null);
       setLpTokenInfo(null);
       setLiquidityPairReserves(null);
-      setLiquidityReservesRefreshNonce((n) => n + 1);
-      onSwapRefresh();
+      
+      // Debounce the refresh to prevent RPC rate limiting
+      setTimeout(() => {
+        refreshBalances();
+        setLiquidityReservesRefreshNonce((n) => n + 1);
+        onSwapRefresh();
+        setLiquidityAllowanceNonce((n) => n + 1);
+      }, 500);
+
       setNeedsApprovalA(false);
       setNeedsApprovalB(false);
-      setLiquidityAllowanceNonce((n) => n + 1);
 
       setTransactionStatus({
         message: `Liquidity added in ${formatTxDuration(txDuration)}!`,
@@ -1408,9 +1413,15 @@ export function LiquidityContainer({
       // Calculate transaction time
       const txDuration = Math.round(performance.now() - txStartTimeRef.current);
 
-      await refreshBalances();
+      // Debounce the refresh to prevent RPC rate limiting
+      setTimeout(() => {
+        refreshBalances();
+        setLiquidityReservesRefreshNonce((n) => n + 1);
+        onSwapRefresh();
+        setLiquidityAllowanceNonce((n) => n + 1);
+      }, 500);
+
       setLiquidityPairReserves(null);
-      setLiquidityReservesRefreshNonce((n) => n + 1);
       setExpectedRemoveAmounts(null);
       setUserPooledAmounts(null);
       setLpTokenInfo(null);

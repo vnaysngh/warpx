@@ -419,9 +419,9 @@ function LiquidityAddForm({
             : "bg-primary text-black hover:bg-primary/90"
         } ${
           transactionStatus.type === "error"
-            ? "!bg-red-500 !text-white"
+            ? "!bg-red-500 !text-white !text-[1rem]"
             : transactionStatus.type === "success"
-              ? "!bg-accent !text-black"
+              ? "!bg-accent !text-black !text-[1rem]"
               : ""
         }`}
       >
@@ -574,9 +574,9 @@ function LiquidityRemoveForm({
             : "bg-primary text-black hover:bg-primary/90"
         } ${
           transactionStatus.type === "error"
-            ? "!bg-red-500 !text-white"
+            ? "!bg-red-500 !text-white !text-[1rem]"
             : transactionStatus.type === "success"
-              ? "!bg-accent !text-black"
+              ? "!bg-accent !text-black !text-[1rem]"
               : ""
         }`}
       >

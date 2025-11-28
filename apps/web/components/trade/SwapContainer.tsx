@@ -15,10 +15,7 @@ import { warpRouterAbi } from "@/lib/abis/router";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
-import {
-  formatAmount,
-  formatTxDuration
-} from "@/lib/utils/format";
+import { formatAmount, formatTxDuration } from "@/lib/utils/format";
 import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 import { SwapCard } from "./SwapCard";
 import {
@@ -668,7 +665,7 @@ export function SwapContainer({
 
       try {
         // Convert any commas to periods before parsing (Uniswap approach)
-        const normalizedMinOut = swapForm.minOut.replace(/,/g, '.');
+        const normalizedMinOut = swapForm.minOut.replace(/,/g, ".");
         const desiredOutWei = parseUnits(normalizedMinOut, decimalsOut);
         if (desiredOutWei <= 0n) {
           setIsCalculatingQuote(false);
@@ -954,7 +951,7 @@ export function SwapContainer({
         abi: erc20Abi,
         functionName: "allowance",
         args: [account as `0x${string}`, routerAddress as `0x${string}`],
-        chainId: Number(MEGAETH_CHAIN_ID),
+        chainId: Number(MEGAETH_CHAIN_ID)
       });
 
       // If allowance is already sufficient (MaxUint256 or large enough), skip approval
@@ -1104,7 +1101,7 @@ export function SwapContainer({
       }
 
       // Convert any commas to periods before parsing (Uniswap approach)
-      const normalizedMinOut = minOut.replace(/,/g, '.');
+      const normalizedMinOut = minOut.replace(/,/g, ".");
       const minOutWei = parseUnits(normalizedMinOut, decimalsOut);
       if (minOutWei <= 0n) {
         showError("Enter a valid minimum output amount.");
@@ -1285,7 +1282,6 @@ export function SwapContainer({
       // Calculate transaction time
       const txDuration = Math.round(performance.now() - txStartTimeRef.current);
 
-      await refetchSwapInBalance();
       setSwapForm((prev) => ({
         ...prev,
         amountIn: "",
@@ -1300,7 +1296,13 @@ export function SwapContainer({
       setSwapHasLiquidity(null);
       setIsExactOutput(false);
       setPriceImpact(null);
-      onRequestRefresh();
+
+      // Debounce the refresh to prevent RPC rate limiting
+      // The transaction needs time to be indexed anyway
+      setTimeout(() => {
+        refetchSwapInBalance();
+        onRequestRefresh();
+      }, 500);
       if (!swapInIsNative) {
         setAllowanceNonce((n) => n + 1);
       }
