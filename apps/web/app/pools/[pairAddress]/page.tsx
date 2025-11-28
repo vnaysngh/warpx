@@ -137,7 +137,11 @@ export default function PoolLiquidityPage() {
     activeAddress,
     isFetchingCustomToken,
     prefetchedTokenDetails
-  } = useTokenManager(deployment, { provider: readProvider });
+  } = useTokenManager(deployment, {
+    provider: readProvider,
+    initialLiquidityA: null,
+    initialLiquidityB: null
+  });
 
   const tokenListMap = useMemo(() => {
     const map = new Map<string, TokenDescriptor>();
@@ -281,35 +285,11 @@ export default function PoolLiquidityPage() {
   useEffect(() => {
     if (!poolDetails || !tokenList.length) return;
 
-    const target = pairTargetRef.current;
     const token0Lower = poolDetails.token0Address.toLowerCase();
     const token1Lower = poolDetails.token1Address.toLowerCase();
 
-    // Skip only if both tokens AND pairTokenAddresses are correctly set
-    if (
-      target.token0 === token0Lower &&
-      target.token1 === token1Lower &&
-      pairTokenAddresses.token0 === token0Lower &&
-      pairTokenAddresses.token1 === token1Lower &&
-      liquidityTokenA?.address.toLowerCase() &&
-      liquidityTokenB?.address.toLowerCase()
-    ) {
-      // Check if display tokens match (regardless of order)
-      const currentAddresses = new Set([
-        liquidityTokenA.address.toLowerCase(),
-        liquidityTokenB.address.toLowerCase()
-      ]);
-      const targetAddresses = new Set([token0Lower, token1Lower]);
-
-      if (
-        currentAddresses.size === targetAddresses.size &&
-        [...currentAddresses].every((addr) => targetAddresses.has(addr))
-      ) {
-        return;
-      }
-    }
-
-    const ensureDescriptor = (address: string): TokenDescriptor => {
+    // Helper to find or generate token descriptor
+    const ensureDescriptor = (address: string): TokenDescriptor | null => {
       const lower = address.toLowerCase();
       const fromList = tokenListMap.get(lower);
       if (fromList) return fromList;
@@ -323,42 +303,45 @@ export default function PoolLiquidityPage() {
           isNative: true,
           wrappedAddress: wrappedNativeAddress!
         };
-        setTokenList((prev) => {
-          if (prev.some((token) => token.address.toLowerCase() === lower)) {
-            return prev;
-          }
-          return [...prev, nativeDescriptor];
-        });
+        // We don't update tokenList here to avoid side-effects during render calculation
+        // The missing token will be added via the setTokenList call below if needed
         return nativeDescriptor;
       }
 
-      const suffix = lower.slice(2, 6).toUpperCase();
-      const fallback: TokenDescriptor = {
-        symbol: `TOK${suffix}`,
-        name: `Token ${suffix}`,
-        address,
-        decimals: DEFAULT_TOKEN_DECIMALS,
-        isNative: false
-      };
-
-      setTokenList((prev) => {
-        if (prev.some((token) => token.address.toLowerCase() === lower)) {
-          return prev;
-        }
-        return [...prev, fallback];
-      });
-
-      return fallback;
+      // Return null instead of fallback to show loading state
+      return null;
     };
 
     const descriptor0 = ensureDescriptor(poolDetails.token0Address);
     const descriptor1 = ensureDescriptor(poolDetails.token1Address);
 
+    if (!descriptor0 || !descriptor1) {
+      return;
+    }
+
     // Apply display ordering (non-native tokens first)
-    const [orderedTokenA, orderedTokenB] = orderTokensForDisplay(
+    const [targetTokenA, targetTokenB] = orderTokensForDisplay(
       descriptor0,
       descriptor1
     );
+
+    // Check if we need to update the state
+    // We update if:
+    // 1. Addresses don't match
+    // 2. Symbols don't match (e.g. upgraded from TOKxxxx to MONKS)
+    // 3. Current tokens are null
+    const needsUpdate =
+      !liquidityTokenA ||
+      !liquidityTokenB ||
+      liquidityTokenA.address.toLowerCase() !== targetTokenA.address.toLowerCase() ||
+      liquidityTokenB.address.toLowerCase() !== targetTokenB.address.toLowerCase() ||
+      liquidityTokenA.symbol !== targetTokenA.symbol ||
+      liquidityTokenB.symbol !== targetTokenB.symbol;
+
+
+    if (!needsUpdate) {
+      return;
+    }
 
     // Batch state updates
     pairTargetRef.current = {
@@ -371,8 +354,9 @@ export default function PoolLiquidityPage() {
       // pairTokenAddresses keeps the POOL's actual token0/token1 order (for reserve mapping)
       setPairTokenAddresses({ token0: token0Lower, token1: token1Lower });
       // liquidityTokenA/B use the DISPLAY order (non-native first)
-      setLiquidityTokenA(orderedTokenA);
-      setLiquidityTokenB(orderedTokenB);
+      setLiquidityTokenA(targetTokenA);
+      setLiquidityTokenB(targetTokenB);
+
     });
   }, [
     poolDetails,
@@ -380,14 +364,60 @@ export default function PoolLiquidityPage() {
     tokenListMap,
     wrappedNativeLower,
     wrappedNativeAddress,
-    pairTokenAddresses.token0,
-    pairTokenAddresses.token1,
     liquidityTokenA,
     liquidityTokenB,
     setLiquidityTokenA,
     setLiquidityTokenB,
     setTokenList
   ]);
+
+  // Separate effect to fetch missing token details via RPC
+  useEffect(() => {
+    if (!poolDetails) return;
+
+    const checkAndFetch = async (address: string) => {
+      const lower = address.toLowerCase();
+      // If already in list (and not a fallback), skip
+      const existing = tokenListMap.get(lower);
+      if (existing && !existing.symbol.startsWith("TOK")) return;
+
+      // If we have subgraph data, we might not need to fetch, but if ensureDescriptor
+      // fell back to TOK..., it means subgraph data was missing or insufficient.
+      
+      // Check if we are already fetching this token to avoid spam
+      // (Simple implementation: just let the fetch happen, useTokenManager might handle some caching or we rely on browser cache)
+      
+      try {
+        // Dynamic import to avoid circular dependencies if any, though fetchTokenDetails is a util
+        const { fetchTokenDetails } = await import("@/lib/utils/tokenFetch");
+        const details = await fetchTokenDetails(address, readProvider);
+        
+        if (details) {
+           setTokenList((prev) => {
+            // Check again if added
+            if (prev.some(t => t.address.toLowerCase() === lower && !t.symbol.startsWith("TOK"))) return prev;
+            
+            const newToken: TokenDescriptor = {
+              symbol: details.symbol,
+              name: details.name,
+              address: details.address,
+              decimals: details.decimals,
+              isNative: false
+            };
+
+            // Replace existing fallback or add new
+            const filtered = prev.filter(t => t.address.toLowerCase() !== lower);
+            return [...filtered, newToken];
+           });
+        }
+      } catch (err) {
+        console.warn("[pool] failed to fetch token details", address, err);
+      }
+    };
+
+    checkAndFetch(poolDetails.token0Address);
+    checkAndFetch(poolDetails.token1Address);
+  }, [poolDetails, tokenListMap, readProvider, setTokenList]);
 
   // Log poolDetails errors
   useEffect(() => {
@@ -460,6 +490,8 @@ export default function PoolLiquidityPage() {
     return "—";
   }, [currentPoolData]);
 
+  const isLoading = !liquidityTokenA || !liquidityTokenB;
+
   return (
     <>
       <NetworkBanner
@@ -479,6 +511,15 @@ export default function PoolLiquidityPage() {
           </button>
 
           <div className="flex-1">
+            {isLoading ? (
+               <div className="flex items-center gap-4 mb-3 animate-pulse">
+                 <div className="flex -space-x-3">
+                   <div className="w-10 h-10 rounded-full bg-white/10"></div>
+                   <div className="w-10 h-10 rounded-full bg-white/10"></div>
+                 </div>
+                 <div className="h-10 w-48 bg-white/10 rounded"></div>
+               </div>
+            ) : (
             <div className="flex items-center gap-4 mb-3">
               <div className="flex -space-x-3">
                 {liquidityTokenA && (
@@ -503,6 +544,7 @@ export default function PoolLiquidityPage() {
                 LIVE
               </span> */}
             </div>
+            )}
 
             <div className="flex gap-8 text-xs font-mono text-muted-foreground">
               <div>
@@ -521,6 +563,9 @@ export default function PoolLiquidityPage() {
           </div>
         </div>
 
+        {isLoading ? (
+          <div className="w-full h-[400px] bg-white/5 animate-pulse rounded-lg"></div>
+        ) : (
         <LiquidityContainer
           key={`liquidity-${deployment?.router ?? "default"}-${pairAddress ?? "unknown"}`}
           liquidityTokenA={liquidityTokenA}
@@ -546,6 +591,7 @@ export default function PoolLiquidityPage() {
           poolDetails={poolDetails}
           onConnect={handleConnectWallet}
         />
+        )}
       </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
