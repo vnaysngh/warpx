@@ -14,6 +14,7 @@ import { erc20Abi } from "@/lib/abis/erc20";
 import { warpRouterAbi } from "@/lib/abis/router";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
+import { formatTxDuration } from "@/lib/utils/format";
 import { toBigInt } from "@/lib/utils/math";
 import { LiquiditySection } from "./LiquiditySection";
 import { LiquidityConfirmDialog } from "./LiquidityConfirmDialog";
@@ -112,10 +113,8 @@ export function LiquidityContainer({
   addLiquidityOverride = null,
   onPoolCreated
 }: LiquidityContainerProps) {
-  const {
-    formatNumber: formatDisplayNumber,
-    formatBalanceDisplay
-  } = useLocalization();
+  const { formatNumber: formatDisplayNumber, formatBalanceDisplay } =
+    useLocalization();
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [liquidityForm, setLiquidityForm] =
     useState<LiquidityFormState>(LIQUIDITY_DEFAULT);
@@ -141,7 +140,10 @@ export function LiquidityContainer({
   const [removeLiquidityPercent, setRemoveLiquidityPercent] = useState("25");
 
   // Debounce the slider to avoid excessive calculations while dragging
-  const debouncedRemoveLiquidityPercent = useDebounce(removeLiquidityPercent, 300);
+  const debouncedRemoveLiquidityPercent = useDebounce(
+    removeLiquidityPercent,
+    300
+  );
 
   const [lpBaseData, setLpBaseData] = useState<{
     userBalance: bigint;
@@ -205,7 +207,8 @@ export function LiquidityContainer({
     [liquidityTokenA, liquidityTokenB]
   );
   const removeLiquidityToastVisuals = useMemo(
-    () => buildToastVisuals("removeLiquidity", liquidityTokenA, liquidityTokenB),
+    () =>
+      buildToastVisuals("removeLiquidity", liquidityTokenA, liquidityTokenB),
     [liquidityTokenA, liquidityTokenB]
   );
 
@@ -635,10 +638,13 @@ export function LiquidityContainer({
     setCheckingLiquidityAllowances
   ]);
 
-
   // Store fetched LP data separately so slider changes don't trigger RPC calls
   useEffect(() => {
-    if (!liquidityPairReserves || liquidityMode !== "remove" || !walletAccount) {
+    if (
+      !liquidityPairReserves ||
+      liquidityMode !== "remove" ||
+      !walletAccount
+    ) {
       setLpBaseData(null);
       return;
     }
@@ -688,7 +694,12 @@ export function LiquidityContainer({
 
   // Recalculate expected amounts when percentage changes (pure math, no RPC)
   useEffect(() => {
-    if (!lpBaseData || !liquidityPairReserves || !liquidityTokenA || !liquidityTokenB) {
+    if (
+      !lpBaseData ||
+      !liquidityPairReserves ||
+      !liquidityTokenA ||
+      !liquidityTokenB
+    ) {
       return;
     }
 
@@ -699,7 +710,7 @@ export function LiquidityContainer({
         ? userBalance
         : (userBalance * percentBigInt) / 100n;
 
-    const { amountAWei: expectedAWei, amountBWei: expectedBWei} =
+    const { amountAWei: expectedAWei, amountBWei: expectedBWei } =
       getLiquidityRemoveAmounts(
         liquidityToRemove,
         liquidityPairReserves.reserveAWei,
@@ -832,7 +843,12 @@ export function LiquidityContainer({
         return updated;
       });
     },
-    [liquidityPairReserves, liquidityTokenA, liquidityTokenB, formatDisplayNumber]
+    [
+      liquidityPairReserves,
+      liquidityTokenA,
+      liquidityTokenB,
+      formatDisplayNumber
+    ]
   );
 
   const applyLiquidityAmountB = useCallback(
@@ -1024,7 +1040,7 @@ export function LiquidityContainer({
             functionName: "approve",
             args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
-            chainId: Number(MEGAETH_CHAIN_ID),
+            chainId: Number(MEGAETH_CHAIN_ID)
           });
           setTransactionStatus({
             message: "Approving...",
@@ -1089,7 +1105,7 @@ export function LiquidityContainer({
             functionName: "approve",
             args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
-            chainId: Number(MEGAETH_CHAIN_ID),
+            chainId: Number(MEGAETH_CHAIN_ID)
           });
           setTransactionStatus({
             message: "Approving...",
@@ -1113,7 +1129,7 @@ export function LiquidityContainer({
             functionName: "approve",
             args: [routerAddress as `0x${string}`, MaxUint256],
             account: ctx.account as `0x${string}`,
-            chainId: Number(MEGAETH_CHAIN_ID),
+            chainId: Number(MEGAETH_CHAIN_ID)
           });
           setTransactionStatus({
             message: "Approving...",
@@ -1181,7 +1197,7 @@ export function LiquidityContainer({
       setLiquidityAllowanceNonce((n) => n + 1);
 
       setTransactionStatus({
-        message: `Liquidity added in ${txDuration}ms!`,
+        message: `Liquidity added in ${formatTxDuration(txDuration)}!`,
         type: "success"
       });
 
@@ -1316,7 +1332,7 @@ export function LiquidityContainer({
           functionName: "approve",
           args: [routerAddress as `0x${string}`, MaxUint256],
           account: ctx.account as `0x${string}`,
-          chainId: Number(MEGAETH_CHAIN_ID),
+          chainId: Number(MEGAETH_CHAIN_ID)
         });
         setTransactionStatus({
           message: "Approving...",
@@ -1353,7 +1369,7 @@ export function LiquidityContainer({
                 deadline
               ],
               account: ctx.account as `0x${string}`,
-              chainId: Number(MEGAETH_CHAIN_ID),
+              chainId: Number(MEGAETH_CHAIN_ID)
             }
           : {
               address: routerAddress as `0x${string}`,
@@ -1369,7 +1385,7 @@ export function LiquidityContainer({
                 deadline
               ],
               account: ctx.account as `0x${string}`,
-              chainId: Number(MEGAETH_CHAIN_ID),
+              chainId: Number(MEGAETH_CHAIN_ID)
             };
 
       const txHash = await writeContract(
@@ -1406,7 +1422,7 @@ export function LiquidityContainer({
       onSwapRefresh();
 
       setTransactionStatus({
-        message: `Liquidity removed in ${txDuration}ms!`,
+        message: `Liquidity removed in ${formatTxDuration(txDuration)}!`,
         type: "success"
       });
 
@@ -1597,13 +1613,15 @@ export function LiquidityContainer({
           abi: erc20Abi,
           functionName: "allowance",
           args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
-          chainId: Number(MEGAETH_CHAIN_ID),
+          chainId: Number(MEGAETH_CHAIN_ID)
         });
 
         // If allowance is already sufficient (MaxUint256 or large enough), skip approval
         // We use a large threshold to avoid re-approving if already approved
         if (toBigInt(currentAllowance) >= MaxUint256 / 2n) {
-          console.log("[liquidity] Allowance already sufficient, skipping approval");
+          console.log(
+            "[liquidity] Allowance already sufficient, skipping approval"
+          );
           setLiquidityAllowanceNonce((n) => n + 1);
           return true;
         }
@@ -1618,7 +1636,7 @@ export function LiquidityContainer({
           functionName: "approve",
           args: [routerAddress as `0x${string}`, parsedAmount],
           account: ctx.account as `0x${string}`,
-          chainId: Number(MEGAETH_CHAIN_ID),
+          chainId: Number(MEGAETH_CHAIN_ID)
         });
         setTransactionStatus({
           message: "Approving...",
@@ -1672,13 +1690,13 @@ export function LiquidityContainer({
       ensureWallet,
       liquidityTokenA,
       liquidityTokenB,
-    routerAddress,
-    showError,
-    showLoading,
-    addLiquidityToastVisuals,
-    setNeedsApprovalA,
-    setNeedsApprovalB,
-    setLiquidityAllowanceNonce
+      routerAddress,
+      showError,
+      showLoading,
+      addLiquidityToastVisuals,
+      setNeedsApprovalA,
+      setNeedsApprovalB,
+      setLiquidityAllowanceNonce
     ]
   );
 

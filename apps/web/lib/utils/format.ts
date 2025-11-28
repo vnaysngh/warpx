@@ -16,3 +16,10 @@ export const formatAmount = (value: bigint | null | undefined, decimals = 18, pr
     return value.toString()
   }
 }
+
+export const formatTxDuration = (ms: number): string => {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`
+  }
+  return `${(ms / 1000).toFixed(3)}s`
+}

@@ -15,6 +15,10 @@ import { warpRouterAbi } from "@/lib/abis/router";
 import { getToken } from "@/lib/contracts";
 import { wagmiConfig } from "@/lib/wagmi";
 import { toBigInt } from "@/lib/utils/math";
+import {
+  formatAmount,
+  formatTxDuration
+} from "@/lib/utils/format";
 import { fetchPair, toSdkToken } from "@/lib/trade/warp";
 import { SwapCard } from "./SwapCard";
 import {
@@ -1303,10 +1307,8 @@ export function SwapContainer({
       setNeedsApproval(false);
       setCheckingAllowance(false);
 
-      const txSeconds = (txDuration / 1000).toFixed(2);
-
       setTransactionStatus({
-        message: `Transaction done in ${txSeconds}s`,
+        message: `Transaction done in ${formatTxDuration(txDuration)}`,
         type: "success"
       });
 
