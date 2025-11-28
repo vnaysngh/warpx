@@ -1590,6 +1590,24 @@ export function LiquidityContainer({
       }
       try {
         const parsedAmount = MaxUint256;
+
+        // Check allowance one last time before sending transaction
+        const currentAllowance = await readContract(wagmiConfig, {
+          address: tokenAddress as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "allowance",
+          args: [ctx.account as `0x${string}`, routerAddress as `0x${string}`],
+          chainId: Number(MEGAETH_CHAIN_ID),
+        });
+
+        // If allowance is already sufficient (MaxUint256 or large enough), skip approval
+        // We use a large threshold to avoid re-approving if already approved
+        if (toBigInt(currentAllowance) >= MaxUint256 / 2n) {
+          console.log("[liquidity] Allowance already sufficient, skipping approval");
+          setLiquidityAllowanceNonce((n) => n + 1);
+          return true;
+        }
+
         setTransactionStatus({
           message: "Confirm approval...",
           type: "pending"

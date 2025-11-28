@@ -944,6 +944,27 @@ export function SwapContainer({
         type: "pending"
       });
 
+      // Check allowance one last time before sending transaction
+      const currentAllowance = await readContract(wagmiConfig, {
+        address: tokenAddress as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [account as `0x${string}`, routerAddress as `0x${string}`],
+        chainId: Number(MEGAETH_CHAIN_ID),
+      });
+
+      // If allowance is already sufficient (MaxUint256 or large enough), skip approval
+      if (toBigInt(currentAllowance) >= MaxUint256 / 2n) {
+        console.log("[swap] Allowance already sufficient, skipping approval");
+        setNeedsApproval(false);
+        setAllowanceNonce((n) => n + 1);
+        setTransactionStatus({
+          message: "",
+          type: "idle"
+        });
+        return;
+      }
+
       const txHash = await writeContract(wagmiConfig, {
         address: tokenAddress as `0x${string}`,
         abi: erc20Abi,
