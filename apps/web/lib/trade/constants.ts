@@ -59,6 +59,13 @@ export const TOKEN_CATALOG: TokenDescriptor[] = [
     address: "0x463151b80DFf738Bb02BA3B4C9Bd788daeEc751c",
     decimals: 8,
     logo: "/logos/xbtc.png"
+  },
+  {
+    name: "MegaSpeed Inu",
+    symbol: "MSI",
+    address: "0xDcA722B3Bd69Cd4a46f1546bcbb28dF1bB558Fd7",
+    decimals: 18,
+    logo: "/logos/msi.jpeg"
   }
   // {
   //   symbol: "GTE",

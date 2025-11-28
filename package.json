@@ -18,6 +18,8 @@
     "deploy-wusd": "hardhat run scripts/deploy-wusd.ts --network megaethTestnet",
     "add-wusd-eth-liquidity": "hardhat run scripts/add-wusd-eth-liquidity.ts --network megaethTestnet",
     "deploy-xbtc": "hardhat run scripts/deploy-xbtc.ts --network megaethTestnet",
+    "deploy-msi": "hardhat run scripts/deploy-msi.ts --network megaethTestnet",
+    "add-msi-eth-liquidity": "hardhat run scripts/add-msi-eth-liquidity.ts --network megaethTestnet",
     "check-gte-price": "hardhat run scripts/check-gte-price.ts --network megaethTestnet",
     "set-factory-fee-to": "hardhat run scripts/set-factory-fee-to.ts --network megaethTestnet",
     "test:core:factory": "hardhat test packages/core/test/WarpFactory.spec.ts",
