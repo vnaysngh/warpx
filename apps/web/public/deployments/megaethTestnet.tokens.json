@@ -33,9 +33,9 @@
     {
       "name": "MegaSpeed Inu",
       "symbol": "MSI",
-      "address": "0xDcA722B3Bd69Cd4a46f1546bcbb28dF1bB558Fd7",
+      "address": "0xd06C98B3611A4D11ab0271344dDAE8dCad6faD0F",
       "decimals": 18,
-      "logo": "/logos/msi.jpeg"
+      "logo": "/logos/msi.png"
     }
   ]
 }

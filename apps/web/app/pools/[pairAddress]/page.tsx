@@ -10,6 +10,7 @@ import { ToastContainer } from "@/components/Toast";
 import { NetworkBanner } from "@/components/trade/NetworkBanner";
 import { LiquidityContainer } from "@/components/trade/LiquidityContainer";
 import { TokenDialog } from "@/components/trade/TokenDialog";
+import { TokenLogo } from "@/components/TokenLogo";
 import { CopyIcon, CopySuccessIcon } from "@/components/icons/CopyIcon";
 import { useToasts } from "@/hooks/useToasts";
 import { useDeploymentManifest } from "@/hooks/useDeploymentManifest";
@@ -480,25 +481,19 @@ export default function PoolLiquidityPage() {
           <div className="flex-1">
             <div className="flex items-center gap-4 mb-3">
               <div className="flex -space-x-3">
-                {liquidityTokenA?.logo && (
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={liquidityTokenA.logo}
-                      alt={getDisplaySymbol(liquidityTokenA)}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                {liquidityTokenA && (
+                  <TokenLogo
+                    logo={liquidityTokenA.logo}
+                    symbol={getDisplaySymbol(liquidityTokenA)}
+                    size={40}
+                  />
                 )}
-                {liquidityTokenB?.logo && (
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={liquidityTokenB.logo}
-                      alt={getDisplaySymbol(liquidityTokenB)}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                {liquidityTokenB && (
+                  <TokenLogo
+                    logo={liquidityTokenB.logo}
+                    symbol={getDisplaySymbol(liquidityTokenB)}
+                    size={40}
+                  />
                 )}
               </div>
               <h1 className="text-4xl font-display font-bold uppercase">
