@@ -10,10 +10,10 @@ export const megaethTestnet: Chain = {
   },
   rpcUrls: {
     default: {
-      http: [`https://6343.rpc.thirdweb.com/${process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID}`]
+      http: [`https://timothy.megaeth.com/rpc`]
     },
     public: {
-      http: [`https://6343.rpc.thirdweb.com/${process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID}`]
+      http: [`https://timothy.megaeth.com/rpc`]
     }
   },
   blockExplorers: {
